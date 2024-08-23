@@ -1,0 +1,12 @@
+#ifndef MGMOTORLOGIC_GLOBAL_H
+#define MGMOTORLOGIC_GLOBAL_H
+
+#include <QtCore/qglobal.h>
+
+#if defined(MGMOTORLOGIC_LIBRARY)
+#  define MGMOTORLOGIC_EXPORT Q_DECL_EXPORT
+#else
+#  define MGMOTORLOGIC_EXPORT Q_DECL_IMPORT
+#endif
+
+#endif // MGMOTORLOGIC_GLOBAL_H

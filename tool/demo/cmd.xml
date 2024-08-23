@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root>
+	<MGMotorcmd>
+		<readMotorState1>3e 9A %1 00</readMotorState1>
+		<clearMotorError>3e 9B %1 00</clearMotorError>
+		<readMotorState2>3e 9C %1 00</readMotorState2>
+		<readMotorState3>3e 9d %1 00</readMotorState3>
+		<motorOpen>3e 88 %1 00</motorOpen>
+		<motorClose>3e 80 %1 00</motorClose>
+		<motorStop>3e 81 %1 00</motorStop>
+		<powerControl>3e A0 %1 02</powerControl>
+		<iqControl>3e A1 %1 02</iqControl>
+		<speedControl>3e A2 %1 04</speedControl>
+		<angleControl>3e A3 %1 08</angleControl>
+		<angleControlWithMaxSpeed>3e A4 %1 0C</angleControlWithMaxSpeed>
+		<singleLoopControl>3e A5 %1 04</singleLoopControl>
+		<singleLoopControlWithMacSpeed>3e A6 %1 08</singleLoopControlWithMacSpeed>
+		<increaseLoopControl>3e A7 %1 04</increaseLoopControl>
+		<increaseLoopControlWithMacSpeed>3e A8 %1 08</increaseLoopControlWithMacSpeed>
+		<readEncoder>3e 90 %1 00</readEncoder>
+		<setZreoToROM>3e 19 %1 00</setZreoToROM>
+		<readMutiLoopAngle>3e 92 %1 00</readMutiLoopAngle>
+		<clearMutiLoop>3e 93 %1 00</clearMutiLoop>
+		<readSingleLoopAngle>3e 94 %1 00</readSingleLoopAngle>
+		<setZreoToRAM>3e 95 %1 00</setZreoToRAM>
+		<readParam>3e 40 %1 02</readParam>
+		<setParamToRAM>3e 42 %1 07</setParamToRAM>
+		<setParamToRAM>3e 44 %1 07</setParamToRAM>
+	</MGMotorcmd>
+	<Weighcmd>
+		<weighgetWeigh>%1 03 00 00 00 02</weighgetWeigh>
+		<closeWirteProtect>%1 06 00 17 00 01</closeWirteProtect>
+		<openWriteProtect>%1 06 00 17 00 02</openWriteProtect>
+		<writeBaudrate>%1 06 00 10 00 %2</writeBaudrate>
+		<shelling>%1 06 00 15 00 01</shelling>
+		<unShelling>%1 06 00 15 00 02</unShelling>
+		<startSetSensitivity>%1 06 00 18 00 FF</startSetSensitivity>
+		<setRange>%1 06 00 23 %2 %3</setRange>
+		<setSensitivity>%1 06 00 24 %2 %3</setSensitivity>
+	</Weighcmd>
+</root>

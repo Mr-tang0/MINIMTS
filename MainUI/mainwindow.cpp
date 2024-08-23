@@ -1,0 +1,302 @@
+#include "mainwindow.h"
+#include "ui_mainwindow.h"
+
+#include <qtmaterialavatar.h>
+#include <qtmaterialbadge.h>
+
+QMap<QString, QMap<QString, QString>> MainWindow::rootMap;
+QMap<QString, QMap<QString, QString>> MainWindow::systemMap;
+QMap<QString, QMap<QString, QString>> MainWindow::cmdMap;
+QMap<QString, QMap<QString, QString>> MainWindow::usersMap;
+User MainWindow::user;
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow),
+      m_snackbar(new QtMaterialSnackbar),
+      m_avatar(new QtMaterialAvatar(QImage(":/main/res/icon/sikh.jpg"))),
+      m_badge(new QtMaterialBadge)
+{
+    ui->setupUi(this);
+
+
+
+    m_snackbar->setParent(this);
+    m_snackbar->setAutoHideDuration(400);
+    m_snackbar->setFont(QFont("幼圆"));
+    m_snackbar->setFontSize(12);
+
+
+    m_avatar->setSize(50);
+    m_badge->setParent(m_avatar);
+    m_badge->setRelativePosition(18, 12);
+    m_badge->setText("0");
+    m_badge->setEnabled(false);
+
+    QLayout *layout = ui->header->layout();
+    if (layout == nullptr) {
+        layout = new QVBoxLayout( ui->header);
+    }
+    layout->addWidget(m_avatar);
+
+    QString rootXml = QCoreApplication::applicationDirPath()+"/root/root.xml";
+    rootMap = Tool::readXMlFile(rootXml);
+    systemMap = Tool::readXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["systemSetFilePath"]);
+    //    systemMap["self"]["path"]=rootMap["system"]["systemSetFilePath"];
+//    Tool::writeXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["systemSetFilePath"],systemMap);
+    cmdMap = Tool::readXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["cmdPath"]);
+    usersMap = Tool::readXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["usersFilePath"]);
+//    usersMap["self"]["path"]=rootMap["system"]["usersFilePath"];
+//    Tool::writeXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["usersFilePath"],usersMap);
+
+    initThis();
+    User user = Tool::getUser("li","123456",usersMap);
+//    qDebug()<<user.name;
+
+//    Tool::addUser(user,&usersMap);
+//    qDebug()<<usersMap;
+
+
+
+
+    login = new loginWin;
+    connect(login,&loginWin::logined,[=](User newUser){
+        this->user = newUser;
+
+        QString header = this->user.headerPic;
+        if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
+
+        m_avatar->setImage(QImage(header));
+        this->show();
+        login->hide();
+        userWin->freshUserDetails(this->user);
+    });
+    login->show();
+//    this->show();
+
+    connect(userWin,&userWidget::message,[=](QString m){
+        m_snackbar->addMessage(m);
+        if(m=="保存成功"){
+            QString header = this->user.headerPic;
+            if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
+            m_avatar->setImage(QImage(header));
+            userWin->freshUserDetails(this->user);
+        }
+    });
+
+
+
+
+
+
+
+    {
+        //    QMap<QString, QMap<QString, QString>> map = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml");
+        //    qDebug()<<map["MGMotorcmd"]["angleConcrol"];
+        //    rootMap["system"]["appid"] = "1421543256";
+        //    rootMap["system"]["appkey"] = "1353467564";
+        //    rootMap["system"]["cmdPath"] =  "/root/system/cmd.xml";
+        //    rootMap["system"]["systemSetFilePath"] =  "/root/system/system.xml";
+        //    rootMap["system"]["usersFilePath"] =  "/root/users/users.xml";
+        //    Tool::writeXMlFile(rootXml,rootMap);
+    }
+
+
+
+
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
+
+bool MainWindow::eventFilter(QObject *watched, QEvent *event)
+{
+    if(!filteropen)return false;
+
+    if (event->type() == QEvent::MouseButtonDblClick) {
+        if (watched == ui->widgetTitle) {
+            on_btnMenu_Max_clicked();
+            return true;
+        }
+    }
+    if (event->type() == QEvent::MouseMove) {
+        QMouseEvent *mouseEvent = static_cast<QMouseEvent*>(event);
+
+        const int topMargin = 5; // 距离顶部的边缘距离
+        bool isNearTopEdge = (mouseEvent->globalY() <= topMargin);
+
+
+        if (isNearTopEdge && windowState() != Qt::WindowMaximized) {
+            // 鼠标靠近顶部时最大化
+            ui->btnMenu_Max->click();
+            showMaximized();
+            filteropen=false;
+            Tool::delay(500);
+            filteropen=true;
+        } else if (!isNearTopEdge && windowState() == Qt::WindowMaximized) {
+            // 鼠标离开顶部时还原
+            ui->btnMenu_Max->click();
+            filteropen=false;
+            Tool::delay(500);
+            filteropen=true;
+        }
+        lastPos = mouseEvent->globalPos();
+    }
+    return QWidget::eventFilter(watched, event);
+}
+
+void MainWindow::initThis(){
+    QUIHelper::setFramelessForm(this);
+//    QUIHelper::setRoundCornerForm(this, 10);
+
+    this->centralWidget()->layout()->setMargin(1);
+
+    IconHelper::setIcon(ui->btnMenu_Min, 0xf2d1);
+    IconHelper::setIcon(ui->btnMenu_Max, 0xf2d2);
+    IconHelper::setIcon(ui->btnMenu_Close, 0xf00d);
+
+    ui->widgetTitle->installEventFilter(this);
+    ui->widgetTitle->setProperty("form", "title");
+    ui->widgetTop->setProperty("nav", "top");
+
+    QFont font;
+    font.setPixelSize(25);
+    ui->labTitle->setFont(font);
+    ui->labTitle->setText("MINIMTS");
+    this->setWindowTitle(ui->labTitle->text());
+
+    ui->stackedWidget->setStyleSheet("font:13px;");
+
+
+
+    QList<QWidget*> widgetList;
+    widgetList<<main<<system<<about<<userWin;
+
+    main->initSystem();
+    connect(main,&mainWidget::connected,[=](bool flag){
+        if(flag){
+            m_snackbar->addMessage("连接成功！");
+        }else m_snackbar->addMessage("连接失败！");
+
+    });
+    connect(main,&mainWidget::massage,[=](QString message){
+        m_snackbar->addMessage(message);
+
+    });
+    connect(main,&mainWidget::disconnected,[=](){
+        m_snackbar->addMessage("已断开！");
+
+    });
+
+    connect(system,&systemWidget::saved,[=](bool flag){
+        if(flag){
+            m_snackbar->addMessage("保存成功！");
+            main->initSystem();
+        }
+        ui->btnMain->click();
+    });
+
+    for (int i = 0; i <widgetList.length(); i++) {
+        QWidget *page = ui->stackedWidget->widget(i);
+
+        QLayout *layout = page->layout();
+        if (layout == nullptr) {
+            layout = new QVBoxLayout(page); // 使用QVBoxLayout作为示例布局
+        }
+        layout->addWidget(widgetList[i]);
+        page->update();
+    }
+
+    int addWidth = 20;
+    int addHeight = 10;
+    int rbtnWidth = 15;
+    int ckWidth = 13;
+    int scrWidth = 12;
+    int borderWidth = 3;
+
+    QStringList qss;
+    qss << QString("QComboBox::drop-down,QDateEdit::drop-down,QTimeEdit::drop-down,QDateTimeEdit::drop-down{width:%1px;}").arg(addWidth);
+    qss << QString("QComboBox::down-arrow,QDateEdit[calendarPopup=\"true\"]::down-arrow,QTimeEdit[calendarPopup=\"true\"]::down-arrow,"
+                   "QDateTimeEdit[calendarPopup=\"true\"]::down-arrow{width:%1px;height:%1px;right:2px;}").arg(addHeight);
+    qss << QString("QRadioButton::indicator{width:%1px;height:%1px;}").arg(rbtnWidth);
+    qss << QString("QCheckBox::indicator,QGroupBox::indicator,QTreeWidget::indicator,QListWidget::indicator{width:%1px;height:%1px;}").arg(ckWidth);
+    qss << QString("QScrollBar:horizontal{min-height:%1px;border-radius:%2px;}QScrollBar::handle:horizontal{border-radius:%2px;}"
+                   "QScrollBar:vertical{min-width:%1px;border-radius:%2px;}QScrollBar::handle:vertical{border-radius:%2px;}").arg(scrWidth).arg(scrWidth / 2);
+    qss << QString("QWidget#widget_top>QToolButton:pressed,QWidget#widget_top>QToolButton:hover,"
+                   "QWidget#widget_top>QToolButton:checked,QWidget#widget_top>QLabel:hover{"
+                   "border-width:0px 0px %1px 0px;}").arg(borderWidth);
+    qss << QString("QWidget#widgetleft>QPushButton:checked,QWidget#widgetleft>QToolButton:checked,"
+                   "QWidget#widgetleft>QPushButton:pressed,QWidget#widgetleft>QToolButton:pressed{"
+                   "border-width:0px 0px 0px %1px;}").arg(borderWidth);
+    this->setStyleSheet(qss.join(""));
+
+    QSize icoSize(32, 32);
+    int icoWidth = 85;
+
+    QList<QToolButton *> tbtns = ui->widgetTop->findChildren<QToolButton *>();
+    foreach (QToolButton *btn, tbtns) {
+        btn->setIconSize(icoSize);
+        btn->setMinimumWidth(icoWidth);
+        btn->setCheckable(true);
+        connect(btn, SIGNAL(clicked()), this, SLOT(buttonClick()));
+    }
+    ui->btnMain->click();
+
+
+    connect(main,&mainWidget::btnClicked,[=](QString btn){
+       if(btn=="toSet")ui->btnConfig->click();
+    });
+}
+
+void MainWindow::buttonClick()
+{
+    QToolButton *b = (QToolButton *)sender();
+    QString name = b->text();
+
+    QList<QToolButton *> tbtns = ui->widgetTop->findChildren<QToolButton *>();
+    foreach (QToolButton *btn, tbtns) {
+        btn->setChecked(btn == b);
+    }
+
+    if (name == "主界面") {
+        ui->stackedWidget->setCurrentIndex(0);
+    }else if (name == "系统设置") {
+        ui->stackedWidget->setCurrentIndex(1);
+        system->initSystem();
+    } else if (name == "帮助与关于") {
+        ui->stackedWidget->setCurrentIndex(2);
+    } else if (name == "退出系统") {
+        exit(0);
+    }else if (name == "用户") {
+        ui->stackedWidget->setCurrentIndex(3);
+    }
+}
+
+void MainWindow::on_btnMenu_Min_clicked()
+{
+    showMinimized();
+}
+
+void MainWindow::on_btnMenu_Max_clicked()
+{
+    static bool max = false;
+    static QRect location = this->geometry();
+
+    if (max) {
+        this->setGeometry(location);
+    } else {
+        location = this->geometry();
+        this->setGeometry(QUIHelper::getScreenRect());
+    }
+    this->setProperty("canMove", max);
+    max = !max;
+}
+
+void MainWindow::on_btnMenu_Close_clicked()
+{
+    close();
+}
+
+

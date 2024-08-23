@@ -1,0 +1,42 @@
+<RCC>
+    <qresource prefix="/main">
+        <file>res/icon/main_about.png</file>
+        <file>res/icon/main_company.png</file>
+        <file>res/icon/main_config.png</file>
+        <file>res/icon/main_data.png</file>
+        <file>res/icon/main_exit.png</file>
+        <file>res/icon/main_help.png</file>
+        <file>res/icon/main_main.png</file>
+        <file>res/icon/main_person.png</file>
+        <file>res/core_qss/qss/blacksoft/branch_open.png</file>
+        <file>res/core_qss/qss/blacksoft/menu_checked.png</file>
+        <file>res/core_qss/qss/blacksoft/radiobutton_unchecked.png</file>
+        <file>res/icon/sikh.jpg</file>
+    </qresource>
+    <qresource prefix="/qss">
+        <file>res/core_qss/qss/blacksoft/add_bottom.png</file>
+        <file>res/core_qss/qss/blacksoft/add_left.png</file>
+        <file>res/core_qss/qss/blacksoft/add_right.png</file>
+        <file>res/core_qss/qss/blacksoft/add_top.png</file>
+        <file>res/core_qss/qss/blacksoft/arrow_bottom.png</file>
+        <file>res/core_qss/qss/blacksoft/arrow_left.png</file>
+        <file>res/core_qss/qss/blacksoft/arrow_right.png</file>
+        <file>res/core_qss/qss/blacksoft/arrow_top.png</file>
+        <file>res/core_qss/qss/blacksoft/branch_close.png</file>
+        <file>res/core_qss/qss/blacksoft/branch_open.png</file>
+        <file>res/core_qss/qss/blacksoft/calendar_nextmonth.png</file>
+        <file>res/core_qss/qss/blacksoft/calendar_prevmonth.png</file>
+        <file>res/core_qss/qss/blacksoft/checkbox_checked.png</file>
+        <file>res/core_qss/qss/blacksoft/checkbox_checked_disable.png</file>
+        <file>res/core_qss/qss/blacksoft/checkbox_parcial.png</file>
+        <file>res/core_qss/qss/blacksoft/checkbox_parcial_disable.png</file>
+        <file>res/core_qss/qss/blacksoft/checkbox_unchecked.png</file>
+        <file>res/core_qss/qss/blacksoft/checkbox_unchecked_disable.png</file>
+        <file>res/core_qss/qss/blacksoft/menu_checked.png</file>
+        <file>res/core_qss/qss/blacksoft/radiobutton_checked.png</file>
+        <file>res/core_qss/qss/blacksoft/radiobutton_checked_disable.png</file>
+        <file>res/core_qss/qss/blacksoft/radiobutton_unchecked.png</file>
+        <file>res/core_qss/qss/blacksoft/radiobutton_unchecked_disable.png</file>
+        <file>res/core_qss/qss/blacksoft.css</file>
+    </qresource>
+</RCC>

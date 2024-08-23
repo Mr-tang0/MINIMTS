@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<root>
+	<user1>
+		<id>1</id>
+		<name>Tom</name>
+		<lastName>Cruise</lastName>
+		<photo>https://verytoolz.com/img/tom-cruise.jpg</photo>
+	</user1>
+	<user2>
+		<id>2</id>
+		<name>Maria</name>
+		<lastName>Sharapova</lastName>
+		<photo>https://verytoolz.com/img/Maria-Sharapova.jpg</photo>
+	</user2>
+	<user3>
+		<id>3</id>
+		<name>Robert</name>
+		<lastName>Downey Jr.</lastName>
+		<photo>https://verytoolz.com/img/Robert-Downey-Jr.jpg</photo>
+	</user3>
+</root>
