@@ -21,6 +21,9 @@ MGMotorLogic::MGMotorLogic(QObject *parent):
         porter->appendBuffer(cmd);
     });
 
+    connect(porter->decoder,&decodeThread::testOK,[=](){emit testOK();});
+    connect(porter->decoder,&decodeThread::motorDetails,[=](QString m){emit mDetails(m);});
+
 }
 
 QStringList MGMotorLogic::findPort(){
@@ -60,7 +63,7 @@ void MGMotorLogic::setMotorParam(QMap<QString,QString> params){
 bool MGMotorLogic::connectMotor(QString portName, int buandRate){
     bool flag = porter->connectPort(portName,buandRate);
     if(flag)
-        searchTimer->start(1000/motorDetails.sampleRate);
+        searchTimer->start(20);
 
     return flag;
 }
@@ -71,16 +74,14 @@ void MGMotorLogic::disConnectMotor(){
 }
 
 void MGMotorLogic::testConnect(){
-    QString id = QStringLiteral("0%1");
-    QString cmd = "3E 1F %1 00";
-    for(int i = 1;i<10;i++){
-        id = id.arg(i);
-        cmd = cmd.arg(id);
-        cmd = Tool::numberVerify(cmd);
-        porter->prependBuffer(cmd);
-        cmd = "3E 1F %1 00";
-        id = QStringLiteral("0%1");
-    }
+    QString cmd = QStringLiteral("3E 1F %1 00").arg(motorDetails.ID);
+    cmd = Tool::numberVerify(cmd);
+    porter->prependBuffer(cmd);
+}
+void MGMotorLogic::seacherMotor(){
+    QString cmd = QStringLiteral("3E 12 %1 00").arg(motorDetails.ID);
+    cmd = Tool::numberVerify(cmd);
+    porter->prependBuffer(cmd);
 }
 
 void MGMotorLogic::motorOn(){
@@ -112,7 +113,6 @@ void MGMotorLogic::motorSpeedMove(double speed){
     cmd = cmd + " " + value;
 
     porter->prependBuffer(cmd);
-    qDebug()<<cmd;
 
 }
 
@@ -139,7 +139,6 @@ void MGMotorLogic::motorLengthMove(bool Dir, double relativeLength, double speed
     QString dataString = Tool::numberVerify(lengthString+" "+speedString);
 
     cmd = cmd + " " + dataString;
-    qDebug()<<cmd;
     porter->prependBuffer(cmd);
 }
 
@@ -151,14 +150,13 @@ void MGMotorLogic::getCurrentValue(float *angle,float *length,float *force, floa
     *angle = a/motorDetails.angleRate*motorDetails.resolution;
     *length = l/motorDetails.lengthRate;
     *force = f/motorDetails.forceRate;
-    *speed = s/motorDetails.angleRate*motorDetails.resolution;
+    *speed = s/motorDetails.angleRate;
 }
 
 void MGMotorLogic::setWeighBuandRate(int buandRate){
     QString cmd = weighMap["closeWirteProtect"].arg(weighDetails.ID);
     cmd = Tool::crc16Ccitt(cmd);
-    qDebug()<<cmd;
-//    porter->appendBuffer(cmd);
+    porter->appendBuffer(cmd);
 
     switch (buandRate) {
         case 115200:
@@ -167,7 +165,6 @@ void MGMotorLogic::setWeighBuandRate(int buandRate){
     }
 
     cmd = Tool::crc16Ccitt(cmd);
-    qDebug()<<cmd;
-//    porter->appendBuffer(cmd);
+    porter->appendBuffer(cmd);
 }
 

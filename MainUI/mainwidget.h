@@ -26,7 +26,7 @@ struct TestDetails{
     float sampleSquare = 1;
     float sampleLength = 1;
 
-    QString autoStopType = "手动停止";
+    QString autoStopType = "Stop manually";
     float autoStopValue = 0;
 
     QString userFilePath = "";
@@ -53,8 +53,14 @@ public:
     void addStateBox(QString message);
     void clearStateBox();
 
-    void initPortWin();
-    void initPorjectWin();
+
+    bool saveCsv(QList<QList<float>> data,QList<QString> header);
+
+    void readCsv(QString filePath,QList<QList<float>>*);
+
+
+
+
 
 
 private:
@@ -81,8 +87,8 @@ private:
 
     QList<QLineSeries*> lineSeriesList;
     QList<QList<float>> axisPointsList;
+    int pointsCount = 0;
 
-    QList<QList<float>> maxAndMinPointsList={{1,0},{1,0},{1,0},{1,0},{1,0},{1,0}};
 
     QChart *chart = new QChart();
 
@@ -90,6 +96,7 @@ private:
     QValueAxis *chartYAxis = new QValueAxis;
 
     bool startTestFlag = false;
+    bool sampleProtectFlag = false;
 
 private:
     //根据QSS样式获取对应颜色值
@@ -123,7 +130,7 @@ signals:
     void connected(bool);
     void disconnected();
     void btnClicked(QString);
-    void massage(QString);
+    void message(QString);
 
 };
 

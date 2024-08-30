@@ -30,6 +30,9 @@
           </item>
           <item row="2" column="0">
            <widget class="QToolButton" name="userSet">
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
             <property name="text">
              <string>用户设置</string>
             </property>
@@ -826,12 +829,12 @@
          </property>
          <item>
           <property name="text">
-           <string>平均</string>
+           <string>线性插值</string>
           </property>
          </item>
          <item>
           <property name="text">
-           <string>中值</string>
+           <string>三次样条插值</string>
           </property>
          </item>
         </widget>

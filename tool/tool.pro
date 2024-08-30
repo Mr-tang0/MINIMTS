@@ -1,5 +1,6 @@
-QT -= gui
+QT += gui
 QT += xml
+QT += widgets
 
 TEMPLATE = lib
 DEFINES += TOOL_LIBRARY

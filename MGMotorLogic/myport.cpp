@@ -9,20 +9,22 @@ myPort::myPort(QObject *parent) :
     QThread *thread = new QThread;
 
     decoder->moveToThread(thread);
+
+    connect(thread,&QThread::started,[=](){
+        connect(serialPort,&QSerialPort::readyRead,this,[=](){
+            QByteArray data = serialPort->readAll();
+            decoder->decode(data);
+        });
+    });
     thread->start();
 
-    connect(serialPort,&QSerialPort::readyRead,this,[=](){
-        QByteArray data = serialPort->readAll();
-        decoder->decode(data);
-    });
-//    connect(decoder,&decodeThread::decodeDone,this,[=](QMap<QString,QString> decodeMap){
-//        emit decodeDone(decodeMap);
-//    });
     connect(sendTimer,&QTimer::timeout,this,[=](){
         if(buffer.empty())return;
         sendMessage(buffer.first());
         buffer.removeFirst();
     });
+
+
 
 }
 
@@ -54,7 +56,7 @@ bool myPort::connectPort(const QString &portName, int baudRate){
     serialPort->setBaudRate(baudRate);
     if (serialPort->open(QIODevice::ReadWrite)) {
         buffer.clear();
-        sendTimer->start(50);
+        sendTimer->start(13);
         return true;
     } else {
         return false;

@@ -29,6 +29,9 @@ signals:
     void decodeFactLengthValue(int value);
     void decodeSpeedValue(int value);
 
+    void testOK();
+    void motorDetails(QString m);
+
 
 };
 

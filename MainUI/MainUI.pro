@@ -75,3 +75,5 @@ DEPENDPATH += $$PWD/../MGMotorLogic
 win32:LIBS+=$$PWD/libs/libcomponents32.a
 else:LIBS+=$$PWD/libs/libcomponents64.a
 INCLUDEPATH+=$$PWD/libs/Include
+
+RC_ICONS = res\icon\icon.ico

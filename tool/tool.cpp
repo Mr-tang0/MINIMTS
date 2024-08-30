@@ -4,6 +4,11 @@
 #include <QDomDocument>
 #include <QDomElement>
 #include <QDomNode>
+#include <algorithm>
+#include <vector>
+#include <cmath>
+#include <QClipboard>
+#include <QApplication>
 
 Tool::Tool()
 {
@@ -88,6 +93,7 @@ QMap<QString, QMap<QString, QString>> Tool::readXMlFile(QString filePath)
     } else {
         qDebug() << "Invalid root element";
     }
+    file.close();
 
     return resultMap;
 }
@@ -259,7 +265,7 @@ bool Tool::addUser(User user,QMap<QString, QMap<QString, QString>> *usersMap){
 
 
     QString newUser = QStringLiteral("user%1").arg(max+1);
-    user.userid = max+1;
+    user.userid = QString::number(max+1);
 
     (*usersMap)[newUser]["userid"]=user.userid;
     (*usersMap)[newUser]["name"]=user.name;
@@ -270,7 +276,7 @@ bool Tool::addUser(User user,QMap<QString, QMap<QString, QString>> *usersMap){
     (*usersMap)[newUser]["userDefaultName"]=user.userDefaultName;
     (*usersMap)[newUser]["userfilePath"]=user.userfilePath;
 
-    writeXMlFile((*usersMap)["self"]["path"],(*usersMap));
+    writeXMlFile((*usersMap)["self"]["path"],*usersMap);
 
     return true;
 }
@@ -302,6 +308,9 @@ User Tool::getUser(QString id,QMap<QString, QMap<QString, QString>>usersMap){
     User user;
 
     foreach (QString item,users){
+
+//        qDebug()<<usersMap[item]["userid"]<<id;
+
         if(usersMap[item]["userid"]==id){
             user.userid = usersMap[item]["userid"];
             user.name = usersMap[item]["name"];
@@ -319,6 +328,7 @@ User Tool::getUser(QString id,QMap<QString, QMap<QString, QString>>usersMap){
 
 bool Tool::freshUser(User user,QMap<QString, QMap<QString, QString>>* usersMap){
     User isUser = getUser(user.userid,*usersMap);
+
     if(isUser.userid!=user.userid)return false;
     else{
         QStringList users= (*usersMap).keys();
@@ -331,6 +341,7 @@ bool Tool::freshUser(User user,QMap<QString, QMap<QString, QString>>* usersMap){
             }
         }
 
+
         (*usersMap)[newUser]["userid"]=user.userid;
         (*usersMap)[newUser]["name"]=user.name;
         (*usersMap)[newUser]["password"]=user.password;
@@ -340,7 +351,7 @@ bool Tool::freshUser(User user,QMap<QString, QMap<QString, QString>>* usersMap){
         (*usersMap)[newUser]["userDefaultName"]=user.userDefaultName;
         (*usersMap)[newUser]["userfilePath"]=user.userfilePath;
 
-        writeXMlFile((*usersMap)["self"]["path"],(*usersMap));
+        writeXMlFile((*usersMap)["self"]["path"],*usersMap);
         return true;
     }
 }
@@ -349,16 +360,17 @@ bool Tool::freshUser(User user,QMap<QString, QMap<QString, QString>>* usersMap){
 bool Tool::deleteUser(User user,QMap<QString, QMap<QString, QString>>*usersMap){
     User isUser = getUser(user.name,user.password,*usersMap);
     if(isUser.name!=user.name)return false;
+    return true;
 
 }
 
-void Tool::saveCsvData(const QList<QList<float>> &data, const QList<QString> &header, QString filePath) {
+bool Tool::saveCsvData(const QList<QList<float>> &data, const QList<QString> &header, QString filePath) {
     // 检查并创建目录
     QDir dir(QFileInfo(filePath).absolutePath());
     if (!dir.exists()) {
         if (!dir.mkpath(".")) {
             qWarning() << "Failed to create directory:" << dir.absolutePath();
-            return;
+            return false;
         }
     }
 
@@ -382,27 +394,96 @@ void Tool::saveCsvData(const QList<QList<float>> &data, const QList<QString> &he
     QFile file(filePath);
     if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
         qWarning() << "Failed to open file:" << file.errorString();
-        return;
+        return false;
     }
 
     QTextStream out(&file);
+    out.setCodec("UTF-8");  // 设置输出流的编码为 UTF-8
 
+    // 输出表头
     for (const auto &h : header) {
         out << h << ",";
     }
     out << "\n";
 
-    for (const auto &row : data) {
-        for (int i = 0; i < row.size(); ++i) {
-            out << row[i];
-            if (i != row.size() - 1) {
-                out << ",";
-            }
+
+
+    // 输出数据
+    for (int i = 0; i < data[0].size(); ++i) {
+        for (int j = 0; j < data.size(); ++j) {
+            if (data[j].isEmpty()) continue;
+            out << data[j][i] << ",";
         }
         out << "\n";
     }
 
     file.close();
+    return true;
+}
+
+bool Tool::saveCsvData(const QList<QList<float>> &data, const QList<QString> &header, QMap<QString,QString>datails, QString filePath){
+    // 检查并创建目录
+    QDir dir(QFileInfo(filePath).absolutePath());
+    if (!dir.exists()) {
+        if (!dir.mkpath(".")) {
+            qWarning() << "Failed to create directory:" << dir.absolutePath();
+            return false;
+        }
+    }
+
+    // 检查文件是否存在
+    QFileInfo fileInfo(filePath);
+    if (fileInfo.exists()) {
+        // 文件存在，生成新的文件名
+        QString baseName = fileInfo.baseName();
+        QString suffix = fileInfo.suffix();
+        QString path = fileInfo.absolutePath();
+
+        int count = 1;
+        QString newFilePath = path + "/" + baseName + "_" + QString::number(count) + "." + suffix;
+        while (QFileInfo(newFilePath).exists()) {
+            ++count;
+            newFilePath = path + "/" + baseName + "_" + QString::number(count) + "." + suffix;
+        }
+        filePath = newFilePath;
+    }
+
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        qWarning() << "Failed to open file:" << file.errorString();
+        return false;
+    }
+
+    QTextStream out(&file);
+    out.setCodec("UTF-8");  // 设置输出流的编码为 UTF-8
+
+    //文件介绍
+    foreach(QString key,datails.keys()){
+        out << key << "," << datails[key];
+        out<<"\n";
+    }
+    out << "\n";
+
+    // 输出表头
+    for (const auto &h : header) {
+        out << h << ",";
+    }
+    out << "\n";
+
+
+
+
+    // 输出数据
+    for (int i = 0; i < data[0].size(); ++i) {
+        for (int j = 0; j < data.size(); ++j) {
+            if (data[j].isEmpty()) continue;
+            out << data[j][i] << ",";
+        }
+        out << "\n";
+    }
+
+    file.close();
+    return true;
 }
 
 QList<QList<float>> Tool::loadCsvData(QString filePath, QList<QString> &header) {
@@ -414,25 +495,202 @@ QList<QList<float>> Tool::loadCsvData(QString filePath, QList<QString> &header) 
 
     QTextStream in(&file);
 
-
-    QString line = in.readLine();
-    header = line.split(',');
+    QString line;
+    while (header.length()<4) {
+        line = in.readLine();
+        header = line.split(',');
+    }
 
     QList<QList<float>> data;
-    while (!in.atEnd()) {
-        line = in.readLine();
-        QStringList values = line.split(',');
+
+    for(int i = 0;i<header.length();i++){
         QList<float> row;
-        for (const auto &value : values) {
-            bool ok;
-            float f = value.toFloat(&ok);
-            if (ok) {
-                row.append(f);
-            }
-        }
         data.append(row);
     }
 
+    while (!in.atEnd()) {
+        line = in.readLine();
+        QStringList values = line.split(',');
+        if(values.length()<3)continue;
+        for(int i = 0;i<header.length();i++){
+            data[i].append(values[i].toFloat());
+        }
+    }
     file.close();
     return data;
+}
+
+
+void Tool::dataSmooth(QList<float> &data, QString type, int window) {
+    if (window <= 0 || window > data.size()) {
+        qDebug() << "Invalid window size.";
+        return;
+    }
+
+    QList<float> result;
+
+    if (type == "平均加权") {
+        for (int i = 0; i < data.size(); ++i) {
+            float sum = 0.0f;
+            int count = 0;
+            for (int j = i - window / 2; j <= i + window / 2; ++j) {
+                if (j >= 0 && j < data.size()) {
+                    sum += data[j];
+                    ++count;
+                }
+            }
+            result.append(sum / count);
+        }
+    } else if (type == "中值平滑") {
+        for (int i = 0; i < data.size(); ++i) {
+            std::vector<float> windowValues;
+            for (int j = i - window / 2; j <= i + window / 2; ++j) {
+                if (j >= 0 && j < data.size()) {
+                    windowValues.push_back(data[j]);
+                }
+            }
+            std::sort(windowValues.begin(), windowValues.end());
+            result.append(windowValues[windowValues.size() / 2]);
+        }
+    }
+
+    data = result;
+}
+
+
+void Tool::interpolation(QList<float> &data,QString type,int count){
+    if(type=="线性插值"){
+        QList<float> interpolatedData;
+        int n = data.size();
+
+        if (n <= 1 || count <= 0) {
+            qDebug() << "Invalid input data or count.";
+            data = interpolatedData;
+        }
+
+        for(int i=0; i< n-1 ; i++){
+            float step = (data[i+1]-data[i])/count;
+
+            for(int j=0;j<count;j++){
+                interpolatedData.append(data[i]+j*step);
+            }
+        }
+        data = interpolatedData;
+    }else if(type=="三次样条插值"){
+        QList<float> interpolatedData;
+        int n = data.size();
+
+        if (n <= 1 || count <= 0) {
+            qDebug() << "Invalid input data or count.";
+            data = interpolatedData;
+        }
+
+        // 计算样条系数
+        std::vector<std::vector<float>> A(n - 1, std::vector<float>(4));
+        std::vector<float> b(n - 1);
+
+        for (int i = 0; i < n - 1; ++i) {
+            A[i][0] = 1;
+            A[i][1] = static_cast<float>(i);
+            A[i][2] = static_cast<float>(i * i);
+            A[i][3] = static_cast<float>(i * i * i);
+
+            b[i] = data[i + 1] - data[i];
+        }
+
+        // 使用高斯消元法求解系数
+        std::vector<float> c = solveTridiagonalSystem(A, b);
+
+        // 插值
+        float step = static_cast<float>(n - 1) / (count - 1);
+
+        for (int i = 0; i < count; ++i) {
+            int index = static_cast<int>(i * step);
+            float t = (i * step - index) / (index + 1 - index);
+
+            float result = data[index] + c[index] * t +
+                           c[index + 1] * t * t * (t - 1) / 2;
+
+            interpolatedData.append(result);
+        }
+
+        data = interpolatedData;
+    }
+
+}
+
+std::vector<float> Tool::solveTridiagonalSystem(const std::vector<std::vector<float>> &A, const std::vector<float> &b) {
+    int n = A.size();
+    std::vector<float> c(n - 1);
+
+    // 创建一个新的矩阵来存储修改后的值
+    std::vector<std::vector<float>> B(n, std::vector<float>(4));
+
+    // 将原始矩阵复制到新矩阵中
+    for (int i = 0; i < n; ++i) {
+        for (int j = 0; j < 4; ++j) {
+            B[i][j] = A[i][j];
+        }
+    }
+
+    // 创建一个新的向量来存储修改后的 b 值
+    std::vector<float> D(b.begin(), b.end());
+
+    // 前进消元
+    for (int i = 0; i < n - 1; ++i) {
+        float a11 = B[i][0];
+        float a12 = B[i][1];
+        float a21 = B[i + 1][1];
+        float a22 = B[i + 1][2];
+
+        float factor = a21 / a11;
+        B[i + 1][1] -= factor * a12;
+        B[i + 1][2] -= factor * B[i][2];
+        B[i + 1][3] -= factor * B[i][3];
+        D[i + 1] -= factor * D[i];  // 使用新的向量 D
+
+        c[i] = a12 / a11;
+    }
+
+    // 后向代入
+    std::vector<float> x(n);
+    x[n - 1] = D[n - 1] / B[n - 1][3];
+
+    for (int i = n - 2; i >= 0; --i) {
+        x[i] = (D[i] - B[i][3] * x[i + 1]) / B[i][2];
+    }
+
+    return x;
+}
+
+bool Tool::removeDirectoryRecursively(const QString &path) {
+    QDir dir(path);
+    if (!dir.exists()) {
+        qDebug() << "目录不存在：" << path;
+        return false;
+    }
+
+    // 遍历目录下的所有文件和子目录
+    QFileInfoList entries = dir.entryInfoList(QDir::NoDotAndDotDot | QDir::Files | QDir::Dirs);
+    foreach (const QFileInfo &entry, entries) {
+        if (entry.isDir()) {
+            // 递归删除子目录
+            if (!removeDirectoryRecursively(entry.absoluteFilePath())) {
+                return false;
+            }
+        } else {
+            // 删除文件
+            if (!QFile::remove(entry.absoluteFilePath())) {
+                return false;
+            }
+        }
+    }
+
+    // 删除空目录
+    return dir.rmdir(".");
+}
+
+void Tool::copyPathToClipboard(const QString &path) {
+    QClipboard *clipboard = QApplication::clipboard();
+    clipboard->setText(path, QClipboard::Clipboard);
 }

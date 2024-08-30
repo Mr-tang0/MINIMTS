@@ -10,11 +10,48 @@ decodeThread::decodeThread(QObject *parent) : QObject(parent)
 
 void decodeThread::decode(QByteArray data){
     if(data.left(1)==">"){
+        QString ID = data.mid(2,1).toHex();
+        QString cmd = data.mid(1,1).toHex();
+
+        if(cmd=="12"){
+            qDebug()<<data.toHex();
+            QByteArray structBody = data.remove(0,5);
+
+            QString motorDrive,motorName,motorID;
+
+            if(structBody.length()>20){
+                QString value = structBody.left(20).toHex();
+                motorDrive = "motorDrive:"+value+"\n";
+                structBody.remove(0,20);
+            }else {
+                motorDrive = "motorDrive:null\n";
+            }
+
+            if(structBody.length()>20){
+                QString value = structBody.left(20).toHex();
+                motorName = "motorName:"+value+"\n";
+                structBody.remove(0,20);
+            }else {
+                motorName = "motorName:null\n";
+            }
+
+            if(structBody.length()>12){
+                QString value = structBody.left(20).toHex();
+                motorID = "motorID:"+value+"\n";
+                structBody.remove(0,12);
+            }else {
+                motorID = "motorID:null\n";
+            }
+            emit motorDetails(motorDrive+motorName+motorID);
+
+
+
+
+        }
         int boxLength = data.mid(3,1).toHex().toInt()+6;
         if(boxLength!=data.length())return;
 
-        QString ID = data.mid(2,1).toHex();
-        QString cmd = data.mid(1,1).toHex();
+
 
         if(cmd=="92"){
             //位置
@@ -30,6 +67,9 @@ void decodeThread::decode(QByteArray data){
             if(value>65535/2)value = value-65535;
             currentSpeedValue = value;
             emit decodeSpeedValue(value);
+        }else if(cmd=="1f"||cmd=="1F"){
+            //测试
+            emit testOK();
         }
     }else{
         int length = data.mid(2,1).toHex().toInt();

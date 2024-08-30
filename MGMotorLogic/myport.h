@@ -26,12 +26,14 @@ public:
 
     void getCurrentValue(float *angle,float *length,float *force,float *speed);
 
+    decodeThread *decoder = new decodeThread;
+
 private:
     QSerialPort *serialPort = new QSerialPort;
     QList<QByteArray> buffer;
     bool sendMessage(QByteArray data);
     QTimer *sendTimer = new QTimer(this);
-    decodeThread *decoder = new decodeThread;
+
 
     void delay(unsigned int msec)
     {

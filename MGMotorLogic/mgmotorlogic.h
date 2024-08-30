@@ -58,6 +58,7 @@ public:
     bool connectMotor(QString portName, int buandRate);
     void disConnectMotor();
     void testConnect();
+    void seacherMotor();
 
     void motorOn();
     void motorOff();
@@ -77,11 +78,17 @@ public:
     MotorDetails motorDetails;
     WeighDetails weighDetails;
 
+    QTimer *searchTimer = new QTimer(this);
+
 private:
     QMap<QString, QString> cmdMap;
     QMap<QString, QString> weighMap;
     myPort *porter = new myPort;
-    QTimer *searchTimer = new QTimer(this);
+
+
+signals:
+    void testOK();
+    void mDetails(QString m);
 
 
 

@@ -8,16 +8,12 @@ mainWidget::mainWidget(QWidget *parent) :
     ui(new Ui::mainWidget)
 {
     ui->setupUi(this);
-    logic->setWeighBuandRate(115200);
 
     initChart();
     initWidget();
     initPort();
     initConnect();
     initSystem();
-
-
-
 }
 
 mainWidget::~mainWidget()
@@ -122,7 +118,7 @@ void mainWidget::initChart(){
     ui->factLengthLCD->setDecimals(3);
 
     ui->stressLCD->setKey("应力 MPa");
-    ui->stressLCD->setDecimals(3);
+    ui->stressLCD->setDecimals(1);
 
     ui->strainLCD->setKey("应变");
     ui->strainLCD->setDecimals(3);
@@ -130,7 +126,7 @@ void mainWidget::initChart(){
     ui->timeLCD->setKey("时长 Secs");
     ui->timeLCD->setDecimals(1);
 
-    for (int i = 0;i<6;i++) {
+    for (int i = 0;i<5;i++) {
         lineSeriesList.append(new QLineSeries);
         QList<float> points;
         axisPointsList.append(points);
@@ -177,16 +173,71 @@ void mainWidget::initConnect(){
 
     });
 
-    connect(ui->testConnect,&QPushButton::clicked,[=](){logic->testConnect();});
-    connect(ui->motorDetails,&QPushButton::clicked,[=](){ });
-    connect(ui->toSet,&QPushButton::clicked,[=](){emit btnClicked("toSet");});
+    connect(ui->testConnect,&QPushButton::clicked,[=](){
+        if(!motorConnectFlag){
+            emit message("串口未连接");
+            return;
+        }
+        emit message("测试连接中");
+        addStateBox("->测试连接中");
+
+        logic->searchTimer->stop();
+        logic->testConnect();
+        Tool::delay(1000);
+        logic->testConnect();
+        Tool::delay(1000);
+        logic->testConnect();
+        Tool::delay(1000);
+        logic->searchTimer->start();
+
+
+    });
+    connect(ui->motorDetails,&QPushButton::clicked,[=](){
+        if(!motorConnectFlag){
+            emit message("串口未连接");
+            return;
+        }
+
+        emit message("查询电机信息");
+        addStateBox("->查询电机信息");
+
+        logic->searchTimer->stop();
+        logic->seacherMotor();
+        Tool::delay(1000);
+        logic->seacherMotor();
+        Tool::delay(1000);
+        logic->seacherMotor();
+        Tool::delay(1000);
+        logic->searchTimer->start();
+
+
+    });
+    connect(ui->toSet,&QPushButton::clicked,[=](){
+        emit btnClicked("toSet");
+    });
+    connect(ui->clearWin,&QPushButton::clicked,[=](){
+        clearStateBox();
+        addStateBox("已清除");
+        addStateBox("----------------");
+    });
 
 
     connect(ui->speedCW,&QPushButton::pressed,[=](){
+        if(!motorConnectFlag){
+            emit message("串口未连接");
+            return;
+        }
+
         float speed = ui->speed->value();
         logic->motorSpeedMove(speed);
+
     });
     connect(ui->speedCCW,&QPushButton::pressed,[=](){
+        if(!motorConnectFlag){
+            emit message("串口未连接");
+            return;
+        }
+
         float speed = ui->speed->value();
         logic->motorSpeedMove(-speed);
     });
@@ -214,9 +265,10 @@ void mainWidget::initConnect(){
         testDetails.autoStopValue = ui->stopActionValue_doubleSpinBox->value();
 
         testDetails.userFilePath = ui->filePath_lineEdit->text();
-        testDetails.userFilePath = ui->filePath_lineEdit_2->text();
+        testDetails.userFileName = ui->filePath_lineEdit_2->text();
 
         ui->btn_test->click();
+        emit message("项目保存成功");
     });
     connect(ui->cancel,&QPushButton::clicked,[=](){
         ui->btn_test->click();
@@ -227,16 +279,14 @@ void mainWidget::initConnect(){
     uiFreshTimer->start(100);
 
     connect(dataFreshTimer,&QTimer::timeout,[=](){freshData();});
-    dataFreshTimer->start(50);
+
+    dataFreshTimer->start(1000/MainWindow::systemMap["normal"]["sampleRate"].toInt());
 
     connect(ui->lineSerialsCheck, QOverload<int, bool>::of(&QButtonGroup::buttonToggled),
           [=](int id, bool checked){
         if(checked)
         {
             currentLineSeriesID = abs(id+2);
-//            chartXAxis->setRange(0,1);
-//            chartYAxis->setRange(0,1);
-
         }
         switch (currentLineSeriesID) {
         case 0:
@@ -260,6 +310,8 @@ void mainWidget::initConnect(){
             chartXAxis->setTitleText("Time (Secs)");
         break;
         }
+        pointsCount=0;
+        freshUi();
     });
 
     connect(ui->ForceLCD,&MyLCD::doubleClicked,[=](){zreoForce=currentValueList[0];});
@@ -268,10 +320,17 @@ void mainWidget::initConnect(){
     connect(ui->timeLCD,&MyLCD::doubleClicked,[=](){zreoTime=currentValueList[4];});
 
     connect(ui->clearChart,&QPushButton::clicked,[=](){
-        for (int i = 0;i<6;i++) {
+        for (int i = 0;i<5;i++) {
             lineSeriesList[i]->clear();
             axisPointsList[i].clear();
         }
+        ui->timeLCD->doubleClick();
+        chartXAxis->setRange(0,1);
+        chartYAxis->setRange(0,1);
+
+        pointsCount = 0;
+        emit message("已清除");
+
     });
     connect(ui->setZreo,&QPushButton::clicked,[=](){
         ui->lengthLCD->doubleClick();
@@ -285,6 +344,11 @@ void mainWidget::initConnect(){
             ui->filePath_lineEdit->setText(filePath);
         }
     });
+
+    connect(logic,&MGMotorLogic::testOK,[=](){addStateBox("测试在线");});
+    connect(logic,&MGMotorLogic::mDetails,[=](QString m){addStateBox(m);});
+
+    connect(ui->openSampleProtect,&QRadioButton::toggled,[=](bool f){sampleProtectFlag=f;});
 
 }
 
@@ -302,6 +366,10 @@ void mainWidget::initSystem(){
 
 
     logic->setMotorParam(MainWindow::systemMap["normal"]);
+
+    //更新采样率
+    dataFreshTimer->stop();
+    dataFreshTimer->start(1000/MainWindow::systemMap["normal"]["sampleRate"].toInt());
 }
 
 
@@ -325,19 +393,117 @@ void mainWidget::leftMainClick()
     }else if (name == "测试"){
         ui->stackedWidget->setCurrentIndex(2);
     }else if (name == "保存"){
-
+        if(axisPointsList[0].empty()){
+            emit message("空数据无法保存");
+            return;
+        }
+        QStringList header = {"force","length","fact length","speed","time"};
+        bool flag = saveCsv(axisPointsList,header);
+        if(flag)emit message("文件保存成功");
+        else emit message("文件保存失败");
     }else if (name == "读取"){
+        if(motorConnectFlag){
+            emit message("连接未断开");
+            return;
+        }else{
+            QString filePath = QFileDialog::getOpenFileName(this, "选择文件", MainWindow::user.userfilePath, "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)");
+            if(filePath=="")return;
+            QStringList header;
+            QList<QList<float>> data = Tool::loadCsvData(filePath,header);
 
+            ui->clearChart->click();
+            axisPointsList[0]=data[0];
+            axisPointsList[1]=data[1];
+            axisPointsList[2]=data[2];
+            axisPointsList[3]=data[3];
+            axisPointsList[4]=data[4];
+
+            for (int i = 0;i<axisPointsList[0].length();i++) {
+                *lineSeriesList[0]<<QPointF(axisPointsList[4][i],axisPointsList[0][i]);
+                *lineSeriesList[1]<<QPointF(axisPointsList[0][i]/testDetails.sampleSquare,axisPointsList[2][i]/testDetails.sampleLength);
+                *lineSeriesList[2]<<QPointF(axisPointsList[4][i],axisPointsList[2][i]);
+                *lineSeriesList[3]<<QPointF(axisPointsList[4][i],axisPointsList[3][i]);
+                *lineSeriesList[4]<<QPointF(axisPointsList[4][i],axisPointsList[0][i]);
+            }
+//            for (int i = 0;i<axisPointsList[0].length()/250;i++) {
+//                for (int j = 0;j<250;j++) {
+//                    *lineSeriesList[0]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[0][i*250+j]);
+//                    *lineSeriesList[1]<<QPointF(axisPointsList[0][i*250+j]/testDetails.sampleSquare,axisPointsList[2][i*250+j]/testDetails.sampleLength);
+//                    *lineSeriesList[2]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[2][i*250+j]);
+//                    *lineSeriesList[3]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[3][i*250+j]);
+//                    *lineSeriesList[4]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[0][i*250+j]);
+//                }
+//            }
+//            for (int i = 0;i<axisPointsList[0].length()%250;i++) {
+
+//            }
+            pointsCount=0;
+            freshUi();
+
+        }
     }
 }
 
-void mainWidget::initPortWin(){
-//    ui->portName->setCurrentText(MainWindow::systemMap[])
+bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
+    //考虑进子线程计算
+
+    QString fileName = MainWindow::user.userDefaultName+MainWindow::systemMap["advance"]["format"];
+    QString filePath = MainWindow::user.userfilePath+"/"+QDateTime::currentDateTime().toString("yy-MM-dd");
+
+    //加入应力应变
+
+    QList<float> stressList;
+    foreach(float num,data[1]){
+        stressList.append(num/testDetails.sampleSquare);
+    }
+
+    QList<float> strainList;
+    foreach(float num,data[2]){
+        strainList.append(abs(num/testDetails.sampleLength));
+    }
+    data<<stressList;
+    data<<strainList;
+    header<<"stress";
+    header<<"strain";
+
+    if(MainWindow::systemMap["advance"]["enableFilter"]=="yes"){
+        //滤波开启
+        int window = MainWindow::systemMap["advance"]["filterWindow"].toInt();
+        QString type = MainWindow::systemMap["advance"]["filterMethod"];
+        for (int i = 0;i<data.length();i++) {
+            Tool::dataSmooth(data[i],type,window);
+        }
+
+    }
+    if(MainWindow::systemMap["advance"]["enableInterpolation"]=="yes"){
+        //插值开启
+
+        int count = MainWindow::systemMap["advance"]["interpolationCount"].toInt();
+        QString type = MainWindow::systemMap["advance"]["interpolationMethod"];
+        for (int i = 0;i<data.length();i++) {
+            Tool::interpolation(data[i],type,count);
+        }
+    }
+
+    QMap<QString,QString> fileDetails;
+    fileDetails["userName"] = testDetails.userName;
+    fileDetails["testNumber"] = testDetails.testNumber;
+    fileDetails["testTime"] = testDetails.testTime;
+    fileDetails["testType"] = testDetails.testType;
+    fileDetails["targetLength"] = QString::number(testDetails.length);
+    fileDetails["targetSpeed"] = QString::number(testDetails.speed);
+    fileDetails["sampleSection"] = QString::number(testDetails.sampleSquare);
+    fileDetails["sampleLength"] = QString::number(testDetails.sampleLength);
+    fileDetails["autoStopType"] = testDetails.autoStopType;
+    fileDetails["autoStopValue"] = QString::number(testDetails.autoStopValue);
+    fileDetails["userFilePath"] = testDetails.userFilePath;
+    fileDetails["userFileName"] = testDetails.userFileName;
+
+    bool flag = Tool::saveCsvData(data,header,fileDetails,filePath+"/"+fileName);
+    return flag;
 }
 
-void mainWidget::initPorjectWin(){
 
-}
 
 void mainWidget::getQssColor(const QString &qss, const QString &flag, QString &color)
 {
@@ -364,6 +530,14 @@ void mainWidget::getQssColor(const QString &qss, QString &textColor, QString &pa
 void mainWidget::freshUi(){
     if(axisPointsList.empty()||axisPointsList[0].empty())return;
 
+    if(pointsCount==axisPointsList[0].length())
+    {
+        return;
+    }
+
+    pointsCount=axisPointsList[0].length();
+
+
     ui->ForceLCD->display(axisPointsList[0].last());
     ui->lengthLCD->display(axisPointsList[1].last());
     ui->factLengthLCD->display(axisPointsList[2].last());
@@ -383,30 +557,52 @@ void mainWidget::freshUi(){
     *lineSeriesList[4]<<QPointF(axisPointsList[4].last(),axisPointsList[0].last());
 
 
+
+
     chart->addSeries(lineSeriesList[currentLineSeriesID]);
-    if(maxAndMinPointsList[0].empty())return;
+    float XMAX,XMIN,YMAX,YMIN;
+
     switch (currentLineSeriesID) {
-    case 0:
-        chartXAxis->setRange(maxAndMinPointsList[4][1],maxAndMinPointsList[4][0]);
-        chartYAxis->setRange(maxAndMinPointsList[0][1],maxAndMinPointsList[0][0]);
-    break;
-    case 1:
-//        chartXAxis->setRange(maxAndMinPointsList[4][1],maxAndMinPointsList[4][0]);
-//        chartYAxis->setRange(maxAndMinPointsList[0][1],maxAndMinPointsList[0][0]);
-    break;
-    case 2:
-        chartXAxis->setRange(maxAndMinPointsList[4][1],maxAndMinPointsList[4][0]);
-        chartYAxis->setRange(maxAndMinPointsList[2][1],maxAndMinPointsList[2][0]);
-    break;
-    case 3:
-        chartXAxis->setRange(maxAndMinPointsList[4][1],maxAndMinPointsList[4][0]);
-        chartYAxis->setRange(maxAndMinPointsList[3][1],maxAndMinPointsList[3][0]);
-    break;
-    case 4:
-//        chartXAxis->setRange(maxAndMinPointsList[4][1],maxAndMinPointsList[4][0]);
-//        chartYAxis->setRange(maxAndMinPointsList[0][1],maxAndMinPointsList[0][0]);
-    break;
+        //force-time
+        case 0:
+            XMAX = Tool::max(axisPointsList[4]);
+            XMIN = Tool::min(axisPointsList[4]);
+            YMAX = Tool::max(axisPointsList[0]);
+            YMIN = Tool::min(axisPointsList[0]);
+        break;
+        //应力应变
+        case 1:
+            XMAX = Tool::max(axisPointsList[2])/testDetails.sampleLength;
+            XMIN = Tool::min(axisPointsList[2])/testDetails.sampleLength;
+            YMAX = Tool::max(axisPointsList[0])/testDetails.sampleSquare;
+            YMIN = Tool::min(axisPointsList[0])/testDetails.sampleSquare;
+        break;
+        //位移时间
+        case 2:
+            XMAX = Tool::max(axisPointsList[4]);
+            XMIN = Tool::min(axisPointsList[4]);
+            YMAX = Tool::max(axisPointsList[2]);
+            YMIN = Tool::min(axisPointsList[2]);
+        break;
+        //速度时间
+        case 3:
+            XMAX = Tool::max(axisPointsList[4]);
+            XMIN = Tool::min(axisPointsList[4]);
+            YMAX = Tool::max(axisPointsList[3]);
+            YMIN = Tool::min(axisPointsList[3]);
+        break;
+        //温度时间
+        case 4:
+            XMAX = Tool::max(axisPointsList[4]);
+            XMIN = Tool::min(axisPointsList[4]);
+
+            YMAX = Tool::max(axisPointsList[5]);
+            YMIN = Tool::min(axisPointsList[5]);
+        break;
     }
+    chartXAxis->setRange(XMIN,XMAX);
+    chartYAxis->setRange(YMIN,YMAX);
+
 
 }
 
@@ -416,34 +612,37 @@ void mainWidget::freshData(){
     float force,length,fact,speed;
     logic->getCurrentValue(&length,&fact,&force,&speed);
 
+    if(MainWindow::systemMap["normal"]["motorDir"]=="0"){
+        length = -length;
+    }
+    if(MainWindow::systemMap["normal"]["forceDir"]=="0"){
+        force = -force;
+    }
+
+    if(MainWindow::systemMap["normal"]["lengthDir"]=="0")
+    {
+        fact = -fact;
+    }
 
     //force
     axisPointsList[0].append(force-zreoForce);
-    maxAndMinPointsList[0][0]=force>maxAndMinPointsList[0][0]?force:maxAndMinPointsList[0][0];
-    maxAndMinPointsList[0][1]=force<maxAndMinPointsList[0][1]?force:maxAndMinPointsList[0][1];
 
     //motorangle
     axisPointsList[1].append(length-zreoLength);
-    maxAndMinPointsList[1][0]=length>maxAndMinPointsList[1][0]?length:maxAndMinPointsList[1][0];
-    maxAndMinPointsList[1][1]=length<maxAndMinPointsList[1][1]?length:maxAndMinPointsList[1][1];
 
     //factlength
     fact = length;
     axisPointsList[2].append(fact-zreoFactLength);
-    maxAndMinPointsList[2][0]=fact>maxAndMinPointsList[2][0]?fact:maxAndMinPointsList[2][0];
-    maxAndMinPointsList[2][1]=fact<maxAndMinPointsList[2][1]?fact:maxAndMinPointsList[2][1];
 
     //speed
     axisPointsList[3].append(speed);
-    maxAndMinPointsList[3][0]=speed>maxAndMinPointsList[3][0]?speed:maxAndMinPointsList[3][0];
-    maxAndMinPointsList[3][1]=speed<maxAndMinPointsList[3][1]?speed:maxAndMinPointsList[3][1];
 
     //time
     long currentTime = QDateTime::currentMSecsSinceEpoch();
     float time = float(currentTime-zreoTime)/1000;
     axisPointsList[4].append(time);
-    maxAndMinPointsList[4][0]=time>maxAndMinPointsList[4][0]?time:maxAndMinPointsList[4][0];
-    maxAndMinPointsList[4][1]=time<maxAndMinPointsList[4][1]?time:maxAndMinPointsList[4][1];
+
+
 
     currentValueList[0]=force;
     currentValueList[1]=length;
@@ -451,10 +650,60 @@ void mainWidget::freshData(){
     currentValueList[3]=speed;
     currentValueList[4]=currentTime;
 
+
+    //自动停止
+    if(startTestFlag)
+    {
+        qDebug()<<testDetails.autoStopType<<fact-zreoFactLength<<testDetails.autoStopValue;
+        if(testDetails.autoStopType=="Fixed time(s)"){
+            if(abs(time)>=testDetails.autoStopValue){
+                ui->btn_stop->click();
+                startTestFlag = false;
+            }
+
+        }else if(testDetails.autoStopType=="Maximum load (N)"){
+
+            if(abs(force-zreoForce)>=testDetails.autoStopValue){
+                ui->btn_stop->click();
+                startTestFlag = false;
+            }
+
+        }else if(testDetails.autoStopType=="Maximum Distance(mm)"){
+
+            if(abs(fact-zreoFactLength)>=testDetails.autoStopValue){
+                ui->btn_stop->click();
+                startTestFlag = false;
+            }
+        }
+    }
+
+    //样品保护
+
+    if(sampleProtectFlag){
+        if(force-zreoForce>5){
+            float speed = 0.5;
+            logic->motorSpeedMove(-speed);
+        }else if(force-zreoForce<-5){
+            float speed = 0.5;
+            logic->motorSpeedMove(speed);
+        }else{
+            logic->motorStop();
+        }
+    }
+
+
+
+
 }
 
 void mainWidget::on_btn_start_clicked()
 {
+    if(!motorConnectFlag){
+        emit message("串口未连接");
+        return;
+    }
+    ui->clearChart->click();
+
     if(ui->btn_start->text()=="开始"){
         if(testDetails.testType=="strech"){
             logic->motorLengthMove(logic->motorDetails.dirFlag1,testDetails.length,testDetails.speed);
@@ -475,13 +724,20 @@ void mainWidget::on_btn_start_clicked()
         ui->btn_start->setText("暂停");
     }*/
     startTestFlag = true;
+    emit message("开始测试");
 }
 
 void mainWidget::on_btn_stop_clicked()
 {
+    if(!motorConnectFlag){
+        emit message("串口未连接");
+        return;
+    }
+
     logic->motorStop();
     ui->btn_start->text()="开始";
     startTestFlag = false;
+    emit message("测试停止");
 }
 
 void mainWidget::addStateBox(QString message){
@@ -490,4 +746,5 @@ void mainWidget::addStateBox(QString message){
 
 void mainWidget::clearStateBox(){
     ui->textBrowser->clear();
+
 }

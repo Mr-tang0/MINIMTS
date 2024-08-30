@@ -44,11 +44,11 @@ private:
     QtMaterialBadge       *const m_badge;
 
     void initThis();
-    loginWin *login = new loginWin;
-    mainWidget *main = new mainWidget;
-    systemWidget *system = new systemWidget;
-    aboutWidget *about = new aboutWidget;
-    userWidget *userWin = new userWidget;
+    loginWin *login;
+    mainWidget *mainwd;
+    systemWidget *system;
+    aboutWidget *about;
+    userWidget *userWin;
 
 
 protected:

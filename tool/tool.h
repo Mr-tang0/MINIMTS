@@ -53,8 +53,27 @@ public:
         loop.exec();
     }
 
-    static void saveCsvData(const QList<QList<float>> &data, const QList<QString> &header, QString filePath);
+    static bool saveCsvData(const QList<QList<float>> &data, const QList<QString> &header, QString filePath);
+    static bool saveCsvData(const QList<QList<float>> &data, const QList<QString> &header, QMap<QString,QString>datails, QString filePath);
     static QList<QList<float>> loadCsvData(QString filePath, QList<QString> &header);
+
+    static void dataSmooth(QList<float> &data,QString type,int window);
+    static void interpolation(QList<float> &data,QString type,int counts);
+    static std::vector<float> solveTridiagonalSystem(const std::vector<std::vector<float>> &A, const std::vector<float> &b);
+
+    static float max(QList<float> list) {
+        QList<float>::iterator maxIter = std::max_element(list.begin(), list.end());
+        return *maxIter;
+    }
+
+    static float min(QList<float> list) {
+        QList<float>::iterator minIter = std::min_element(list.begin(), list.end());
+        return *minIter;
+    }
+
+    static bool removeDirectoryRecursively(const QString &path);
+    static void copyPathToClipboard(const QString &path);
+
 
 private:
 

@@ -59,30 +59,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 
 
-    login = new loginWin;
-    connect(login,&loginWin::logined,[=](User newUser){
-        this->user = newUser;
 
-        QString header = this->user.headerPic;
-        if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
-
-        m_avatar->setImage(QImage(header));
-        this->show();
-        login->hide();
-        userWin->freshUserDetails(this->user);
-    });
-    login->show();
-//    this->show();
-
-    connect(userWin,&userWidget::message,[=](QString m){
-        m_snackbar->addMessage(m);
-        if(m=="保存成功"){
-            QString header = this->user.headerPic;
-            if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
-            m_avatar->setImage(QImage(header));
-            userWin->freshUserDetails(this->user);
-        }
-    });
 
 
 
@@ -148,8 +125,11 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 }
 
 void MainWindow::initThis(){
+
     QUIHelper::setFramelessForm(this);
-//    QUIHelper::setRoundCornerForm(this, 10);
+
+
+
 
     this->centralWidget()->layout()->setMargin(1);
 
@@ -172,20 +152,28 @@ void MainWindow::initThis(){
 
 
     QList<QWidget*> widgetList;
-    widgetList<<main<<system<<about<<userWin;
 
-    main->initSystem();
-    connect(main,&mainWidget::connected,[=](bool flag){
+    login = new loginWin;
+    mainwd = new mainWidget;
+    system = new systemWidget;
+    about = new aboutWidget;
+    userWin = new userWidget;
+
+    widgetList<<mainwd<<system<<about<<userWin;
+
+
+    mainwd->initSystem();
+    connect(mainwd,&mainWidget::connected,[=](bool flag){
         if(flag){
             m_snackbar->addMessage("连接成功！");
         }else m_snackbar->addMessage("连接失败！");
 
     });
-    connect(main,&mainWidget::massage,[=](QString message){
+    connect(mainwd,&mainWidget::message,[=](QString message){
         m_snackbar->addMessage(message);
 
     });
-    connect(main,&mainWidget::disconnected,[=](){
+    connect(mainwd,&mainWidget::disconnected,[=](){
         m_snackbar->addMessage("已断开！");
 
     });
@@ -193,7 +181,7 @@ void MainWindow::initThis(){
     connect(system,&systemWidget::saved,[=](bool flag){
         if(flag){
             m_snackbar->addMessage("保存成功！");
-            main->initSystem();
+            mainwd->initSystem();
         }
         ui->btnMain->click();
     });
@@ -245,9 +233,35 @@ void MainWindow::initThis(){
     ui->btnMain->click();
 
 
-    connect(main,&mainWidget::btnClicked,[=](QString btn){
+    connect(mainwd,&mainWidget::btnClicked,[=](QString btn){
        if(btn=="toSet")ui->btnConfig->click();
     });
+
+    connect(login,&loginWin::logined,[=](User newUser){
+        this->user = newUser;
+
+        QString header = this->user.headerPic;
+        if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
+
+        m_avatar->setImage(QImage(header));
+        this->show();
+        login->hide();
+        userWin->freshUserDetails(this->user);
+    });
+    login->show();
+
+
+    connect(userWin,&userWidget::message,[=](QString m){
+        m_snackbar->addMessage(m);
+        if(m=="保存成功"){
+            QString header = this->user.headerPic;
+            if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
+            m_avatar->setImage(QImage(header));
+            userWin->freshUserDetails(this->user);
+        }
+    });
+
+
 }
 
 void MainWindow::buttonClick()

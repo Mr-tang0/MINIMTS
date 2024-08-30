@@ -22,6 +22,8 @@ public:
 private slots:
     void on_loginChecked_2_clicked();
 
+    void on_loginChecked_clicked();
+
 private:
     Ui::loginWin *ui;
     QtMaterialSnackbar    *const m_snackbar;

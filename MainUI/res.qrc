@@ -38,5 +38,6 @@
         <file>res/core_qss/qss/blacksoft/radiobutton_unchecked.png</file>
         <file>res/core_qss/qss/blacksoft/radiobutton_unchecked_disable.png</file>
         <file>res/core_qss/qss/blacksoft.css</file>
+        <file>res/loginWin.jpg</file>
     </qresource>
 </RCC>

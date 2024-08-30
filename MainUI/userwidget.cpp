@@ -4,6 +4,7 @@
 #include <qtmaterialbadge.h>
 #include "mainwindow.h"
 
+
 userWidget::userWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::userWidget),
@@ -22,12 +23,10 @@ userWidget::userWidget(QWidget *parent) :
     layout->addWidget(m_avatar);
 
 
-    QFileSystemModel *model = new QFileSystemModel(this);
-    model->setRootPath(QDir::currentPath()); // 设置初始根目录
+    setupContextMenu();
 
-    // 设置模型到QTreeView
-    ui->file_treeView->setModel(model);
-    ui->file_treeView->setRootIndex(model->index(QDir::currentPath()));
+
+
 
 
 }
@@ -35,6 +34,132 @@ userWidget::userWidget(QWidget *parent) :
 userWidget::~userWidget()
 {
     delete ui;
+}
+
+void userWidget::setupContextMenu() {
+    QFileSystemModel *model = new QFileSystemModel(this);
+    model->setRootPath(QDir::currentPath());
+
+
+    ui->file_treeView->setModel(model);
+    ui->file_treeView->setRootIndex(model->index(QDir::currentPath()));
+    ui->file_treeView->expandAll();
+    ui->file_treeView->setContextMenuPolicy(Qt::CustomContextMenu);
+
+
+
+    connect(ui->file_treeView, &QTreeView::doubleClicked, [&]() {
+        QModelIndex index = ui->file_treeView->currentIndex();
+        if (index.isValid()) {
+            QString filePath = model->filePath(index);
+            if (!model->isDir(index)) {
+                QFileInfo fileInfo(filePath);
+                QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
+            }
+        }
+    });
+
+
+    QMenu *menu = new QMenu(ui->file_treeView);
+    QAction *newFolderAction = menu->addAction("新建文件夹");
+    QAction *copyAction = menu->addAction("复制");
+    QAction *pasteAction = menu->addAction("粘贴");
+    QAction *deleteAction = menu->addAction("删除");
+
+    connect(ui->file_treeView, &QTreeView::customContextMenuRequested, this, [=](QPoint pos) {
+        QPoint globalPos = ui->file_treeView->mapToGlobal(pos);
+        menu->exec(globalPos);
+
+    });
+
+    connect(menu,&QMenu::triggered,[=](QAction *action){
+        QString trd = action->text();
+        if(trd=="新建文件夹"){
+            QModelIndex index = ui->file_treeView->currentIndex();
+            QString parentPath = model->filePath(index);  // 获取当前选中索引的路径
+            QFileInfo fileInfo(parentPath);
+
+            if (fileInfo.isDir()) {
+                bool ok;
+                QString folderName = QInputDialog::getText(this, "新建文件夹", "请输入文件夹名称:", QLineEdit::Normal, "", &ok);
+
+                if (ok && !folderName.isEmpty()) {
+                    QString newPath = parentPath + "/" + folderName;
+                    bool created = QDir().mkpath(newPath);
+
+                    if (created) {
+                        ui->file_treeView->setModel(model);
+                    } else {
+                        qDebug() << "文件夹创建失败：" << newPath;
+                    }
+                }
+            }
+        }else if(trd=="复制"){
+            QModelIndex index = ui->file_treeView->currentIndex();
+            QString path = model->filePath(index);  // 获取当前选中索引的路径
+            QFileInfo fileInfo(path);
+
+            if (fileInfo.exists()) {  // 检查路径是否有效
+                if (fileInfo.isFile()) {  // 如果是文件
+                    Tool::copyPathToClipboard(path);
+                } else if (fileInfo.isDir()) {  // 如果是目录
+                    Tool::copyPathToClipboard(path);
+                }
+            } else {
+                qDebug() << "无效的路径：" << path;
+            }
+
+        }else if(trd=="粘贴"){
+            // 获取当前选中的索引
+            QModelIndex index = ui->file_treeView->currentIndex();
+
+            // 获取父目录的路径
+            QString parentPath = model->filePath(index);
+
+            // 从剪贴板获取文件路径
+            QString filePath = QApplication::clipboard()->text();
+
+            // 获取文件名和完整路径
+            QFileInfo fileInfo(filePath);
+            QString fileName = fileInfo.fileName();
+            QString sourcePath = fileInfo.absoluteFilePath();
+
+            // 构建目标路径
+            QString destPath = parentPath + "/" + fileName;
+
+            // 检查是否为文件
+            if (fileInfo.isFile()) {
+                QFile::copy(sourcePath, destPath);
+            } else if (fileInfo.isDir()) {
+                QDir().mkpath(destPath);
+            }
+        }else if(trd=="删除"){
+            QModelIndex index = ui->file_treeView->currentIndex();
+            QString path = model->filePath(index);
+            QFileInfo fileInfo(path);
+            if (fileInfo.exists()&&fileInfo.isDir()) {
+                QMessageBox::StandardButton reply = QMessageBox::question(this, tr("确认删除"),
+                                                                          tr("您确定要删除 \"%1\" 及其所有内容吗？").arg(fileInfo.fileName()),
+                                                                          QMessageBox::Yes | QMessageBox::No);
+
+                if (reply == QMessageBox::Yes) {
+                    bool removed = Tool::removeDirectoryRecursively(path);
+                    if(!removed)qDebug() << "失败" << path;
+                }
+            } else {
+                bool removed = QFile::remove(path);
+                if(!removed)qDebug() << "无效的路径：" << path;
+            }
+            emit message("删除成功");
+        }
+    });
+
+    connect(ui->copyPath,&QPushButton::clicked,[=](){
+        QApplication::clipboard()->setText(ui->lab_filePath->text());
+        emit message("复制成功");
+    });
+
+
 }
 
 void userWidget::freshUserDetails(User user){
@@ -59,6 +184,7 @@ void userWidget::freshUserDetails(User user){
     if (!Directory.isEmpty()) {
         QFileSystemModel *model = static_cast<QFileSystemModel*>(ui->file_treeView->model());
         ui->file_treeView->setRootIndex(model->index(Directory));
+        ui->file_treeView->setColumnWidth(0,400);
     }
 
 }
@@ -78,26 +204,24 @@ void userWidget::on_pushButton_clicked()
     MainWindow::user.password = ui->password->text();
     MainWindow::user.userfilePath = ui->defaultSavePath->text();
     MainWindow::user.userDefaultName = ui->defaultFileName->text();
+    MainWindow::user.userid = ui->userID->text();
 
     QString targetPath = QCoreApplication::applicationDirPath()+"/root/users/"+MainWindow::user.name+"/";
 
     QString fileName = QFileInfo(tempHeaderPath).fileName();
-    QString targetFilePath = targetPath + MainWindow::user.name+fileName;
+    QString targetFilePath = targetPath +"user/"+MainWindow::user.name+fileName;
 
-    QDir dir(targetPath);
-    if (!dir.exists()) {
-        if (!dir.mkpath(targetPath)) {
-            qDebug() << "Failed to create directory:" << targetPath;
+    QDir ndir(targetPath +"user/");
+    if (!ndir.exists()) {
+        if (!ndir.mkpath(targetPath +"user/")) {
             return;
         }
     }
 
-    if (QFile::copy(tempHeaderPath, targetFilePath)) {
-        MainWindow::user.headerPic = targetFilePath;
-    }
+    QFile::copy(tempHeaderPath, targetFilePath);
+    MainWindow::user.headerPic = targetFilePath;
 
     Tool::freshUser(MainWindow::user,&(MainWindow::usersMap));
-
 
     emit message("保存成功");
 }
@@ -110,7 +234,6 @@ void userWidget::on_headerChoose_clicked()
 
 void userWidget::on_pushButton_2_clicked()
 {
-
     QString home = MainWindow::user.userfilePath;
     QString filePath = QFileDialog::getExistingDirectory(this, tr("Select Directory"), home);
     if (!filePath.isEmpty()) {

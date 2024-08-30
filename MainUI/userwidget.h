@@ -3,12 +3,18 @@
 
 #include <QWidget>
 #include "tool.h"
+#include <QTreeView>
+#include <QFileSystemModel>
+
+
 class QtMaterialAvatar;
 class QtMaterialBadge;
 
 namespace Ui {
 class userWidget;
 }
+
+
 
 class userWidget : public QWidget
 {
@@ -20,6 +26,7 @@ public:
 
     void freshUserDetails(User user);
     void chooseHeader();
+    void setupContextMenu();
 
 private slots:
     void on_pushButton_clicked();
