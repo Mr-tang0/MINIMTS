@@ -38,4 +38,8 @@
 		<setRange>%1 06 00 23 %2 %3</setRange>
 		<setSensitivity>%1 06 00 24 %2 %3</setSensitivity>
 	</Weighcmd>
+	<IOcmd>
+		<readInputs>%1 02 00 00 00 02</readInputs>
+		<refreshCounts>01 03 05 00 00 04 44 C5</refreshCounts>
+	</IOcmd>
 </root>

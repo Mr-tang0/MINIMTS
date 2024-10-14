@@ -3,8 +3,10 @@
 MGMotorLogic::MGMotorLogic(QObject *parent):
     QObject(parent)
 {
+
     cmdMap = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml")["MGMotorcmd"];
     weighMap = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml")["Weighcmd"];
+    ioMap = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml")["IOcmd"];
 
 
     connect(searchTimer,&QTimer::timeout,[=](){
@@ -16,6 +18,10 @@ MGMotorLogic::MGMotorLogic(QObject *parent):
         cmd = Tool::crc16Ccitt(cmd);
         porter->appendBuffer(cmd);
 
+        cmd = ioMap["readInputs"].arg(limitDetails.ID);
+        cmd = Tool::crc16Ccitt(cmd);
+        porter->appendBuffer(cmd);
+
         cmd = cmdMap["readMotorState2"].arg(motorDetails.ID);
         cmd = Tool::numberVerify(cmd);
         porter->appendBuffer(cmd);
@@ -23,11 +29,26 @@ MGMotorLogic::MGMotorLogic(QObject *parent):
 
     connect(porter->decoder,&decodeThread::testOK,[=](){emit testOK();});
     connect(porter->decoder,&decodeThread::motorDetails,[=](QString m){emit mDetails(m);});
+    connect(porter->decoder, &decodeThread::decodeLimitOccured,this,[=](int id, int axis){
+        emit LimitOccured(id, axis);
+    });
+
 
 }
 
 QStringList MGMotorLogic::findPort(){
     return porter->findPort();
+}
+
+void MGMotorLogic::setOtherParam(QMap<QString,QString> params){
+    weighDetails.ID = params["forceID"];
+    weighDetails.forceRate = params["forceResulution"].toDouble();
+    weighDetails.forceFlag = (params["forceDir"]=="1");
+    qDebug()<<weighDetails.forceFlag;
+
+    limitDetails.ID = params["hardLimitID"];
+    limitDetails.type = params["hardLimitAction"];
+    limitDetails.enable = (params["hardLimitEnable"]=="1");
 }
 
 void MGMotorLogic::setMotorParam(QMap<QString,QString> params){
@@ -39,15 +60,16 @@ void MGMotorLogic::setMotorParam(QMap<QString,QString> params){
     motorDetails.angleRate = params["motorAngleRate"].toDouble();
     motorDetails.resolution = params["motorResulution"].toDouble();
 
-    motorDetails.forceRate = params["forceResulution"].toDouble();
+//    motorDetails.forceRate = params["forceResulution"].toDouble();
     motorDetails.lengthRate = params["lengthResulution"].toDouble();
 
     motorDetails.maxSpeed = params["motorMaxSpeed"].toDouble();
 
     motorDetails.sampleRate = params["sampleRate"].toDouble();
 
-    if(params["motorDir"]=="1")motorDetails.dirFlag1 = true;
-    else motorDetails.dirFlag1 = false;
+//    if(params["motorDir"]=="1")motorDetails.dirFlag1 = true;
+//    else motorDetails.dirFlag1 = false;
+    motorDetails.dirFlag1 = (params["motorDir"]=="1");
 
     if(params["forceDir"]=="1")motorDetails.forceFlag = true;
     else motorDetails.forceFlag = false;
@@ -63,7 +85,7 @@ void MGMotorLogic::setMotorParam(QMap<QString,QString> params){
 bool MGMotorLogic::connectMotor(QString portName, int buandRate){
     bool flag = porter->connectPort(portName,buandRate);
     if(flag)
-        searchTimer->start(20);
+        searchTimer->start(30);
 
     return flag;
 }
@@ -117,8 +139,6 @@ void MGMotorLogic::motorSpeedMove(double speed){
 }
 
 void MGMotorLogic::motorLengthMove(bool Dir, double relativeLength, double speed){
-
-
     float _,currentMotorLength,__,___,absulotionLength;
 
     porter->getCurrentValue(&currentMotorLength,&_,&__,&___);
@@ -132,7 +152,11 @@ void MGMotorLogic::motorLengthMove(bool Dir, double relativeLength, double speed
     cmd = Tool::numberVerify(cmd);
 
     absulotionLength = absulotionLength*motorDetails.angleRate;
+
+
+
     QString lengthString =  Tool::lengthToQstring(absulotionLength/motorDetails.resolution);
+
     float rate = speed*motorDetails.angleRate;
     QString speedString = Tool::speedToQstring(rate/motorDetails.resolution);
 
@@ -146,10 +170,17 @@ void MGMotorLogic::getCurrentValue(float *angle,float *length,float *force, floa
     float a,l,f,s;
     porter->getCurrentValue(&a,&l,&f,&s);
 
-
     *angle = a/motorDetails.angleRate*motorDetails.resolution;
+    if (motorDetails.dirFlag1)*angle = -*angle;
+
     *length = l/motorDetails.lengthRate;
-    *force = f/motorDetails.forceRate;
+    if (motorDetails.dirFlag2)*length = -*length;
+
+//    *force = f/motorDetails.forceRate;
+
+    *force = f/weighDetails.forceRate;
+    if (!weighDetails.forceFlag) *force = -*force;
+
     *speed = s/motorDetails.angleRate;
 }
 

@@ -53,14 +53,14 @@ public:
     void addStateBox(QString message);
     void clearStateBox();
 
+    void stopOption(bool flag, int dir);
+
 
     bool saveCsv(QList<QList<float>> data,QList<QString> header);
 
     void readCsv(QString filePath,QList<QList<float>>*);
 
-
-
-
+    MGMotorLogic *logic = new MGMotorLogic;
 
 
 private:
@@ -116,7 +116,7 @@ private:
                      QString &darkColorStart, QString &darkColorEnd,
                      QString &highColor);
 
-    MGMotorLogic *logic = new MGMotorLogic;
+
 
 private slots:
     void leftMainClick();

@@ -47,15 +47,19 @@ public:
     QString text() const;
 
 protected:
+
     void paintEvent(QPaintEvent *event) Q_DECL_OVERRIDE;
 
     int getDiameter() const;
 
     const QScopedPointer<QtMaterialBadgePrivate> d_ptr;
 
+
 private:
     Q_DISABLE_COPY(QtMaterialBadge)
     Q_DECLARE_PRIVATE(QtMaterialBadge)
+
+
 };
 
 #endif // QTMATERIALBADGE_H

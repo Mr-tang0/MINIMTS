@@ -18,6 +18,8 @@ myPort::myPort(QObject *parent) :
     });
     thread->start();
 
+
+
     connect(sendTimer,&QTimer::timeout,this,[=](){
         if(buffer.empty())return;
         sendMessage(buffer.first());

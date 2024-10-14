@@ -13,9 +13,6 @@ systemWidget::systemWidget(QWidget *parent) :
 
     initSystem();
 
-
-
-
     QList<int> iconsMain;
     QList<int> iconsConfig;
     QList<QAbstractButton *> btnsConfig;
@@ -44,9 +41,11 @@ systemWidget::systemWidget(QWidget *parent) :
 
     connect(ui->save,&QPushButton::clicked,this,[=](){
         normolSaveSystem();
+        qDebug()<<MainWindow::systemMap;
     });
     connect(ui->advance_check,&QPushButton::clicked,this,[=](){
         advanceSaveSystem();
+        qDebug()<<MainWindow::systemMap;
     });
 
     connect(ui->cancel,&QPushButton::clicked,[=](){emit saved(false);});
@@ -94,23 +93,9 @@ void systemWidget::normolSaveSystem(){
         systemMap["normal"][lineEdit->objectName()] = lineEdit->text();
     }
 
-//    widget = ui->stackedWidget->widget(1);
-//    lineEdits.clear();
-//    lineEdits = widget->findChildren<QLineEdit*>();
-//    for (QLineEdit *lineEdit : lineEdits) {
-//        systemMap["advance"][lineEdit->objectName()] = lineEdit->text();
-//    }
-
-//    widget = ui->stackedWidget->widget(2);
-//    lineEdits.clear();
-//    lineEdits = widget->findChildren<QLineEdit*>();
-//    for (QLineEdit *lineEdit : lineEdits) {
-//        systemMap["users"][lineEdit->objectName()] = lineEdit->text();
-//    }
-
     MainWindow::systemMap = systemMap;
-    Tool::writeXMlFile(MainWindow::systemMap["self"]["path"],MainWindow::systemMap);
 
+    Tool::writeXMlFile(MainWindow::systemMap["self"]["path"],MainWindow::systemMap);
     emit saved(true);
 }
 

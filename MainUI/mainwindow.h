@@ -42,6 +42,7 @@ private:
     QtMaterialSnackbar  *const m_snackbar;
     QtMaterialAvatar      *const m_avatar;
     QtMaterialBadge       *const m_badge;
+    int oldAxis = 0;
 
     void initThis();
     loginWin *login;
@@ -49,6 +50,9 @@ private:
     systemWidget *system;
     aboutWidget *about;
     userWidget *userWin;
+
+    void addErrMessage(QString);
+    void deleteErrMessage(QString);
 
 
 protected:

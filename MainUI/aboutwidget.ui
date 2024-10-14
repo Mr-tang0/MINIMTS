@@ -15,10 +15,30 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
-    <widget class="QLabel" name="label">
-     <property name="text">
-      <string>about</string>
+    <widget class="QTabWidget" name="tabWidget">
+     <property name="currentIndex">
+      <number>0</number>
      </property>
+     <widget class="QWidget" name="help">
+      <attribute name="title">
+       <string>help</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_2">
+       <item row="0" column="0">
+        <widget class="QTextBrowser" name="helpBrowser"/>
+       </item>
+      </layout>
+     </widget>
+     <widget class="QWidget" name="about">
+      <attribute name="title">
+       <string>about</string>
+      </attribute>
+      <layout class="QGridLayout" name="gridLayout_3">
+       <item row="0" column="0">
+        <widget class="QTextBrowser" name="adoutBrowser"/>
+       </item>
+      </layout>
+     </widget>
     </widget>
    </item>
   </layout>

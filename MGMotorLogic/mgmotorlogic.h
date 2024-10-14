@@ -30,7 +30,14 @@ struct MotorDetails{
 
 struct WeighDetails{
     QString ID = "02";
+    float forceRate = 10;
+    bool forceFlag = true;//默认力为正向
+};
 
+struct LimitDetails{
+    QString ID = "04";
+    QString type = "stop";
+    bool enable = true;
 };
 
 struct LoginedUSER{
@@ -53,7 +60,9 @@ public:
 
     QStringList findPort();
 
+
     void setMotorParam(QMap<QString,QString> params);
+    void setOtherParam(QMap<QString,QString> params);
 
     bool connectMotor(QString portName, int buandRate);
     void disConnectMotor();
@@ -77,18 +86,21 @@ public:
 
     MotorDetails motorDetails;
     WeighDetails weighDetails;
+    LimitDetails limitDetails;
 
     QTimer *searchTimer = new QTimer(this);
 
 private:
     QMap<QString, QString> cmdMap;
     QMap<QString, QString> weighMap;
+    QMap<QString, QString> ioMap;
     myPort *porter = new myPort;
 
 
 signals:
     void testOK();
     void mDetails(QString m);
+    void LimitOccured(int, int);
 
 
 

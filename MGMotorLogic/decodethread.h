@@ -28,6 +28,7 @@ signals:
     void decodeForceValue(int value);
     void decodeFactLengthValue(int value);
     void decodeSpeedValue(int value);
+    void decodeLimitOccured(int ID, int axis);
 
     void testOK();
     void motorDetails(QString m);

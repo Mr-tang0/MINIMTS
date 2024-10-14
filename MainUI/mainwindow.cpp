@@ -27,7 +27,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_snackbar->setFontSize(12);
 
 
-    m_avatar->setSize(50);
+    m_avatar->setSize(60);
     m_badge->setParent(m_avatar);
     m_badge->setRelativePosition(18, 12);
     m_badge->setText("0");
@@ -50,11 +50,25 @@ MainWindow::MainWindow(QWidget *parent)
 //    Tool::writeXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["usersFilePath"],usersMap);
 
     initThis();
-    User user = Tool::getUser("li","123456",usersMap);
-//    qDebug()<<user.name;
+    connect(mainwd->logic,&MGMotorLogic::LimitOccured,[=](int id, int axis){
+        if (id == mainwd->logic->limitDetails.ID.toInt()&&axis!=oldAxis){
+            oldAxis = axis;
 
-//    Tool::addUser(user,&usersMap);
-//    qDebug()<<usersMap;
+            if (axis!=0)
+            {
+                addErrMessage(QStringLiteral("限位传感器被触发：方向%1").arg(axis));
+                mainwd->stopOption(true,axis);
+            }
+            else
+            {
+                deleteErrMessage(QStringLiteral("限位传感器被触发：方向%1").arg(axis));
+                mainwd->stopOption(false, axis);
+            }
+        }
+    });
+//    connect(m_badge,&QtMaterialBadge::clicked,[=](){
+//        qDebug()<<"clicked";
+//    });
 
 
 
@@ -86,6 +100,28 @@ MainWindow::MainWindow(QWidget *parent)
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+void MainWindow::addErrMessage(QString msg)
+{
+    int errCount = m_badge->text().toInt();
+    errCount += 1;
+    m_badge->setText(QString::number(errCount));
+    m_badge->setEnabled(true);
+}
+
+void MainWindow::deleteErrMessage(QString){
+    int errCount = m_badge->text().toInt();
+    if (errCount>1)
+    {
+        errCount -= 1;
+        m_badge->setText(QString::number(errCount));
+        m_badge->setEnabled(true);
+    }else{
+        m_badge->setText(QString::number(0));
+        m_badge->setEnabled(false);
+    }
+
 }
 
 bool MainWindow::eventFilter(QObject *watched, QEvent *event)
@@ -127,9 +163,6 @@ bool MainWindow::eventFilter(QObject *watched, QEvent *event)
 void MainWindow::initThis(){
 
     QUIHelper::setFramelessForm(this);
-
-
-
 
     this->centralWidget()->layout()->setMargin(1);
 
@@ -244,6 +277,7 @@ void MainWindow::initThis(){
         if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
 
         m_avatar->setImage(QImage(header));
+
         this->show();
         login->hide();
         userWin->freshUserDetails(this->user);
@@ -282,6 +316,7 @@ void MainWindow::buttonClick()
     } else if (name == "帮助与关于") {
         ui->stackedWidget->setCurrentIndex(2);
     } else if (name == "退出系统") {
+//        addErrMessage("");
         exit(0);
     }else if (name == "用户") {
         ui->stackedWidget->setCurrentIndex(3);

@@ -42,6 +42,10 @@ private:
 
     QString tempHeaderPath = "";
 
+protected:
+    bool eventFilter(QObject *obj, QEvent *event);
+
+
 signals:
     void message(QString);
 };

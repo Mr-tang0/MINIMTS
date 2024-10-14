@@ -179,12 +179,12 @@ QString Tool::speedToQstring(double value){
 }
 
 QString Tool::lengthToQstring(double value){
-
+    qDebug()<<value;
     value = QString::number(value, 'f', 2).toFloat();
 
     union {
             quint64 value;
-            quint8 bytes[4];
+            quint8 bytes[8];
     } data;
 
     data.value = int(value);
@@ -192,8 +192,7 @@ QString Tool::lengthToQstring(double value){
     QString hexString;
 
     for (int i = 0; i < 8; ++i) {
-        QString byteHex = QString("%1").arg(data.bytes[i], 2, 16, QChar('0')).toUpper();
-
+        QString byteHex = QStringLiteral("%1").arg(data.bytes[i], 2, 16, QChar('0')).toUpper();
         hexString += byteHex + (i < 7 ? " " : "");
     }
 
@@ -552,6 +551,8 @@ void Tool::dataSmooth(QList<float> &data, QString type, int window) {
             std::sort(windowValues.begin(), windowValues.end());
             result.append(windowValues[windowValues.size() / 2]);
         }
+    } else if (type == ""){
+
     }
 
     data = result;

@@ -26,14 +26,30 @@ userWidget::userWidget(QWidget *parent) :
     setupContextMenu();
 
 
-
-
-
 }
 
 userWidget::~userWidget()
 {
     delete ui;
+}
+bool userWidget::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == ui->file_treeView)
+    {
+        if (event->type() == QEvent::MouseButtonPress)
+        {
+            qDebug()<<"clicked";
+//            if (event->buttons() & Qt::LeftButton)
+//            {
+//                QModelIndex index = ui->file_treeView->indexAt(event->pos());
+//                if (!index.isValid())
+//                {
+//                    ui->file_treeView->setCurrentIndex(QModelIndex());
+//                }
+//            }
+        }
+    }
+    return QObject::eventFilter(obj, event);
 }
 
 void userWidget::setupContextMenu() {
@@ -48,7 +64,7 @@ void userWidget::setupContextMenu() {
 
 
 
-    connect(ui->file_treeView, &QTreeView::doubleClicked, [&]() {
+    connect(ui->file_treeView, &QTreeView::doubleClicked, [=]() {
         QModelIndex index = ui->file_treeView->currentIndex();
         if (index.isValid()) {
             QString filePath = model->filePath(index);
@@ -57,14 +73,16 @@ void userWidget::setupContextMenu() {
                 QDesktopServices::openUrl(QUrl::fromLocalFile(filePath));
             }
         }
+
     });
 
 
+
     QMenu *menu = new QMenu(ui->file_treeView);
-    QAction *newFolderAction = menu->addAction("新建文件夹");
-    QAction *copyAction = menu->addAction("复制");
-    QAction *pasteAction = menu->addAction("粘贴");
-    QAction *deleteAction = menu->addAction("删除");
+    menu->addAction("新建文件夹");
+    menu->addAction("复制");
+    menu->addAction("粘贴");
+    menu->addAction("删除");
 
     connect(ui->file_treeView, &QTreeView::customContextMenuRequested, this, [=](QPoint pos) {
         QPoint globalPos = ui->file_treeView->mapToGlobal(pos);

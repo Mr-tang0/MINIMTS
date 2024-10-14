@@ -88,7 +88,7 @@ void mainWidget::initChart(){
 
 
     chartXAxis->setLabelsFont(font);
-    chartXAxis->setLabelFormat("%.3f"); //标签格式：每个单位保留几位小数
+    chartXAxis->setLabelFormat("%.2f"); //标签格式：每个单位保留几位小数
 
 
     chartYAxis->setTitleFont(font);
@@ -97,7 +97,7 @@ void mainWidget::initChart(){
     chartYAxis->setMinorTickCount(4); //每个单位之间绘制了多少虚网线
 
     chartYAxis->setLabelsFont(font);
-    chartYAxis->setLabelFormat("%.2f"); //标签格式：每个单位保留几位小数
+    chartYAxis->setLabelFormat("%.3f"); //标签格式：每个单位保留几位小数
 
     chart->addSeries(factSeries);
 
@@ -267,6 +267,8 @@ void mainWidget::initConnect(){
         testDetails.userFilePath = ui->filePath_lineEdit->text();
         testDetails.userFileName = ui->filePath_lineEdit_2->text();
 
+        qDebug()<<testDetails.testTime;
+
         ui->btn_test->click();
         emit message("项目保存成功");
     });
@@ -348,6 +350,7 @@ void mainWidget::initConnect(){
     connect(logic,&MGMotorLogic::testOK,[=](){addStateBox("测试在线");});
     connect(logic,&MGMotorLogic::mDetails,[=](QString m){addStateBox(m);});
 
+
     connect(ui->openSampleProtect,&QRadioButton::toggled,[=](bool f){sampleProtectFlag=f;});
 
 }
@@ -366,10 +369,31 @@ void mainWidget::initSystem(){
 
 
     logic->setMotorParam(MainWindow::systemMap["normal"]);
+    logic->setOtherParam(MainWindow::systemMap["normal"]);
 
     //更新采样率
     dataFreshTimer->stop();
     dataFreshTimer->start(1000/MainWindow::systemMap["normal"]["sampleRate"].toInt());
+}
+
+void mainWidget::stopOption(bool flag, int dir){
+
+    if (flag){
+        logic->motorStop();
+        logic->motorStop();
+        logic->motorStop();
+    }
+
+    ui->btn_start->setEnabled(!flag);
+    if (dir == 1)
+        ui->speedCW->setEnabled(!flag);
+    else if (dir == 2)
+        ui->speedCCW->setEnabled(!flag);
+    else
+    {
+        ui->speedCW->setEnabled(!flag);
+        ui->speedCCW->setEnabled(!flag);
+    }
 }
 
 
@@ -408,16 +432,20 @@ void mainWidget::leftMainClick()
         }else{
             QString filePath = QFileDialog::getOpenFileName(this, "选择文件", MainWindow::user.userfilePath, "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)");
             if(filePath=="")return;
+            emit message("读取文件中");
             QStringList header;
             QList<QList<float>> data = Tool::loadCsvData(filePath,header);
 
-            ui->clearChart->click();
-            axisPointsList[0]=data[0];
-            axisPointsList[1]=data[1];
-            axisPointsList[2]=data[2];
-            axisPointsList[3]=data[3];
-            axisPointsList[4]=data[4];
+            for (int i = 0;i<5;i++) {
+                lineSeriesList[i] = new QLineSeries;
+                axisPointsList[i].clear();
+                axisPointsList[i]=data[i];
+            }
+            ui->timeLCD->doubleClick();
+            chartXAxis->setRange(0,1);
+            chartYAxis->setRange(0,1);
 
+            pointsCount = 0;
             for (int i = 0;i<axisPointsList[0].length();i++) {
                 *lineSeriesList[0]<<QPointF(axisPointsList[4][i],axisPointsList[0][i]);
                 *lineSeriesList[1]<<QPointF(axisPointsList[0][i]/testDetails.sampleSquare,axisPointsList[2][i]/testDetails.sampleLength);
@@ -425,21 +453,9 @@ void mainWidget::leftMainClick()
                 *lineSeriesList[3]<<QPointF(axisPointsList[4][i],axisPointsList[3][i]);
                 *lineSeriesList[4]<<QPointF(axisPointsList[4][i],axisPointsList[0][i]);
             }
-//            for (int i = 0;i<axisPointsList[0].length()/250;i++) {
-//                for (int j = 0;j<250;j++) {
-//                    *lineSeriesList[0]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[0][i*250+j]);
-//                    *lineSeriesList[1]<<QPointF(axisPointsList[0][i*250+j]/testDetails.sampleSquare,axisPointsList[2][i*250+j]/testDetails.sampleLength);
-//                    *lineSeriesList[2]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[2][i*250+j]);
-//                    *lineSeriesList[3]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[3][i*250+j]);
-//                    *lineSeriesList[4]<<QPointF(axisPointsList[4][i*250+j],axisPointsList[0][i*250+j]);
-//                }
-//            }
-//            for (int i = 0;i<axisPointsList[0].length()%250;i++) {
 
-//            }
             pointsCount=0;
             freshUi();
-
         }
     }
 }
@@ -612,16 +628,28 @@ void mainWidget::freshData(){
     float force,length,fact,speed;
     logic->getCurrentValue(&length,&fact,&force,&speed);
 
-    if(MainWindow::systemMap["normal"]["motorDir"]=="0"){
-        length = -length;
-    }
-    if(MainWindow::systemMap["normal"]["forceDir"]=="0"){
-        force = -force;
-    }
+    //实时滤波
+    if(MainWindow::systemMap["advance"]["enableFilter_timely"]=="yes"){
+        int window = MainWindow::systemMap["advance"]["filterWindow_timely"].toInt();
 
-    if(MainWindow::systemMap["normal"]["lengthDir"]=="0")
-    {
-        fact = -fact;
+
+        if(MainWindow::systemMap["advance"]["filterMethod_timely"]=="平均加权"){
+            if (axisPointsList[0].length()>window){
+                for (int i = 0;i<window;i++){
+                    force = force+axisPointsList[0][axisPointsList[0].length()-i-1] + zreoForce;
+                }
+                force = force/(window+1);
+            }
+        }else if(MainWindow::systemMap["advance"]["filterMethod_timely"]=="中值滤波"){
+            if (axisPointsList[0].length()>window){
+                QList<float> temp;
+                for (int i = 0;i<window;i++){
+                    temp.append(axisPointsList[0][axisPointsList[0].length()-i-1] + zreoForce);
+                }
+                temp.append(force);
+                force = Tool::median(temp);
+            }
+        }
     }
 
     //force
@@ -702,28 +730,39 @@ void mainWidget::on_btn_start_clicked()
         emit message("串口未连接");
         return;
     }
-    ui->clearChart->click();
+    for (int i = 0;i<5;i++) {
+        lineSeriesList[i] = new QLineSeries;
+        axisPointsList[i].clear();
+    }
+    ui->timeLCD->doubleClick();
+    chartXAxis->setRange(0,1);
+    chartYAxis->setRange(0,1);
+
+    pointsCount = 0;
 
     if(ui->btn_start->text()=="开始"){
+        qDebug()<<testDetails.testType;
         if(testDetails.testType=="strech"){
             logic->motorLengthMove(logic->motorDetails.dirFlag1,testDetails.length,testDetails.speed);
         }else if(testDetails.testType=="compress"){
+
             logic->motorLengthMove(!logic->motorDetails.dirFlag1,testDetails.length,testDetails.speed);
         }
 //        ui->btn_start->setText("暂停");
-    }/*else if(ui->btn_start->text()=="暂停"){
-        logic->motorStop();
-        ui->btn_start->setText("继续");
-    }else if(ui->btn_start->text()=="继续"){
-        float tempLength = ui->lengthLCD->currentValue();
-        if(testDetails.testType=="strech"){
-            logic->motorLengthMove(logic->motorDetails.dirFlag1,testDetails.length-abs(tempLength),testDetails.speed);
-        }else if(testDetails.testType=="compress"){
-            logic->motorLengthMove(!logic->motorDetails.dirFlag1,testDetails.length-abs(tempLength),testDetails.speed);
-        }
-        ui->btn_start->setText("暂停");
-    }*/
-    startTestFlag = true;
+    }
+    /*else if(ui->btn_start->text()=="暂停"){
+//        logic->motorStop();
+//        ui->btn_start->setText("继续");
+//    }else if(ui->btn_start->text()=="继续"){
+//        float tempLength = ui->lengthLCD->currentValue();
+//        if(testDetails.testType=="strech"){
+//            logic->motorLengthMove(logic->motorDetails.dirFlag1,testDetails.length-abs(tempLength),testDetails.speed);
+//        }else if(testDetails.testType=="compress"){
+//            logic->motorLengthMove(!logic->motorDetails.dirFlag1,testDetails.length-abs(tempLength),testDetails.speed);
+//        }
+//        ui->btn_start->setText("暂停");
+//    }*/
+//    startTestFlag = true;
     emit message("开始测试");
 }
 

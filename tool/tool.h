@@ -71,6 +71,17 @@ public:
         return *minIter;
     }
 
+    static float median(QList<float> list) {
+        std::sort(list.begin(), list.end());
+        int size = list.size();
+        int midIndex = size / 2;
+
+        if (size % 2 == 0)
+            return (list[midIndex - 1] + list[midIndex]) / 2.0f;
+        else
+            return list[midIndex];
+    }
+
     static bool removeDirectoryRecursively(const QString &path);
     static void copyPathToClipboard(const QString &path);
 

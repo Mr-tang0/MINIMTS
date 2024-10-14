@@ -45,6 +45,7 @@ private:
 signals:
     void decodeDone(QMap<QString,QString>);
 
+
 };
 
 #endif // MYPORT_H

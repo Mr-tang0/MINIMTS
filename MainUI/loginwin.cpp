@@ -38,6 +38,8 @@ loginWin::loginWin(QWidget *parent) :
             ui->commandLinkButton->setText("没有账号？");
         }
     });
+    ui->login_userName->setText("tang");
+    ui->login_password->setText("123456");
 
 
 }
