@@ -1,7 +1,7 @@
 TEMPLATE = subdirs
 
 SUBDIRS += \
-    ../qt-material-widgets/components \
     MGMotorLogic \
     MainUI \
+    components \
     tool

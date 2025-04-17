@@ -85,15 +85,28 @@ msvc:QMAKE_CXXFLAGS += -source-charset:utf-8
 
 
 
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/release/ -lcomponents
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/debug/ -lcomponents
-else:unix: LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/ -lcomponents
+# win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/release/ -lcomponents
+# else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/debug/ -lcomponents
+# else:unix: LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/ -lcomponents
 
-INCLUDEPATH += $$PWD/../../qt-material-widgets/components
-DEPENDPATH += $$PWD/../../qt-material-widgets/components
+# INCLUDEPATH += $$PWD/../../qt-material-widgets/components
+# DEPENDPATH += $$PWD/../../qt-material-widgets/components
 
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/release/libcomponents.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/debug/libcomponents.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/release/components.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/debug/components.lib
-else:unix: PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/libcomponents.a
+# win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/release/libcomponents.a
+# else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/debug/libcomponents.a
+# else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/release/components.lib
+# else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/debug/components.lib
+# else:unix: PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/libcomponents.a
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../components/release/ -lcomponents
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../components/debug/ -lcomponents
+else:unix: LIBS += -L$$OUT_PWD/../components/ -lcomponents
+
+INCLUDEPATH += $$PWD/../components
+DEPENDPATH += $$PWD/../components
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/release/libcomponents.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/debug/libcomponents.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/release/components.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/debug/components.lib
+else:unix: PRE_TARGETDEPS += $$OUT_PWD/../components/libcomponents.a
