@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>695</width>
-    <height>484</height>
+    <width>690</width>
+    <height>468</height>
    </rect>
   </property>
   <property name="maximumSize">
@@ -228,7 +228,7 @@
                      <item>
                       <widget class="QLineEdit" name="login_userName">
                        <property name="text">
-                        <string>admin</string>
+                        <string/>
                        </property>
                       </widget>
                      </item>

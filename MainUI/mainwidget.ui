@@ -7,7 +7,7 @@
     <x>0</x>
     <y>0</y>
     <width>1047</width>
-    <height>619</height>
+    <height>623</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -110,7 +110,7 @@
    <item row="0" column="1">
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>2</number>
+      <number>1</number>
      </property>
      <widget class="QWidget" name="connectPage">
       <widget class="QPushButton" name="refresh">
@@ -1549,7 +1549,7 @@ font: 20pt &quot;黑体&quot;;</string>
   <customwidget>
    <class>MyLCD</class>
    <extends>QWidget</extends>
-   <header>mylcd.h</header>
+   <header location="global">mylcd.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

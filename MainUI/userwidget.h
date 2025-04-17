@@ -35,6 +35,8 @@ private slots:
 
     void on_pushButton_2_clicked();
 
+    void on_exitUser_clicked();
+
 private:
     Ui::userWidget *ui;
     QtMaterialAvatar      *const m_avatar;
@@ -48,6 +50,7 @@ protected:
 
 signals:
     void message(QString);
+    void WanaExit();
 };
 
 #endif // USERWIDGET_H

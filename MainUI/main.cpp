@@ -1,3 +1,7 @@
+// #ifndef _ITERATOR_DEBUG_LEVEL
+// #define _ITERATOR_DEBUG_LEVEL 2
+// #endif
+
 #include "mainwindow.h"
 #include "appinit.h"
 #include "quihelper.h"
@@ -25,7 +29,7 @@ int main(int argc, char *argv[])
     MainWindow w;
     w.resize(1200, 800);
     QUIHelper::setFormInCenter(&w);
-//    w.show();
+    // w.show();
 
     return a.exec();
 }

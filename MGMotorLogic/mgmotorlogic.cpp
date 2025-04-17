@@ -1,12 +1,15 @@
 #include "mgmotorlogic.h"
 #include "tool.h"
+#include<QCoreApplication>
+
 MGMotorLogic::MGMotorLogic(QObject *parent):
     QObject(parent)
 {
+    QString rootPath = QCoreApplication::applicationDirPath();
+    cmdMap = Tool::readXMlFile(rootPath+"/root/system/cmd.xml")["MGMotorcmd"];
 
-    cmdMap = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml")["MGMotorcmd"];
-    weighMap = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml")["Weighcmd"];
-    ioMap = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml")["IOcmd"];
+    weighMap = Tool::readXMlFile(rootPath+"/root/system/cmd.xml")["Weighcmd"];
+    ioMap = Tool::readXMlFile(rootPath+"/root/system/cmd.xml")["IOcmd"];
 
 
     connect(searchTimer,&QTimer::timeout,[=](){
@@ -44,7 +47,6 @@ void MGMotorLogic::setOtherParam(QMap<QString,QString> params){
     weighDetails.ID = params["forceID"];
     weighDetails.forceRate = params["forceResulution"].toDouble();
     weighDetails.forceFlag = (params["forceDir"]=="1");
-    qDebug()<<weighDetails.forceFlag;
 
     limitDetails.ID = params["hardLimitID"];
     limitDetails.type = params["hardLimitAction"];

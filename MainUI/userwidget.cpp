@@ -22,9 +22,7 @@ userWidget::userWidget(QWidget *parent) :
     }
     layout->addWidget(m_avatar);
 
-
     setupContextMenu();
-
 
 }
 
@@ -258,3 +256,9 @@ void userWidget::on_pushButton_2_clicked()
         ui->defaultSavePath->setText(filePath);
     }
 }
+
+void userWidget::on_exitUser_clicked()
+{
+    emit WanaExit();
+}
+

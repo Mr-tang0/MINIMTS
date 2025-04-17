@@ -5,6 +5,19 @@
 #include "tool.h"
 #include "mainwindow.h"
 
+bool ensureDirectoryExists(const QString &filePath) {
+    // 从文件路径中提取目录部分
+    QFileInfo fileInfo(filePath);
+    QDir directory = fileInfo.absoluteDir();
+
+    // 如果目录不存在，则尝试创建
+    if (!directory.exists()) {
+        return directory.mkpath(".");
+    }
+    return true;
+}
+
+
 loginWin::loginWin(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::loginWin),
@@ -38,8 +51,9 @@ loginWin::loginWin(QWidget *parent) :
             ui->commandLinkButton->setText("没有账号？");
         }
     });
-    ui->login_userName->setText("tang");
-    ui->login_password->setText("123456");
+
+    // ui->login_userName->setText("tang");
+    // ui->login_password->setText("123456");
 
 
 }
@@ -49,6 +63,62 @@ loginWin::~loginWin()
     delete ui;
 }
 
+void loginWin::setHeader(QString path){
+    if(path=="")path = ":/main/res/icon/sikh.jpg";
+    m_avatar->setImage(QImage(path));
+}
+
+void loginWin::setCurrentUser(User user){
+    user.lastTestTime = QDateTime::currentDateTime().toString();
+    Tool::freshUser(user,&(MainWindow::usersMap));
+    QString header = user.headerPic;
+    if(!header.contains(":"))
+        header = QCoreApplication::applicationDirPath()+header;
+    if(header == "")
+    {
+        setHeader(":/main/res/icon/sikh.jpg");
+        user.headerPic=":/main/res/icon/sikh.jpg";
+    }
+    else
+        setHeader(header);
+
+    ui->login_password->clear();
+    ui->password->clear();
+    ui->password_2->clear();
+}
+
+void loginWin::createImageWithInitial(const QString &userName, const QString &path) {
+    if (userName.isEmpty()) return;
+
+    QImage image(600, 600, QImage::Format_RGB32);
+    image.fill(Qt::white);
+
+    // 获取用户名的第一个字符并转换为大写
+    QChar initial = userName.at(0).toUpper();
+
+    // 创建画家对象用于在图像上绘制
+    QPainter painter(&image);
+
+    // 设置字体样式
+    QFont font("Arial", 225, QFont::Bold); // 字体、字号和粗细可以根据需要调整
+    painter.setFont(font);
+
+    // 设置文字颜色为黑色
+    painter.setPen(Qt::black);
+
+    // 在图像中心绘制字符
+    painter.drawText(image.rect(), Qt::AlignCenter, initial);
+
+    // 结束绘制
+    painter.end();
+
+    ensureDirectoryExists(path);
+    // 将图像保存到指定路径
+    if (!image.save(path)) {
+        qWarning("无法保存图像！");
+    }
+}
+
 void loginWin::on_loginChecked_2_clicked()
 {
     User user;
@@ -56,13 +126,8 @@ void loginWin::on_loginChecked_2_clicked()
     user = Tool::getUser(ui->login_userName->text(),ui->login_password->text(),MainWindow::usersMap);
 
     if(user.name==ui->login_userName->text()){
-
-        user.lastTestTime = QDateTime::currentDateTime().toString();
-        Tool::freshUser(user,&(MainWindow::usersMap));
+        setCurrentUser(user);
         m_snackbar->addMessage("登录成功");
-        QString header = user.headerPic;
-        if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
-        m_avatar->setImage(QImage(header));
         Tool::delay(500);
         emit logined(user);
     }else
@@ -89,7 +154,10 @@ void loginWin::on_loginChecked_clicked()
         user.name=ui->userName->text();
         user.password=ui->password->text();
         user.role="user";
-        user.headerPic=":/main/res/icon/sikh.jpg";
+
+        createImageWithInitial(user.name,QCoreApplication::applicationDirPath()+"/root/cache/temp.jpg");
+        user.headerPic= QCoreApplication::applicationDirPath()+"/root/cache/temp.jpg";
+
         user.userfilePath = QCoreApplication::applicationDirPath()+"/root/users/"+user.name;
         user.userDefaultName = "userData-"+user.name;
 

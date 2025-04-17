@@ -1,5 +1,5 @@
 QT       += core gui
-QT += serialport
+QT      += serialport
 
 TEMPLATE = lib
 DEFINES += MGMOTORLOGIC_LIBRARY
@@ -40,3 +40,6 @@ else:unix: LIBS += -L$$OUT_PWD/../tool/ -ltool
 
 INCLUDEPATH += $$PWD/../tool
 DEPENDPATH += $$PWD/../tool
+
+msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
+msvc:QMAKE_CXXFLAGS += -source-charset:utf-8

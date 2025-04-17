@@ -1,0 +1,18 @@
+<root>
+    <admin>
+        <password>admin</password>
+        <username>pims</username>
+    </admin>
+    <system>
+        <appid>1421543256</appid>
+        <appkey>1353467564</appkey>
+        <appname>MINIMTS</appname>
+        <appurl>http://www.baidu.com</appurl>
+        <cmdPath>/root/system/cmd.xml</cmdPath>
+        <helpDocPath>/root/doc/help.txt</helpDocPath>
+        <requesturl>http://localhost:8080/MINIMTS/</requesturl>
+        <systemSetFilePath>/root/system/system.xml</systemSetFilePath>
+        <usersFilePath>/root/users/users.xml</usersFilePath>
+        <version>1.0</version>
+    </system>
+</root>

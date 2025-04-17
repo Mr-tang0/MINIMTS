@@ -33,23 +33,29 @@ MainWindow::MainWindow(QWidget *parent)
     m_badge->setText("0");
     m_badge->setEnabled(false);
 
+
     QLayout *layout = ui->header->layout();
     if (layout == nullptr) {
         layout = new QVBoxLayout( ui->header);
     }
     layout->addWidget(m_avatar);
 
-    QString rootXml = QCoreApplication::applicationDirPath()+"/root/root.xml";
-    rootMap = Tool::readXMlFile(rootXml);
-    systemMap = Tool::readXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["systemSetFilePath"]);
-    //    systemMap["self"]["path"]=rootMap["system"]["systemSetFilePath"];
+    QString root = QCoreApplication::applicationDirPath();
+    rootMap = Tool::readXMlFile(root+"/root/root.xml");
+
+    qDebug()<<root+rootMap["system"]["systemSetFilePath"];
+
+    systemMap = Tool::readXMlFile(root+rootMap["system"]["systemSetFilePath"]);
+    cmdMap = Tool::readXMlFile(root+rootMap["system"]["cmdPath"]);
+    usersMap = Tool::readXMlFile(root+rootMap["system"]["usersFilePath"]);
+
+//    systemMap["self"]["path"]=rootMap["system"]["systemSetFilePath"];
 //    Tool::writeXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["systemSetFilePath"],systemMap);
-    cmdMap = Tool::readXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["cmdPath"]);
-    usersMap = Tool::readXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["usersFilePath"]);
 //    usersMap["self"]["path"]=rootMap["system"]["usersFilePath"];
 //    Tool::writeXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["usersFilePath"],usersMap);
 
     initThis();
+
     connect(mainwd->logic,&MGMotorLogic::LimitOccured,[=](int id, int axis){
         if (id == mainwd->logic->limitDetails.ID.toInt()&&axis!=oldAxis){
             oldAxis = axis;
@@ -66,34 +72,15 @@ MainWindow::MainWindow(QWidget *parent)
             }
         }
     });
-//    connect(m_badge,&QtMaterialBadge::clicked,[=](){
-//        qDebug()<<"clicked";
-//    });
 
+    connect(userWin,&userWidget::WanaExit,this,[=](){
+        this->close();
+        login->show();
+        login->setCurrentUser(user);
+        m_snackbar->addMessage("退出成功");
+    });
 
-
-
-
-
-
-
-
-
-
-
-    {
-        //    QMap<QString, QMap<QString, QString>> map = Tool::readXMlFile("D:/AppFile/code/qt/MINIMTS/tool/demo/cmd.xml");
-        //    qDebug()<<map["MGMotorcmd"]["angleConcrol"];
-        //    rootMap["system"]["appid"] = "1421543256";
-        //    rootMap["system"]["appkey"] = "1353467564";
-        //    rootMap["system"]["cmdPath"] =  "/root/system/cmd.xml";
-        //    rootMap["system"]["systemSetFilePath"] =  "/root/system/system.xml";
-        //    rootMap["system"]["usersFilePath"] =  "/root/users/users.xml";
-        //    Tool::writeXMlFile(rootXml,rootMap);
-    }
-
-
-
+    login->setHeader("");
 
 }
 
@@ -208,7 +195,6 @@ void MainWindow::initThis(){
     });
     connect(mainwd,&mainWidget::disconnected,[=](){
         m_snackbar->addMessage("已断开！");
-
     });
 
     connect(system,&systemWidget::saved,[=](bool flag){
@@ -253,12 +239,15 @@ void MainWindow::initThis(){
                    "border-width:0px 0px 0px %1px;}").arg(borderWidth);
     this->setStyleSheet(qss.join(""));
 
+    qDebug()<<"dd";
+
     QSize icoSize(32, 32);
     int icoWidth = 85;
 
     QList<QToolButton *> tbtns = ui->widgetTop->findChildren<QToolButton *>();
     foreach (QToolButton *btn, tbtns) {
         btn->setIconSize(icoSize);
+
         btn->setMinimumWidth(icoWidth);
         btn->setCheckable(true);
         connect(btn, SIGNAL(clicked()), this, SLOT(buttonClick()));
