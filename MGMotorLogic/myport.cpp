@@ -1,5 +1,4 @@
 #include "myport.h"
-
 #include <QThread>
 #include <QDebug>
 myPort::myPort(QObject *parent) :
@@ -25,9 +24,6 @@ myPort::myPort(QObject *parent) :
         sendMessage(buffer.first());
         buffer.removeFirst();
     });
-
-
-
 }
 
 myPort::~myPort()

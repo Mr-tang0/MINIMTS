@@ -52,8 +52,8 @@ loginWin::loginWin(QWidget *parent) :
         }
     });
 
-    // ui->login_userName->setText("tang");
-    // ui->login_password->setText("123456");
+    ui->login_userName->setText("tang");
+    ui->login_password->setText("123456");
 
 
 }

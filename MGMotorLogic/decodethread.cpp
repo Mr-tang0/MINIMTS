@@ -2,6 +2,7 @@
 #include <QDebug>
 #include <QDataStream>
 #include <qendian.h>
+#include "mgmotorlogic.h"
 
 decodeThread::decodeThread(QObject *parent) : QObject(parent)
 {
@@ -13,7 +14,6 @@ void decodeThread::decode(QByteArray data){
     if(data.left(1)==">"){
         QString ID = data.mid(2,1).toHex();
         QString cmd = data.mid(1,1).toHex();
-
         if(cmd=="12"){
             QByteArray structBody = data.remove(0,5);
 
@@ -42,8 +42,8 @@ void decodeThread::decode(QByteArray data){
             }else {
                 motorID = "motorID:null\n";
             }
-//            emit motorDetails(motorDrive+motorName+motorID);
         }
+
         int boxLength = data.mid(3,1).toHex().toInt()+6;
         if(boxLength!=data.length())return;
         if(cmd=="92"){
@@ -52,8 +52,7 @@ void decodeThread::decode(QByteArray data){
             {
                 float value = QByteArrayTofloat(data.mid(5,8),"motor");
                 currentMotorLength = value;
-
-                emit decodeLengthValue(value);
+                // emit decodeLengthValue(ID.toInt(),value);
             }
         }else if(cmd.toUpper()=="9C"){
 
@@ -66,7 +65,7 @@ void decodeThread::decode(QByteArray data){
                 float value = arr.toInt(&ok, 16);
                 if(value>65535/2)value = value-65535;
                 currentSpeedValue = value;
-                emit decodeSpeedValue(value);
+                // emit decodeSpeedValue(ID.toInt(), value);
             }
         }else if(cmd.toUpper()=="1F"){
             //测试
@@ -75,21 +74,28 @@ void decodeThread::decode(QByteArray data){
     }else{
 
         int length = data.mid(2,1).toHex().toInt();
+        int id = data.mid(0,1).toHex().toInt();
         if(data.length()>=length+5 && length>0 && length <=5)
         {
             QByteArray temp = data.mid(length+5,data.length());
             data = data.mid(0,length+5);
-            if (data.length() == 9)
+
+            if (data.length() == 9 && id==MGMotorLogic::weighDetails.ID.toInt())
             {
                 QString ID = data.mid(0,1).toHex();
                 QString cmd = data.mid(1,1).toHex().toUpper();
                 float value = QByteArrayTofloat(data.mid(3,4),"weigh");
                 if(value>65535||value<-65535)return;
                 currentForceValue = value;
-                emit decodeForceValue(value);
-            }else if (data.length() == 6){
+                // emit decodeForceValue(ID.toInt(),value);
+
+            }else if (data.length() == 9&&id==MGMotorLogic::limitDetails.ID.toInt()){
                 int id = data.mid(0,1).toHex().toInt();
-                int axis = data.mid(3,1).toHex().toInt();
+
+                int axis = 0;
+                if(data.mid(4,1).toHex().toInt()==1)axis=1;
+                else if(data.mid(6,1).toHex().toInt()==1)axis=2;
+
                 emit decodeLimitOccured(id, axis);
             }
             decode(temp);

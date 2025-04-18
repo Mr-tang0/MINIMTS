@@ -24,10 +24,12 @@ private:
 
 
 signals:
-    void decodeLengthValue(int value);
-    void decodeForceValue(int value);
-    void decodeFactLengthValue(int value);
-    void decodeSpeedValue(int value);
+    void decodeLengthValue(int ID,int value);
+    void decodeSpeedValue(int ID,int value);
+
+    void decodeForceValue(int ID,int value);
+    void decodeFactLengthValue(int ID,int value);
+
     void decodeLimitOccured(int ID, int axis);
 
     void testOK();

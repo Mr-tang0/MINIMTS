@@ -2,6 +2,11 @@
 #include "tool.h"
 #include<QCoreApplication>
 
+
+MotorDetails MGMotorLogic::motorDetails;
+WeighDetails MGMotorLogic::weighDetails;
+LimitDetails MGMotorLogic::limitDetails;
+
 MGMotorLogic::MGMotorLogic(QObject *parent):
     QObject(parent)
 {
@@ -21,7 +26,7 @@ MGMotorLogic::MGMotorLogic(QObject *parent):
         cmd = Tool::crc16Ccitt(cmd);
         porter->appendBuffer(cmd);
 
-        cmd = ioMap["readInputs"].arg(limitDetails.ID);
+        cmd = ioMap["limits"].arg(limitDetails.ID);
         cmd = Tool::crc16Ccitt(cmd);
         porter->appendBuffer(cmd);
 
@@ -30,8 +35,12 @@ MGMotorLogic::MGMotorLogic(QObject *parent):
         porter->appendBuffer(cmd);
     });
 
-    connect(porter->decoder,&decodeThread::testOK,[=](){emit testOK();});
-    connect(porter->decoder,&decodeThread::motorDetails,[=](QString m){emit mDetails(m);});
+    connect(porter->decoder,&decodeThread::testOK,[=](){
+        emit testOK();
+    });
+    connect(porter->decoder,&decodeThread::motorDetails,[=](QString m){
+        emit mDetails(m);
+    });
     connect(porter->decoder, &decodeThread::decodeLimitOccured,this,[=](int id, int axis){
         emit LimitOccured(id, axis);
     });
@@ -121,6 +130,7 @@ void MGMotorLogic::motorOff(){
 }
 
 void MGMotorLogic::motorStop(){
+    qDebug()<<"stop";
     QString cmd = cmdMap["motorStop"].arg(motorDetails.ID);
     cmd = Tool::numberVerify(cmd);
     porter->prependBuffer(cmd);

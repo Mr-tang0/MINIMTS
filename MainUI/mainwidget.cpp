@@ -18,6 +18,7 @@ mainWidget::mainWidget(QWidget *parent) :
 
 mainWidget::~mainWidget()
 {
+    logic->motorStop();
     delete ui;
     uiFreshTimer->stop();
     delete uiFreshTimer;
@@ -230,8 +231,9 @@ void mainWidget::initConnect(){
 
         float speed = ui->speed->value();
         logic->motorSpeedMove(speed);
-
     });
+
+
     connect(ui->speedCCW,&QPushButton::pressed,[=](){
         if(!motorConnectFlag){
             emit message("串口未连接");
@@ -245,7 +247,12 @@ void mainWidget::initConnect(){
     connect(ui->speedCW,&QPushButton::released,[=](){
         logic->motorStop();
     });
+
     connect(ui->speedCCW,&QPushButton::released,[=](){
+        logic->motorStop();
+    });
+
+    connect(ui->speedStop,&QPushButton::clicked,[=](){
         logic->motorStop();
     });
 
@@ -266,12 +273,15 @@ void mainWidget::initConnect(){
 
         testDetails.userFilePath = ui->filePath_lineEdit->text();
         testDetails.userFileName = ui->filePath_lineEdit_2->text();
+        // qDebug()<<testDetails.userFilePath<<testDetails.userFileName;
 
-        qDebug()<<testDetails.testTime;
+        MainWindow::user.userfilePath = testDetails.userFilePath;
+        MainWindow::user.userDefaultName = testDetails.userFileName;
 
         ui->btn_test->click();
         emit message("项目保存成功");
     });
+
     connect(ui->cancel,&QPushButton::clicked,[=](){
         ui->btn_test->click();
     });
@@ -381,13 +391,12 @@ void mainWidget::stopOption(bool flag, int dir){
     if (flag){
         logic->motorStop();
         logic->motorStop();
-        logic->motorStop();
     }
 
     ui->btn_start->setEnabled(!flag);
-    if (dir == 1)
+    if (dir == MainWindow::systemMap["normal"]["cwLimit"].toInt())
         ui->speedCW->setEnabled(!flag);
-    else if (dir == 2)
+    else if (dir == MainWindow::systemMap["normal"]["ccwLimit"].toInt())
         ui->speedCCW->setEnabled(!flag);
     else
     {
@@ -464,7 +473,9 @@ bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     //考虑进子线程计算
 
     QString fileName = MainWindow::user.userDefaultName+MainWindow::systemMap["advance"]["format"];
+    qDebug()<<fileName;
     QString filePath = MainWindow::user.userfilePath+"/"+QDateTime::currentDateTime().toString("yy-MM-dd");
+    qDebug()<<filePath;
 
     //加入应力应变
 

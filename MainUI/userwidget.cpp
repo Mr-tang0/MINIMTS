@@ -192,6 +192,7 @@ void userWidget::freshUserDetails(User user){
     ui->password->setText(user.password);
     ui->userForce->setText(user.role);
     ui->lastLogin->setText(user.lastTestTime);
+    tempHeaderPath = user.headerPic;
 
     QString Directory = user.userfilePath;
     if(!Directory.contains(":"))Directory = QCoreApplication::applicationDirPath()+Directory;

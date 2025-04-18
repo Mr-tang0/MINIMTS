@@ -84,9 +84,9 @@ public:
 
     void clearChannal(QString channal);
 
-    MotorDetails motorDetails;
-    WeighDetails weighDetails;
-    LimitDetails limitDetails;
+    static MotorDetails motorDetails;
+    static WeighDetails weighDetails;
+    static LimitDetails limitDetails;
 
     QTimer *searchTimer = new QTimer(this);
 

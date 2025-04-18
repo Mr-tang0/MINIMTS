@@ -56,18 +56,19 @@ MainWindow::MainWindow(QWidget *parent)
 
     initThis();
 
-    connect(mainwd->logic,&MGMotorLogic::LimitOccured,[=](int id, int axis){
+    connect(mainwd->logic,&MGMotorLogic::LimitOccured,this, [=](int id, int axis){
+
         if (id == mainwd->logic->limitDetails.ID.toInt()&&axis!=oldAxis){
             oldAxis = axis;
 
             if (axis!=0)
             {
-                addErrMessage(QStringLiteral("限位传感器被触发：方向%1").arg(axis));
+                addErrMessage(QStringLiteral("限位传感器被触发:方向 %1").arg(axis));
                 mainwd->stopOption(true,axis);
             }
             else
             {
-                deleteErrMessage(QStringLiteral("限位传感器被触发：方向%1").arg(axis));
+                deleteErrMessage(QStringLiteral("限位传感器被触发:方向 %1").arg(axis));
                 mainwd->stopOption(false, axis);
             }
         }
