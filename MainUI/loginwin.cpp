@@ -3,7 +3,10 @@
 #include <qtmaterialavatar.h>
 #include <qtmaterialbadge.h>
 #include "tool.h"
-#include "mainwindow.h"
+#include "xmlreader.h"
+#include <QRegularExpressionValidator>
+
+QMap<QString, QMap<QString, QString>> loginWin::usersMap;
 
 bool ensureDirectoryExists(const QString &filePath) {
     // 从文件路径中提取目录部分
@@ -30,7 +33,6 @@ loginWin::loginWin(QWidget *parent) :
     m_snackbar->setParent(this);
     m_snackbar->setBoxWidth(200);
     m_snackbar->setAutoHideDuration(500);
-//    m_snackbar->setFont(QFont("幼圆"));
     m_snackbar->setFontSize(10);
 
     m_avatar->setImage(QImage(":/main/res/icon/sikh.jpg"));
@@ -42,6 +44,12 @@ loginWin::loginWin(QWidget *parent) :
     }
     layout->addWidget(m_avatar);
 
+    QRegularExpression re("[a-zA-Z]*");
+    QRegularExpressionValidator *validator = new QRegularExpressionValidator(re, this);
+    ui->userName->setValidator(validator);
+    ui->login_userName->setValidator(validator);
+
+
     connect(ui->commandLinkButton,&QCommandLinkButton::clicked,[=](){
         if(ui->commandLinkButton->text()=="没有账号？"){
             ui->stackedWidget->setCurrentIndex(0);
@@ -52,9 +60,15 @@ loginWin::loginWin(QWidget *parent) :
         }
     });
 
-    ui->login_userName->setText("tang");
-    ui->login_password->setText("123456");
+    // ui->login_userName->setText("tang");
+    // ui->login_password->setText("111111");
 
+    //从文件提取所有用户信息
+    rootPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +"/Tang/MiniMTS/Users";
+    usersMap = XMLReader::Read_XML_File(rootPath+"/users.xml");
+    usersMap["self"]["path"]=rootPath+"/users.xml";
+
+    //从云端获取用户信息
 
 }
 
@@ -70,10 +84,10 @@ void loginWin::setHeader(QString path){
 
 void loginWin::setCurrentUser(User user){
     user.lastTestTime = QDateTime::currentDateTime().toString();
-    Tool::freshUser(user,&(MainWindow::usersMap));
+    Tool::freshUser(user,&usersMap);
     QString header = user.headerPic;
     if(!header.contains(":"))
-        header = QCoreApplication::applicationDirPath()+header;
+        header = rootPath + header;
     if(header == "")
     {
         setHeader(":/main/res/icon/sikh.jpg");
@@ -87,6 +101,7 @@ void loginWin::setCurrentUser(User user){
     ui->password_2->clear();
 }
 
+//绘制头像
 void loginWin::createImageWithInitial(const QString &userName, const QString &path) {
     if (userName.isEmpty()) return;
 
@@ -113,17 +128,25 @@ void loginWin::createImageWithInitial(const QString &userName, const QString &pa
     painter.end();
 
     ensureDirectoryExists(path);
+
     // 将图像保存到指定路径
     if (!image.save(path)) {
         qWarning("无法保存图像！");
     }
 }
 
+void loginWin::onEnterPressed() {
+    if(ui->stackedWidget->currentWidget()->objectName()=="loginWin1")
+        on_loginChecked_2_clicked();
+    else if(ui->stackedWidget->currentWidget()->objectName()=="registerWin")
+        on_loginChecked_clicked();
+}
+
 void loginWin::on_loginChecked_2_clicked()
 {
     User user;
 
-    user = Tool::getUser(ui->login_userName->text(),ui->login_password->text(),MainWindow::usersMap);
+    user = Tool::getUser(ui->login_userName->text(),ui->login_password->text(),usersMap);
 
     if(user.name==ui->login_userName->text()){
         setCurrentUser(user);
@@ -145,8 +168,11 @@ void loginWin::on_loginChecked_clicked()
         m_snackbar->addMessage("两次输入密码不一致");
         return;
     }
+
     User user;
-    user = Tool::getUser(ui->userName->text(),ui->password->text(),MainWindow::usersMap);
+
+    user = Tool::getUser(ui->userName->text(),ui->password->text(),usersMap);
+
     if(user.name==ui->userName->text()){
         m_snackbar->addMessage("用户已存在");
     }else
@@ -155,18 +181,20 @@ void loginWin::on_loginChecked_clicked()
         user.password=ui->password->text();
         user.role="user";
 
-        createImageWithInitial(user.name,QCoreApplication::applicationDirPath()+"/root/cache/temp.jpg");
-        user.headerPic= QCoreApplication::applicationDirPath()+"/root/cache/temp.jpg";
+        createImageWithInitial(user.name,rootPath+"/temp.jpg");
+        user.headerPic= rootPath+"/temp.jpg";
 
-        user.userfilePath = QCoreApplication::applicationDirPath()+"/root/users/"+user.name;
+        user.userfilePath = rootPath+"/"+user.name;
         user.userDefaultName = "userData-"+user.name;
 
-        bool flag = Tool::addUser(user,&MainWindow::usersMap);
-        user = Tool::getUser(user.name,user.password,MainWindow::usersMap);
+        bool flag = Tool::addUser(user,&usersMap);
+
+        user = Tool::getUser(user.name,user.password,usersMap);
+
         if(flag){
             m_snackbar->addMessage("注册成功");
             QString header = user.headerPic;
-            if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
+            if(!header.contains(":"))header = rootPath+header;
             m_avatar->setImage(QImage(header));
             Tool::delay(500);
             emit logined(user);

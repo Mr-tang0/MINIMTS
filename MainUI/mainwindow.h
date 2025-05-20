@@ -31,11 +31,14 @@ public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    static QMap<QString, QMap<QString, QString>> rootMap;
-    static QMap<QString, QMap<QString, QString>> systemMap;
-    static QMap<QString, QMap<QString, QString>> cmdMap;
-    static QMap<QString, QMap<QString, QString>> usersMap;
+    // static QMap<QString, QMap<QString, QString>> rootMap;
+    // static QMap<QString, QMap<QString, QString>> systemMap;
+    // static QMap<QString, QMap<QString, QString>> cmdMap;
+    // static QMap<QString, QMap<QString, QString>> usersMap;
+
     static User user;
+
+    void runUpdateCommand();
 
 private:
     Ui::MainWindow *ui;
@@ -45,9 +48,10 @@ private:
     int oldAxis = 0;
 
     void initThis();
+    systemWidget *system;
     loginWin *login;
     mainWidget *mainwd;
-    systemWidget *system;
+
     aboutWidget *about;
     userWidget *userWin;
 

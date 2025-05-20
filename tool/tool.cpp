@@ -325,6 +325,30 @@ User Tool::getUser(QString id,QMap<QString, QMap<QString, QString>>usersMap){
     return user;
 }
 
+
+QList<User>Tool::getAllUser(QMap<QString, QMap<QString, QString>>usersMap){
+    QStringList users_k= usersMap.keys();
+    QList<User> users;
+
+    foreach (QString item, users_k){
+
+        User user;
+        user.userid = usersMap[item]["userid"];
+        user.name = usersMap[item]["name"];
+        user.password = usersMap[item]["password"];
+        user.role = usersMap[item]["role"];
+        user.headerPic = usersMap[item]["headerPic"];
+        user.lastTestTime = usersMap[item]["lastTestTime"];
+        user.userDefaultName = usersMap[item]["userDefaultName"];
+        user.userfilePath = usersMap[item]["userfilePath"];
+
+        users.append(user);
+    }
+
+    return users;
+
+}
+
 bool Tool::freshUser(User user,QMap<QString, QMap<QString, QString>>* usersMap){
     User isUser = getUser(user.userid,*usersMap);
 

@@ -3,7 +3,10 @@
 #include "quihelper.h"
 #include "iconhelper.h"
 #include "mainwindow.h"
-#include "tool.h"
+#include "xmlreader.h"
+
+
+QMap<QString, QMap<QString, QString>> systemWidget::systemMap;
 
 systemWidget::systemWidget(QWidget *parent) :
     QWidget(parent),
@@ -11,15 +14,17 @@ systemWidget::systemWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    rootPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +"/Tang/MiniMTS/system.xml";
+
     initSystem();
 
     QList<int> iconsMain;
     QList<int> iconsConfig;
     QList<QAbstractButton *> btnsConfig;
 
-    iconsMain << 0xf013 << 0xf076 <<0xf007;
+    iconsMain << 0xf013 << 0xf076;
 
-    btnsMain << ui->normalSet << ui->advanceSetup <<ui->userSet;
+    btnsMain << ui->normalSet << ui->advanceSetup;
     int count = btnsMain.count();
     for (int i = 0; i < count; ++i) {
         QToolButton *btn = (QToolButton *)btnsMain.at(i);
@@ -37,16 +42,12 @@ systemWidget::systemWidget(QWidget *parent) :
     styleColor.borderColor = "#242424";
     styleColor.setColor("#484848", "#DCDCDC", "#444444", "#DCDCDC");
     IconHelper::setStyle(ui->menuWidget, btnsMain, iconsMain, styleColor);
+
     ui->normalSet->click();
 
-    connect(ui->save,&QPushButton::clicked,this,[=](){
-        normolSaveSystem();
-        qDebug()<<MainWindow::systemMap;
-    });
-    connect(ui->advance_check,&QPushButton::clicked,this,[=](){
-        advanceSaveSystem();
-        qDebug()<<MainWindow::systemMap;
-    });
+
+    connect(ui->save,&QPushButton::clicked,this,&systemWidget::normolSaveSystem);
+    connect(ui->advance_check,&QPushButton::clicked,this,&systemWidget::advanceSaveSystem);
 
     connect(ui->cancel,&QPushButton::clicked,[=](){emit saved(false);});
     connect(ui->advance_cancel,&QPushButton::clicked,[=](){emit saved(false);});
@@ -60,7 +61,7 @@ systemWidget::~systemWidget()
 }
 
 void systemWidget::initSystem(){
-    systemMap = MainWindow::systemMap;
+    systemMap = XMLReader::Read_XML_File(rootPath);
 
     QWidget *widget = ui->stackedWidget->widget(0);
     QList<QLineEdit*> lineEdits = widget->findChildren<QLineEdit*>();
@@ -93,10 +94,7 @@ void systemWidget::normolSaveSystem(){
         systemMap["normal"][lineEdit->objectName()] = lineEdit->text();
     }
 
-    MainWindow::systemMap = systemMap;
-
-    Tool::writeXMlFile(MainWindow::systemMap["self"]["path"],MainWindow::systemMap);
-    emit saved(true);
+    emit saved(XMLReader::Save_XML_File(systemMap,rootPath));
 }
 
 void systemWidget::advanceSaveSystem(){
@@ -105,10 +103,8 @@ void systemWidget::advanceSaveSystem(){
     for (QComboBox *comboBox : comboBoxList) {
         systemMap["advance"][comboBox->objectName()] = comboBox->currentText();
     }
-    MainWindow::systemMap = systemMap;
-    Tool::writeXMlFile(MainWindow::systemMap["self"]["path"],MainWindow::systemMap);
 
-    emit saved(true);
+    emit saved(XMLReader::Save_XML_File(systemMap,rootPath));
 }
 
 void systemWidget::usersSaveSystem(){
@@ -117,10 +113,8 @@ void systemWidget::usersSaveSystem(){
     for (QComboBox *comboBox : comboBoxList) {
         systemMap["users"][comboBox->objectName()] = comboBox->currentText();
     }
-    MainWindow::systemMap = systemMap;
-    Tool::writeXMlFile(MainWindow::systemMap["self"]["path"],MainWindow::systemMap);
 
-    emit saved(true);
+    emit saved(XMLReader::Save_XML_File(systemMap,rootPath));
 }
 
 void systemWidget::leftMainClick()

@@ -6,8 +6,8 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1137</width>
-    <height>627</height>
+    <width>1132</width>
+    <height>685</height>
    </rect>
   </property>
   <property name="windowTitle">
@@ -15,7 +15,33 @@
   </property>
   <layout class="QGridLayout" name="gridLayout">
    <item row="0" column="0">
-    <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="0,1">
+    <layout class="QHBoxLayout" name="horizontalLayout_6" stretch="0,1,8">
+     <item>
+      <widget class="QWidget" name="allUserforAdmin" native="true">
+       <property name="minimumSize">
+        <size>
+         <width>50</width>
+         <height>0</height>
+        </size>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <layout class="QVBoxLayout" name="verticalLayout_5">
+          <item>
+           <widget class="QLabel" name="label_7">
+            <property name="text">
+             <string>所有用户</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QTreeView" name="userList"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
      <item>
       <layout class="QVBoxLayout" name="verticalLayout_4">
        <item>

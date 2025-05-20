@@ -10,6 +10,7 @@ aboutWidget::aboutWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
+
     // initThis();
 }
 
@@ -18,53 +19,53 @@ aboutWidget::~aboutWidget()
     delete ui;
 }
 
-// void aboutWidget::initThis(){
-//     QVBoxLayout *helpLayout = new QVBoxLayout;
-//     helpLayout->addWidget(helpEngineView);
-//     ui->helpView->setLayout(helpLayout);
+void aboutWidget::initThis(){
+    // QVBoxLayout *helpLayout = new QVBoxLayout;
+    // helpLayout->addWidget(helpEngineView);
+    // ui->helpView->setLayout(helpLayout);
 
-//     QVBoxLayout *aboutLayout = new QVBoxLayout;
-//     aboutLayout->addWidget(aboutEngineView);
-//     ui->adoutView->setLayout(aboutLayout);
-
-
-//     QCommandLineParser parser;
-//     parser.setApplicationDescription("QtWebEngine Example");
-//     parser.addHelpOption();
-//     parser.addVersionOption();
-//     parser.addPositionalArgument("url", "The initial URL to open.");
-//     parser.process(QCoreApplication::arguments());
-
-//     QString root = QCoreApplication::applicationDirPath();
-//     QString helpDocPath = MainWindow::rootMap["system"]["helpDocPath"];
-//     QString requesturl = MainWindow::rootMap["system"]["requesturl"];
-//     QString appurl = MainWindow::rootMap["system"]["appurl"];
-
-//     QString initialUrl;
-//     if (MainWindow::rootMap["system"]["localHelp"]=="yes"){
-//         initialUrl = parser.positionalArguments().isEmpty() ?
-//                          root+helpDocPath : parser.positionalArguments().first();
-//     }else{
-//         initialUrl = parser.positionalArguments().isEmpty() ?
-//                          helpDocPath : parser.positionalArguments().first();
-//     }
-
-//     helpEngineView->load(QUrl(initialUrl));
-//     appurl = "https://www.baidu.com";
-
-//     initialUrl = parser.positionalArguments().isEmpty() ?
-//                      appurl : parser.positionalArguments().first();
-
-//     aboutEngineView->loadUrl(initialUrl);
+    // QVBoxLayout *aboutLayout = new QVBoxLayout;
+    // aboutLayout->addWidget(aboutEngineView);
+    // ui->adoutView->setLayout(aboutLayout);
 
 
-//     ui->addressEdit->setText(initialUrl);
+    // QCommandLineParser parser;
+    // parser.setApplicationDescription("QtWebEngine Example");
+    // parser.addHelpOption();
+    // parser.addVersionOption();
+    // parser.addPositionalArgument("url", "The initial URL to open.");
+    // parser.process(QCoreApplication::arguments());
 
-//     connect(aboutEngineView,&myWebEngineView::linkClicked,[=](QUrl url){
-//         ui->addressEdit->setText(url.toString());
-//     });
+    // QString root = QCoreApplication::applicationDirPath();
+    // QString helpDocPath = MainWindow::rootMap["system"]["helpDocPath"];
+    // QString requesturl = MainWindow::rootMap["system"]["requesturl"];
+    // QString appurl = MainWindow::rootMap["system"]["appurl"];
 
-// }
+    // QString initialUrl;
+    // if (MainWindow::rootMap["system"]["localHelp"]=="yes"){
+    //     initialUrl = parser.positionalArguments().isEmpty() ?
+    //                      root+helpDocPath : parser.positionalArguments().first();
+    // }else{
+    //     initialUrl = parser.positionalArguments().isEmpty() ?
+    //                      helpDocPath : parser.positionalArguments().first();
+    // }
+
+    // helpEngineView->load(QUrl(initialUrl));
+    // appurl = "https://www.baidu.com";
+
+    // initialUrl = parser.positionalArguments().isEmpty() ?
+    //                  appurl : parser.positionalArguments().first();
+
+    // aboutEngineView->loadUrl(initialUrl);
+
+
+    // ui->addressEdit->setText(initialUrl);
+
+    // connect(aboutEngineView,&myWebEngineView::linkClicked,[=](QUrl url){
+    //     ui->addressEdit->setText(url.toString());
+    // });
+
+}
 
 // void aboutWidget::on_goto_btn_clicked()
 // {

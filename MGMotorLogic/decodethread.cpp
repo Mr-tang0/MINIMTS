@@ -89,9 +89,16 @@ void decodeThread::decode(QByteArray data){
                 currentForceValue = value;
                 // emit decodeForceValue(ID.toInt(),value);
 
-            }else if (data.length() == 9&&id==MGMotorLogic::limitDetails.ID.toInt()){
+            }else if (data.length() == 7&&id==MGMotorLogic::limitDetails.ID.toInt()){
+
                 int id = data.mid(0,1).toHex().toInt();
 
+                int axis = data.mid(4,1).toHex().toInt();
+
+                emit decodeLimitOccured(id, axis);
+            }else if (data.length() == 9&&id==MGMotorLogic::limitDetails.ID.toInt()){
+
+                int id = data.mid(0,1).toHex().toInt();
                 int axis = 0;
                 if(data.mid(4,1).toHex().toInt()==1)axis=1;
                 else if(data.mid(6,1).toHex().toInt()==1)axis=2;

@@ -26,7 +26,10 @@ MGMotorLogic::MGMotorLogic(QObject *parent):
         cmd = Tool::crc16Ccitt(cmd);
         porter->appendBuffer(cmd);
 
-        cmd = ioMap["limits"].arg(limitDetails.ID);
+    });
+
+    connect(searchTimer_limit,&QTimer::timeout,[=](){
+        QString cmd = ioMap["limits"].arg(limitDetails.ID);
         cmd = Tool::crc16Ccitt(cmd);
         porter->appendBuffer(cmd);
 
@@ -34,6 +37,8 @@ MGMotorLogic::MGMotorLogic(QObject *parent):
         cmd = Tool::numberVerify(cmd);
         porter->appendBuffer(cmd);
     });
+
+
 
     connect(porter->decoder,&decodeThread::testOK,[=](){
         emit testOK();
@@ -96,14 +101,17 @@ void MGMotorLogic::setMotorParam(QMap<QString,QString> params){
 bool MGMotorLogic::connectMotor(QString portName, int buandRate){
     bool flag = porter->connectPort(portName,buandRate);
     if(flag)
-        searchTimer->start(30);
-
+    {
+        searchTimer->start(20);
+        searchTimer_limit->start(500);
+    }
     return flag;
 }
 
 void MGMotorLogic::disConnectMotor(){
     porter->disConnectPort();
     searchTimer->stop();
+    searchTimer_limit->stop();
 }
 
 void MGMotorLogic::testConnect(){
@@ -111,6 +119,7 @@ void MGMotorLogic::testConnect(){
     cmd = Tool::numberVerify(cmd);
     porter->prependBuffer(cmd);
 }
+
 void MGMotorLogic::seacherMotor(){
     QString cmd = QStringLiteral("3E 12 %1 00").arg(motorDetails.ID);
     cmd = Tool::numberVerify(cmd);
@@ -147,6 +156,8 @@ void MGMotorLogic::motorSpeedMove(double speed){
     cmd = cmd + " " + value;
 
     porter->prependBuffer(cmd);
+
+    qDebug()<<cmd<<speed<<motorDetails.angleRate;
 
 }
 

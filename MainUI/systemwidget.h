@@ -18,16 +18,20 @@ public:
     ~systemWidget();
 
     void initSystem();
+
     void normolSaveSystem();
     void advanceSaveSystem();
     void usersSaveSystem();
-    QMap<QString, QMap<QString, QString>> systemMap;
+
+    static QMap<QString, QMap<QString, QString>> systemMap;
     QList<QToolButton *> btnsMain;
 
 private slots:
     void leftMainClick();
 private:
     Ui::systemWidget *ui;
+
+    QString rootPath;
 
 signals:
     void saved(bool);

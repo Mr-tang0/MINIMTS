@@ -6,6 +6,9 @@
 #include "appinit.h"
 #include "quihelper.h"
 #include <QApplication>
+#include <QProcess>
+
+
 
 int main(int argc, char *argv[])
 {
@@ -26,7 +29,10 @@ int main(int argc, char *argv[])
         file.close();
     }
 
+    // runUpdateCommand();
+
     MainWindow w;
+
     w.resize(1200, 800);
     QUIHelper::setFormInCenter(&w);
     // w.show();

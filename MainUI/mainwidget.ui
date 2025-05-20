@@ -6,14 +6,21 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1245</width>
-    <height>626</height>
+    <width>1125</width>
+    <height>648</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>Form</string>
   </property>
   <layout class="QGridLayout" name="gridLayout_11">
+   <item row="1" column="1">
+    <widget class="QLabel" name="state">
+     <property name="text">
+      <string> </string>
+     </property>
+    </widget>
+   </item>
    <item row="0" column="0">
     <widget class="QWidget" name="widget_menu" native="true">
      <layout class="QGridLayout" name="gridLayout_2">
@@ -26,8 +33,8 @@
       <property name="rightMargin">
        <number>1</number>
       </property>
-      <item row="0" column="0">
-       <widget class="QToolButton" name="btn_connect">
+      <item row="2" column="0">
+       <widget class="QToolButton" name="btn_test">
         <property name="minimumSize">
          <size>
           <width>70</width>
@@ -35,7 +42,7 @@
          </size>
         </property>
         <property name="text">
-         <string>  连接  </string>
+         <string>  测试  </string>
         </property>
        </widget>
       </item>
@@ -78,8 +85,8 @@
         </property>
        </widget>
       </item>
-      <item row="2" column="0">
-       <widget class="QToolButton" name="btn_test">
+      <item row="0" column="0">
+       <widget class="QToolButton" name="btn_connect">
         <property name="minimumSize">
          <size>
           <width>70</width>
@@ -87,7 +94,7 @@
          </size>
         </property>
         <property name="text">
-         <string>  测试  </string>
+         <string>  连接  </string>
         </property>
        </widget>
       </item>
@@ -110,161 +117,142 @@
    <item row="0" column="1">
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>1</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="connectPage">
-      <widget class="QPushButton" name="refresh">
-       <property name="geometry">
-        <rect>
-         <x>61</x>
-         <y>211</y>
-         <width>75</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>刷新</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="connect">
-       <property name="geometry">
-        <rect>
-         <x>150</x>
-         <y>211</y>
-         <width>75</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>连接</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="motorDetails">
-       <property name="geometry">
-        <rect>
-         <x>150</x>
-         <y>260</y>
-         <width>75</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>设备信息</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="testConnect">
-       <property name="geometry">
-        <rect>
-         <x>60</x>
-         <y>260</y>
-         <width>75</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>测试连接</string>
-       </property>
-      </widget>
-      <widget class="QPushButton" name="toSet">
-       <property name="geometry">
-        <rect>
-         <x>150</x>
-         <y>310</y>
-         <width>75</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>转到设置</string>
-       </property>
-      </widget>
-      <widget class="QWidget" name="widget_10" native="true">
-       <property name="geometry">
-        <rect>
-         <x>370</x>
-         <y>50</y>
-         <width>551</width>
-         <height>471</height>
-        </rect>
-       </property>
-       <layout class="QGridLayout" name="gridLayout_10">
-        <item row="0" column="0">
-         <widget class="QTextBrowser" name="textBrowser">
-          <property name="styleSheet">
-           <string notr="true">background-color: transparent;</string>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::NoFrame</enum>
-          </property>
-          <property name="lineWidth">
-           <number>0</number>
-          </property>
-          <property name="cursorWidth">
-           <number>0</number>
-          </property>
-         </widget>
-        </item>
-       </layout>
-      </widget>
-      <widget class="QPushButton" name="clearWin">
-       <property name="geometry">
-        <rect>
-         <x>60</x>
-         <y>310</y>
-         <width>75</width>
-         <height>23</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>清除显示窗</string>
-       </property>
-      </widget>
-      <widget class="QComboBox" name="portName">
-       <property name="geometry">
-        <rect>
-         <x>120</x>
-         <y>60</y>
-         <width>81</width>
-         <height>31</height>
-        </rect>
-       </property>
-      </widget>
-      <widget class="QLabel" name="label">
-       <property name="geometry">
-        <rect>
-         <x>70</x>
-         <y>70</y>
-         <width>51</width>
-         <height>16</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>端口号</string>
-       </property>
-      </widget>
-      <widget class="QLabel" name="label_2">
-       <property name="geometry">
-        <rect>
-         <x>68</x>
-         <y>110</y>
-         <width>51</width>
-         <height>16</height>
-        </rect>
-       </property>
-       <property name="text">
-        <string>波特率</string>
-       </property>
-      </widget>
-      <widget class="QComboBox" name="buandRate">
-       <property name="geometry">
-        <rect>
-         <x>120</x>
-         <y>100</y>
-         <width>81</width>
-         <height>31</height>
-        </rect>
-       </property>
-      </widget>
+      <layout class="QGridLayout" name="gridLayout_7">
+       <item row="0" column="0">
+        <layout class="QHBoxLayout" name="horizontalLayout_8">
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_11">
+           <item>
+            <layout class="QFormLayout" name="formLayout">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label">
+               <property name="text">
+                <string>端口号</string>
+               </property>
+              </widget>
+             </item>
+             <item row="0" column="1">
+              <widget class="QComboBox" name="portName"/>
+             </item>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_2">
+               <property name="text">
+                <string>波特率</string>
+               </property>
+              </widget>
+             </item>
+             <item row="1" column="1">
+              <widget class="QComboBox" name="buandRate"/>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <layout class="QVBoxLayout" name="verticalLayout_8">
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_2">
+               <item>
+                <widget class="QPushButton" name="refresh">
+                 <property name="text">
+                  <string>刷新</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="connect">
+                 <property name="text">
+                  <string>连接</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+             <item>
+              <layout class="QHBoxLayout" name="horizontalLayout_5">
+               <item>
+                <widget class="QPushButton" name="testConnect">
+                 <property name="text">
+                  <string>测试连接</string>
+                 </property>
+                </widget>
+               </item>
+               <item>
+                <widget class="QPushButton" name="toSet">
+                 <property name="text">
+                  <string>转到设置</string>
+                 </property>
+                </widget>
+               </item>
+              </layout>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <spacer name="verticalSpacer">
+             <property name="orientation">
+              <enum>Qt::Vertical</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>186</width>
+               <height>13</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <layout class="QVBoxLayout" name="verticalLayout_12">
+           <item>
+            <widget class="QWidget" name="widget_10" native="true">
+             <layout class="QGridLayout" name="gridLayout_10">
+              <item row="0" column="0">
+               <widget class="QTextBrowser" name="textBrowser">
+                <property name="styleSheet">
+                 <string notr="true">background-color: transparent;</string>
+                </property>
+                <property name="frameShape">
+                 <enum>QFrame::NoFrame</enum>
+                </property>
+                <property name="lineWidth">
+                 <number>0</number>
+                </property>
+                <property name="cursorWidth">
+                 <number>0</number>
+                </property>
+               </widget>
+              </item>
+             </layout>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="clearWin">
+             <property name="text">
+              <string>清除显示窗</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </item>
+         <item>
+          <spacer name="horizontalSpacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+        </layout>
+       </item>
+      </layout>
      </widget>
      <widget class="QWidget" name="pageProject">
       <layout class="QGridLayout" name="gridLayout_15">
@@ -680,7 +668,7 @@ border-radius:10px;</string>
                      <item>
                       <layout class="QVBoxLayout" name="verticalLayout_6">
                        <item>
-                        <widget class="QDoubleSpinBox" name="length_doubleSpinBox">
+                        <widget class="QDoubleSpinBox" name="targetLength">
                          <property name="minimumSize">
                           <size>
                            <width>0</width>
@@ -694,7 +682,7 @@ border-radius:10px;</string>
                           <number>4</number>
                          </property>
                          <property name="maximum">
-                          <double>50.000000000000000</double>
+                          <double>100.000000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -712,7 +700,7 @@ border-radius:10px;</string>
                         </spacer>
                        </item>
                        <item>
-                        <widget class="QDoubleSpinBox" name="speed_doubleSpinBox_2">
+                        <widget class="QDoubleSpinBox" name="targetSpeed">
                          <property name="minimumSize">
                           <size>
                            <width>0</width>
@@ -726,7 +714,10 @@ border-radius:10px;</string>
                           <number>4</number>
                          </property>
                          <property name="maximum">
-                          <double>100.000000000000000</double>
+                          <double>10.000000000000000</double>
+                         </property>
+                         <property name="singleStep">
+                          <double>0.001000000000000</double>
                          </property>
                         </widget>
                        </item>
@@ -764,7 +755,7 @@ border-radius:10px;</string>
             <item>
              <layout class="QGridLayout" name="gridLayout_12">
               <item row="4" column="1">
-               <widget class="QLineEdit" name="filePath_lineEdit_2">
+               <widget class="QLineEdit" name="fileName">
                 <property name="minimumSize">
                  <size>
                   <width>300</width>
@@ -813,7 +804,7 @@ border-radius:10px;</string>
                 <item>
                  <layout class="QHBoxLayout" name="horizontalLayout_14">
                   <item>
-                   <widget class="QComboBox" name="stopAction_comboBox">
+                   <widget class="QComboBox" name="stopAction">
                     <property name="minimumSize">
                      <size>
                       <width>170</width>
@@ -867,7 +858,7 @@ border-radius:10px;</string>
                      </spacer>
                     </item>
                     <item>
-                     <widget class="QDoubleSpinBox" name="stopActionValue_doubleSpinBox">
+                     <widget class="QDoubleSpinBox" name="stopActionValue">
                       <property name="minimumSize">
                        <size>
                         <width>0</width>
@@ -914,7 +905,7 @@ border-radius:10px;</string>
               <item row="0" column="1">
                <layout class="QHBoxLayout" name="horizontalLayout_7">
                 <item>
-                 <widget class="QDoubleSpinBox" name="size_doubleSpinBox">
+                 <widget class="QDoubleSpinBox" name="size">
                   <property name="minimumSize">
                    <size>
                     <width>170</width>
@@ -1013,7 +1004,7 @@ border-radius:10px;</string>
                </spacer>
               </item>
               <item row="3" column="1">
-               <widget class="QLineEdit" name="filePath_lineEdit">
+               <widget class="QLineEdit" name="filePath">
                 <property name="minimumSize">
                  <size>
                   <width>300</width>
@@ -1031,7 +1022,7 @@ border-radius:10px;</string>
               <item row="1" column="1">
                <layout class="QHBoxLayout" name="horizontalLayout_9">
                 <item>
-                 <widget class="QDoubleSpinBox" name="length_doubleSpinBox_2">
+                 <widget class="QDoubleSpinBox" name="length">
                   <property name="minimumSize">
                    <size>
                     <width>170</width>
@@ -1116,11 +1107,11 @@ border-radius:10px;</string>
       </layout>
      </widget>
      <widget class="QWidget" name="testPage">
-      <layout class="QGridLayout" name="gridLayout_6">
+      <layout class="QGridLayout" name="gridLayout_16">
        <item row="0" column="0">
-        <layout class="QHBoxLayout" name="horizontalLayout" stretch="1,99,1">
+        <layout class="QHBoxLayout" name="horizontalLayout_4" stretch="1,9,1">
          <item>
-          <widget class="QWidget" name="widget" native="true">
+          <widget class="QWidget" name="lcdWidget" native="true">
            <property name="minimumSize">
             <size>
              <width>0</width>
@@ -1156,7 +1147,7 @@ border-radius:10px;</string>
               </property>
              </widget>
             </item>
-            <item row="5" column="0">
+            <item row="6" column="0">
              <widget class="MyLCD" name="timeLCD" native="true">
               <property name="minimumSize">
                <size>
@@ -1208,8 +1199,8 @@ border-radius:10px;</string>
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="MyLCD" name="factLengthLCD" native="true">
+            <item row="5" column="0">
+             <widget class="MyLCD" name="speedLCD" native="true">
               <property name="minimumSize">
                <size>
                 <width>130</width>
@@ -1225,321 +1216,214 @@ border-radius:10px;</string>
           </widget>
          </item>
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_3">
-           <item>
-            <layout class="QVBoxLayout" name="verticalLayout">
-             <item>
-              <widget class="QChartView" name="graphicsView">
-               <property name="styleSheet">
-                <string notr="true">
-background-color: rgb(222, 222, 222);</string>
-               </property>
-               <property name="lineWidth">
-                <number>2</number>
-               </property>
-              </widget>
-             </item>
-             <item>
-              <widget class="QWidget" name="widget_2" native="true">
-               <property name="minimumSize">
-                <size>
-                 <width>0</width>
-                 <height>0</height>
-                </size>
-               </property>
-               <property name="styleSheet">
-                <string notr="true"/>
-               </property>
-               <layout class="QGridLayout" name="gridLayout">
-                <item row="0" column="0">
-                 <layout class="QHBoxLayout" name="horizontalLayout_2">
-                  <item>
-                   <widget class="QCheckBox" name="checkBox">
-                    <property name="text">
-                     <string>载荷-时间</string>
-                    </property>
-                    <attribute name="buttonGroup">
-                     <string notr="true">lineSerialsCheck</string>
-                    </attribute>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QCheckBox" name="checkBox_2">
-                    <property name="text">
-                     <string>应力-应变</string>
-                    </property>
-                    <attribute name="buttonGroup">
-                     <string notr="true">lineSerialsCheck</string>
-                    </attribute>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QCheckBox" name="checkBox_3">
-                    <property name="text">
-                     <string>位移-时间</string>
-                    </property>
-                    <attribute name="buttonGroup">
-                     <string notr="true">lineSerialsCheck</string>
-                    </attribute>
-                   </widget>
-                  </item>
-                  <item>
-                   <widget class="QCheckBox" name="checkBox_4">
-                    <property name="text">
-                     <string>速度-时间</string>
-                    </property>
-                    <attribute name="buttonGroup">
-                     <string notr="true">lineSerialsCheck</string>
-                    </attribute>
-                   </widget>
-                  </item>
-                  <item>
-                   <spacer name="horizontalSpacer">
-                    <property name="orientation">
-                     <enum>Qt::Horizontal</enum>
-                    </property>
-                    <property name="sizeHint" stdset="0">
-                     <size>
-                      <width>40</width>
-                      <height>20</height>
-                     </size>
-                    </property>
-                   </spacer>
-                  </item>
-                 </layout>
-                </item>
-               </layout>
-              </widget>
-             </item>
-            </layout>
-           </item>
-          </layout>
+          <widget class="chartForm" name="graphics" native="true"/>
          </item>
          <item>
-          <layout class="QVBoxLayout" name="verticalLayout_2" stretch="0">
-           <item>
-            <widget class="QWidget" name="widget_3" native="true">
-             <property name="minimumSize">
-              <size>
-               <width>150</width>
-               <height>0</height>
-              </size>
-             </property>
-             <layout class="QGridLayout" name="gridLayout_4">
-              <item row="0" column="0">
-               <widget class="QWidget" name="widget_9" native="true">
+          <widget class="QWidget" name="widget_9" native="true">
+           <property name="minimumSize">
+            <size>
+             <width>150</width>
+             <height>280</height>
+            </size>
+           </property>
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="0" column="0">
+             <layout class="QVBoxLayout" name="verticalLayout" stretch="1,1,1,0,1,0,1,1,1">
+              <item>
+               <widget class="QPushButton" name="btn_emergence">
                 <property name="minimumSize">
                  <size>
-                  <width>150</width>
-                  <height>280</height>
+                  <width>100</width>
+                  <height>27</height>
                  </size>
                 </property>
-                <widget class="QPushButton" name="btn_stop">
-                 <property name="geometry">
-                  <rect>
-                   <x>20</x>
-                   <y>186</y>
-                   <width>100</width>
-                   <height>80</height>
-                  </rect>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>100</width>
-                   <height>80</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">font: 20pt &quot;黑体&quot;;</string>
-                 </property>
-                 <property name="text">
-                  <string>停止</string>
-                 </property>
-                </widget>
-                <widget class="QPushButton" name="btn_emergence">
-                 <property name="geometry">
-                  <rect>
-                   <x>20</x>
-                   <y>10</y>
-                   <width>100</width>
-                   <height>80</height>
-                  </rect>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>100</width>
-                   <height>80</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">background-color: rgb(255, 143, 133);
-font: 20pt &quot;黑体&quot;;</string>
-                 </property>
-                 <property name="text">
-                  <string>急停</string>
-                 </property>
-                </widget>
-                <widget class="QPushButton" name="btn_start">
-                 <property name="geometry">
-                  <rect>
-                   <x>20</x>
-                   <y>98</y>
-                   <width>100</width>
-                   <height>80</height>
-                  </rect>
-                 </property>
-                 <property name="minimumSize">
-                  <size>
-                   <width>100</width>
-                   <height>80</height>
-                  </size>
-                 </property>
-                 <property name="styleSheet">
-                  <string notr="true">font: 20pt &quot;黑体&quot;;</string>
-                 </property>
-                 <property name="text">
-                  <string>开始</string>
-                 </property>
-                </widget>
+                <property name="styleSheet">
+                 <string notr="true">.QPushButton,.QToolButton{
+border-style:none;
+border:1px solid #242424;
+color:#DCDCDC;
+padding:5px;
+min-height:15px;
+border-radius:5px;
+background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #ff4c4c,stop:1 #ff4c4c);
+font: 20pt &quot;黑体&quot;;
+}
+
+.QPushButton:hover,.QToolButton:hover{
+background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #646464,stop:1 #525252);
+font: 20pt &quot;黑体&quot;;
+}
+
+.QPushButton:pressed,.QToolButton:pressed{
+background:qlineargradient(spread:pad,x1:0,y1:0,x2:0,y2:1,stop:0 #484848,stop:1 #383838);
+font: 20pt &quot;黑体&quot;;
+}
+
+</string>
+                </property>
+                <property name="text">
+                 <string>急停</string>
+                </property>
                </widget>
               </item>
-              <item row="1" column="0">
-               <widget class="QWidget" name="widget_4" native="true">
+              <item>
+               <widget class="QPushButton" name="btn_start">
                 <property name="minimumSize">
                  <size>
-                  <width>150</width>
-                  <height>0</height>
+                  <width>100</width>
+                  <height>80</height>
                  </size>
                 </property>
-                <layout class="QGridLayout" name="gridLayout_5">
-                 <item row="4" column="0">
-                  <widget class="QPushButton" name="speedStop">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>50</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>停止</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="5" column="0">
-                  <widget class="QPushButton" name="speedCCW">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>50</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>压向</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="0" column="0">
-                  <layout class="QVBoxLayout" name="verticalLayout_4">
-                   <item>
-                    <layout class="QHBoxLayout" name="horizontalLayout_4">
-                     <item>
-                      <widget class="QPushButton" name="clearChart">
-                       <property name="text">
-                        <string>清除</string>
-                       </property>
-                      </widget>
-                     </item>
-                     <item>
-                      <widget class="QPushButton" name="setZreo">
-                       <property name="text">
-                        <string>设零</string>
-                       </property>
-                      </widget>
-                     </item>
-                    </layout>
-                   </item>
-                   <item>
-                    <widget class="QRadioButton" name="openSampleProtect">
-                     <property name="text">
-                      <string>开启样品保护</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="2" column="0">
-                  <layout class="QHBoxLayout" name="horizontalLayout_3">
-                   <item>
-                    <widget class="QLabel" name="label_13">
-                     <property name="text">
-                      <string>速度：</string>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QDoubleSpinBox" name="speed">
-                     <property name="minimumSize">
-                      <size>
-                       <width>60</width>
-                       <height>30</height>
-                      </size>
-                     </property>
-                     <property name="decimals">
-                      <number>3</number>
-                     </property>
-                     <property name="minimum">
-                      <double>-9999.000000000000000</double>
-                     </property>
-                     <property name="maximum">
-                      <double>9999.000000000000000</double>
-                     </property>
-                     <property name="value">
-                      <double>0.500000000000000</double>
-                     </property>
-                    </widget>
-                   </item>
-                   <item>
-                    <widget class="QLabel" name="label_3">
-                     <property name="text">
-                      <string>mm/s</string>
-                     </property>
-                    </widget>
-                   </item>
-                  </layout>
-                 </item>
-                 <item row="3" column="0">
-                  <widget class="QPushButton" name="speedCW">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>50</height>
-                    </size>
-                   </property>
-                   <property name="text">
-                    <string>拉向</string>
-                   </property>
-                  </widget>
-                 </item>
-                 <item row="1" column="0">
-                  <spacer name="verticalSpacer_7">
-                   <property name="orientation">
-                    <enum>Qt::Vertical</enum>
-                   </property>
-                   <property name="sizeHint" stdset="0">
-                    <size>
-                     <width>20</width>
-                     <height>40</height>
-                    </size>
-                   </property>
-                  </spacer>
-                 </item>
-                </layout>
+                <property name="styleSheet">
+                 <string notr="true">font: 20pt &quot;黑体&quot;;</string>
+                </property>
+                <property name="text">
+                 <string>开始</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="btn_stop">
+                <property name="minimumSize">
+                 <size>
+                  <width>100</width>
+                  <height>80</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">font: 20pt &quot;黑体&quot;;</string>
+                </property>
+                <property name="text">
+                 <string>停止</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout">
+                <item>
+                 <widget class="QPushButton" name="clearChart">
+                  <property name="text">
+                   <string>清除</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QPushButton" name="setZreo">
+                  <property name="text">
+                   <string>设零</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <spacer name="verticalSpacer_7">
+                <property name="orientation">
+                 <enum>Qt::Vertical</enum>
+                </property>
+                <property name="sizeHint" stdset="0">
+                 <size>
+                  <width>20</width>
+                  <height>43</height>
+                 </size>
+                </property>
+               </spacer>
+              </item>
+              <item>
+               <layout class="QHBoxLayout" name="horizontalLayout_3">
+                <item>
+                 <widget class="QLabel" name="label_13">
+                  <property name="text">
+                   <string>速度：</string>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QDoubleSpinBox" name="speed">
+                  <property name="minimumSize">
+                   <size>
+                    <width>60</width>
+                    <height>30</height>
+                   </size>
+                  </property>
+                  <property name="decimals">
+                   <number>3</number>
+                  </property>
+                  <property name="minimum">
+                   <double>0.000000000000000</double>
+                  </property>
+                  <property name="maximum">
+                   <double>9999.000000000000000</double>
+                  </property>
+                  <property name="singleStep">
+                   <double>0.100000000000000</double>
+                  </property>
+                  <property name="value">
+                   <double>0.100000000000000</double>
+                  </property>
+                 </widget>
+                </item>
+                <item>
+                 <widget class="QLabel" name="label_3">
+                  <property name="text">
+                   <string>mm/s</string>
+                  </property>
+                 </widget>
+                </item>
+               </layout>
+              </item>
+              <item>
+               <widget class="QPushButton" name="speedCW">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>60</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">font: 15pt &quot;黑体&quot;;</string>
+                </property>
+                <property name="text">
+                 <string>拉向</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="speedStop">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>60</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">font: 15pt &quot;黑体&quot;;</string>
+                </property>
+                <property name="text">
+                 <string>停止</string>
+                </property>
+               </widget>
+              </item>
+              <item>
+               <widget class="QPushButton" name="speedCCW">
+                <property name="minimumSize">
+                 <size>
+                  <width>0</width>
+                  <height>60</height>
+                 </size>
+                </property>
+                <property name="styleSheet">
+                 <string notr="true">font: 15pt &quot;黑体&quot;;</string>
+                </property>
+                <property name="text">
+                 <string>压向</string>
+                </property>
                </widget>
               </item>
              </layout>
-            </widget>
-           </item>
-          </layout>
+            </item>
+           </layout>
+          </widget>
          </item>
         </layout>
        </item>
@@ -1551,14 +1435,15 @@ font: 20pt &quot;黑体&quot;;</string>
  </widget>
  <customwidgets>
   <customwidget>
-   <class>QChartView</class>
-   <extends>QGraphicsView</extends>
-   <header>qchartview.h</header>
-  </customwidget>
-  <customwidget>
    <class>MyLCD</class>
    <extends>QWidget</extends>
    <header location="global">mylcd.h</header>
+   <container>1</container>
+  </customwidget>
+  <customwidget>
+   <class>chartForm</class>
+   <extends>QWidget</extends>
+   <header>chartform.h</header>
    <container>1</container>
   </customwidget>
  </customwidgets>

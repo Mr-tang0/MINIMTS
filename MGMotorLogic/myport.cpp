@@ -52,9 +52,10 @@ bool myPort::connectPort(const QString &portName, int baudRate){
 
     serialPort->setPortName(portName);
     serialPort->setBaudRate(baudRate);
+
     if (serialPort->open(QIODevice::ReadWrite)) {
         buffer.clear();
-        sendTimer->start(13);
+        sendTimer->start(12);
         return true;
     } else {
         return false;

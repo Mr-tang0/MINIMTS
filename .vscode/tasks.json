@@ -1,0 +1,65 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "cppbuild",
+			"label": "C/C++: cl.exe 生成活动文件",
+			"command": "cl.exe",
+			"args": [
+				"/Zi",
+				"/EHsc",
+				"/nologo",
+				"/Fe${fileDirname}\\${fileBasenameNoExtension}.exe",
+				"${file}"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build",
+			"detail": "编译器: cl.exe"
+		},
+		{
+			"type": "cppbuild",
+			"label": "C/C++: cl.exe 生成活动文件",
+			"command": "cl.exe",
+			"args": [
+				"/Zi",
+				"/EHsc",
+				"/nologo",
+				"/Fe${fileDirname}\\${fileBasenameNoExtension}.exe",
+				"${file}"
+			],
+			"options": {
+				"cwd": "${fileDirname}"
+			},
+			"problemMatcher": [
+				"$msCompile"
+			],
+			"group": "build",
+			"detail": "编译器: cl.exe"
+		},
+		{
+			"type": "shell",
+			"label": "qmake-debug",
+			"command": "D:/Qt/5.15.2/msvc2019_64/bin/qmake.exe",
+			"args": [
+                "../${workspaceFolderBasename}.pro", //在build目录上一级哦
+                "-spec",
+                "win32-msvc",
+                "\"CONFIG+=debug\"",
+                "\"CONFIG+=qml_debug\""
+            ],
+			"options": {
+                "cwd": "${workspaceFolder}/build" //进入build目录
+            },
+
+            "dependsOn": [ //这是本条命令依赖的前置条件，就是上面创建build文件夹的task，直接执行本task会自动先调用依赖的task
+                "mkdir" //其实可以手动执行一次，后面不用每次都执行创建目录的操作
+            ]
+
+		}
+	]
+}

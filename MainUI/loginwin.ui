@@ -98,7 +98,7 @@
                <property name="currentIndex">
                 <number>1</number>
                </property>
-               <widget class="QWidget" name="page">
+               <widget class="QWidget" name="registerWin">
                 <layout class="QGridLayout" name="gridLayout_4">
                  <item row="1" column="0" colspan="2">
                   <layout class="QHBoxLayout" name="horizontalLayout_2">
@@ -212,7 +212,7 @@
                  </item>
                 </layout>
                </widget>
-               <widget class="QWidget" name="page_2">
+               <widget class="QWidget" name="loginWin">
                 <layout class="QGridLayout" name="gridLayout">
                  <item row="0" column="0">
                   <layout class="QVBoxLayout" name="verticalLayout_2">

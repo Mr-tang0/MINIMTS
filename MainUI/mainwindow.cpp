@@ -4,10 +4,6 @@
 #include <qtmaterialavatar.h>
 #include <qtmaterialbadge.h>
 
-QMap<QString, QMap<QString, QString>> MainWindow::rootMap;
-QMap<QString, QMap<QString, QString>> MainWindow::systemMap;
-QMap<QString, QMap<QString, QString>> MainWindow::cmdMap;
-QMap<QString, QMap<QString, QString>> MainWindow::usersMap;
 User MainWindow::user;
 
 MainWindow::MainWindow(QWidget *parent)
@@ -18,8 +14,6 @@ MainWindow::MainWindow(QWidget *parent)
       m_badge(new QtMaterialBadge)
 {
     ui->setupUi(this);
-
-
 
     m_snackbar->setParent(this);
     m_snackbar->setAutoHideDuration(400);
@@ -40,38 +34,27 @@ MainWindow::MainWindow(QWidget *parent)
     }
     layout->addWidget(m_avatar);
 
-    QString root = QCoreApplication::applicationDirPath();
-    rootMap = Tool::readXMlFile(root+"/root/root.xml");
-
-    qDebug()<<root+rootMap["system"]["systemSetFilePath"];
-
-    systemMap = Tool::readXMlFile(root+rootMap["system"]["systemSetFilePath"]);
-    cmdMap = Tool::readXMlFile(root+rootMap["system"]["cmdPath"]);
-    usersMap = Tool::readXMlFile(root+rootMap["system"]["usersFilePath"]);
-
-//    systemMap["self"]["path"]=rootMap["system"]["systemSetFilePath"];
-//    Tool::writeXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["systemSetFilePath"],systemMap);
-//    usersMap["self"]["path"]=rootMap["system"]["usersFilePath"];
-//    Tool::writeXMlFile(QCoreApplication::applicationDirPath()+rootMap["system"]["usersFilePath"],usersMap);
-
     initThis();
 
-    connect(mainwd->logic,&MGMotorLogic::LimitOccured,this, [=](int id, int axis){
-
-        if (id == mainwd->logic->limitDetails.ID.toInt()&&axis!=oldAxis){
+    connect(mainwd->minilogic,&MiniMTSLogic::LimitOccured,this, [=](int axis){
+        if (axis!=oldAxis){
             oldAxis = axis;
 
             if (axis!=0)
             {
                 addErrMessage(QStringLiteral("限位传感器被触发:方向 %1").arg(axis));
-                mainwd->stopOption(true,axis);
+                mainwd->limitStopOption(true,axis);
             }
             else
             {
                 deleteErrMessage(QStringLiteral("限位传感器被触发:方向 %1").arg(axis));
-                mainwd->stopOption(false, axis);
+                mainwd->limitStopOption(false, axis);
             }
         }
+    });
+
+    connect(mainwd,&mainWidget::errOccured,this, [=](QString err){
+        addErrMessage(err);
     });
 
     connect(userWin,&userWidget::WanaExit,this,[=](){
@@ -83,11 +66,47 @@ MainWindow::MainWindow(QWidget *parent)
 
     login->setHeader("");
 
+    //自动更新判断
+    if(system->systemMap["advance"]["autoFindVersion"]=="是")
+        runUpdateCommand();
+
+    login->show();
+
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
+}
+
+
+void MainWindow::runUpdateCommand(){
+    QString appDirPath = QCoreApplication::applicationDirPath();
+
+    qDebug()<<"findNew";
+
+    // 构造命令和参数
+    QString program = appDirPath + "/update";
+    QStringList arguments;
+    arguments << "https://raw.gitcode.com/m0_51547074/update_info/raw/main/minimtsinfo.json"
+              << "MINIMTS"
+              << "2";
+
+    QProcess process;
+    process.setWorkingDirectory(appDirPath);
+    process.start(program, arguments);
+
+    // 等待进程启动成功
+    if (!process.waitForStarted()) {
+        qDebug() << "无法启动 update 程序";
+        return;
+    }
+
+    //超时时间300s
+    if (!process.waitForFinished(3000000)) {
+        qDebug() << "执行过程中发生错误：" << process.errorString();
+        return;
+    }
 }
 
 void MainWindow::addErrMessage(QString msg)
@@ -174,9 +193,9 @@ void MainWindow::initThis(){
 
     QList<QWidget*> widgetList;
 
+    system = new systemWidget;
     login = new loginWin;
     mainwd = new mainWidget;
-    system = new systemWidget;
     about = new aboutWidget;
     userWin = new userWidget;
 
@@ -184,19 +203,18 @@ void MainWindow::initThis(){
 
 
     mainwd->initSystem();
+
     connect(mainwd,&mainWidget::connected,[=](bool flag){
         if(flag){
             m_snackbar->addMessage("连接成功！");
         }else m_snackbar->addMessage("连接失败！");
 
     });
-    connect(mainwd,&mainWidget::message,[=](QString message){
-        m_snackbar->addMessage(message);
 
-    });
-    connect(mainwd,&mainWidget::disconnected,[=](){
-        m_snackbar->addMessage("已断开！");
-    });
+    connect(mainwd,&mainWidget::disconnected,[=](){m_snackbar->addMessage("已断开！");});
+
+    connect(mainwd,&mainWidget::message,[=](QString message){ m_snackbar->addMessage(message);});
+
 
     connect(system,&systemWidget::saved,[=](bool flag){
         if(flag){
@@ -272,7 +290,7 @@ void MainWindow::initThis(){
         login->hide();
         userWin->freshUserDetails(this->user);
     });
-    login->show();
+
 
 
     connect(userWin,&userWidget::message,[=](QString m){
@@ -306,8 +324,17 @@ void MainWindow::buttonClick()
     } else if (name == "帮助与关于") {
         ui->stackedWidget->setCurrentIndex(2);
     } else if (name == "退出系统") {
-//        addErrMessage("");
-        exit(0);
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "确定退出？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+            exit(0);
+        }
+
     }else if (name == "用户") {
         ui->stackedWidget->setCurrentIndex(3);
     }
@@ -335,7 +362,16 @@ void MainWindow::on_btnMenu_Max_clicked()
 
 void MainWindow::on_btnMenu_Close_clicked()
 {
-    close();
+    QMessageBox::StandardButton reply = QMessageBox::question(
+        nullptr,
+        "确认",
+        "确定退出？",
+        QMessageBox::Yes | QMessageBox::No
+        );
+
+    if (reply == QMessageBox::Yes) {
+        close();
+    }
 }
 
 

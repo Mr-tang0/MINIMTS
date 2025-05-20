@@ -12,7 +12,10 @@ QT_CHARTS_USE_NAMESPACE
 #include "iconhelper.h"
 #include "quihelper.h"
 #include <QAbstractButton>
-#include "mgmotorlogic.h"
+// #include "mgmotorlogic.h"
+
+#include "minimtslogic.h"
+
 
 struct TestDetails{
     QString userName = "default";
@@ -45,61 +48,49 @@ class mainWidget : public QWidget
 public:
     explicit mainWidget(QWidget *parent = nullptr);
     ~mainWidget();
-    void freshUi();
-    void freshData();
-    void clearChart();
-    void clearChannal();
-    void initSystem();
-    void addStateBox(QString message);
-    void clearStateBox();
-
-    void stopOption(bool flag, int dir);
-
-
-    bool saveCsv(QList<QList<float>> data,QList<QString> header);
-
-    void readCsv(QString filePath,QList<QList<float>>*);
-
-    MGMotorLogic *logic = new MGMotorLogic;
-
-
-private:
-    Ui::mainWidget *ui;
-    TestDetails testDetails;
-    QTimer *uiFreshTimer = new QTimer(this);
-    QTimer *dataFreshTimer = new QTimer(this);
-
-    long zreoTime = 0;
-    float zreoForce = 0;
-    float zreoLength = 0;
-    float zreoFactLength = 0;
-
-    QList<float> currentValueList = {0,0,0,0,0,0};
 
     void initWidget();
     void initChart();
     void initPort();
     void initConnect();
+    void initSystem();
+    void addStateBox(QString message);
+    void clearStateBox();
+
+    MiniMTSLogic *minilogic = new MiniMTSLogic;
+
+public slots:
+    void freshData();
+    void limitStopOption(bool flag, int dir);
+
+    void addState(QString msg);
+
+    bool saveCsv(QList<QList<float>> data,QList<QString> header);
+
+    bool saveCsv(QMap<QString, QLineSeries*> data);
+
+    bool readCsv(QString path);
 
 
-    QLineSeries *factSeries = new QLineSeries();
-    int currentLineSeriesID = 0;
-
-    QList<QLineSeries*> lineSeriesList;
-    QList<QList<float>> axisPointsList;
-    int pointsCount = 0;
-
-
-    QChart *chart = new QChart();
-
-    QValueAxis *chartXAxis = new QValueAxis;
-    QValueAxis *chartYAxis = new QValueAxis;
-
-    bool startTestFlag = false;
-    bool sampleProtectFlag = false;
 
 private:
-    //根据QSS样式获取对应颜色值
+    Ui::mainWidget *ui;
+
+    int displayDir = 1;
+
+    QTimer *dataFreshTimer = new QTimer(this);
+
+    TestDetails testDetails;
+
+    long zreoTime = 0;
+
+    bool moveFlag = false;
+    bool sampleProtectFlag = false;
+
+    QString userHistroyPath;
+    QMap<QString, QMap<QString, QString>> historyMap;
+
+private:
     QList<QToolButton *> btnsMain;
     bool motorConnectFlag = false;
 
@@ -125,12 +116,16 @@ private slots:
 
     void on_btn_stop_clicked();
 
+    void on_btn_emergence_clicked();
+
 signals:
     void refresh();
     void connected(bool);
     void disconnected();
     void btnClicked(QString);
     void message(QString);
+
+    void errOccured(QString type);
 
 };
 

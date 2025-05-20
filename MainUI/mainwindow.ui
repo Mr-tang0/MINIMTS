@@ -96,7 +96,7 @@
             </property>
             <property name="icon">
              <iconset resource="res.qrc">
-              <normaloff>:/main/res/icon/main_main.png</normaloff>:/main/res/icon/main_main.png</iconset>
+              <normaloff>:/main/res/icon/icons8-主页-100.png</normaloff>:/main/res/icon/icons8-主页-100.png</iconset>
             </property>
             <property name="toolButtonStyle">
              <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -119,7 +119,7 @@
             </property>
             <property name="icon">
              <iconset resource="res.qrc">
-              <normaloff>:/main/res/icon/main_company.png</normaloff>:/main/res/icon/main_company.png</iconset>
+              <normaloff>:/main/res/icon/icons8-用户男性组-100.png</normaloff>:/main/res/icon/icons8-用户男性组-100.png</iconset>
             </property>
             <property name="toolButtonStyle">
              <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -139,7 +139,7 @@
             </property>
             <property name="icon">
              <iconset resource="res.qrc">
-              <normaloff>:/main/res/icon/main_config.png</normaloff>:/main/res/icon/main_config.png</iconset>
+              <normaloff>:/main/res/icon/icons8-设置-100.png</normaloff>:/main/res/icon/icons8-设置-100.png</iconset>
             </property>
             <property name="toolButtonStyle">
              <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -162,7 +162,7 @@
             </property>
             <property name="icon">
              <iconset resource="res.qrc">
-              <normaloff>:/main/res/icon/main_person.png</normaloff>:/main/res/icon/main_person.png</iconset>
+              <normaloff>:/main/res/icon/icons8-帮助-100.png</normaloff>:/main/res/icon/icons8-帮助-100.png</iconset>
             </property>
             <property name="toolButtonStyle">
              <enum>Qt::ToolButtonTextUnderIcon</enum>
@@ -185,7 +185,7 @@
             </property>
             <property name="icon">
              <iconset resource="res.qrc">
-              <normaloff>:/main/res/icon/main_exit.png</normaloff>:/main/res/icon/main_exit.png</iconset>
+              <normaloff>:/main/res/icon/icons8-取消-100.png</normaloff>:/main/res/icon/icons8-取消-100.png</iconset>
             </property>
             <property name="toolButtonStyle">
              <enum>Qt::ToolButtonTextUnderIcon</enum>

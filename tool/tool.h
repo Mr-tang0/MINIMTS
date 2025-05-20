@@ -47,6 +47,8 @@ public:
     static User getUser(QString userName,QString password,QMap<QString, QMap<QString, QString>>);
     static User getUser(QString id,QMap<QString, QMap<QString, QString>>);
 
+    static QList<User>getAllUser(QMap<QString, QMap<QString, QString>>usersMap);
+
     static bool freshUser(User user,QMap<QString, QMap<QString, QString>>*);
     static bool deleteUser(User user,QMap<QString, QMap<QString, QString>>*);
 

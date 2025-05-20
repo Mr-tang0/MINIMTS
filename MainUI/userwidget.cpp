@@ -3,7 +3,10 @@
 #include <qtmaterialavatar.h>
 #include <qtmaterialbadge.h>
 #include "mainwindow.h"
-
+#include <QStandardItemModel>
+#include <QStandardItem>
+#include "loginwin.h"
+#include <QEvent>
 
 userWidget::userWidget(QWidget *parent) :
     QWidget(parent),
@@ -24,6 +27,45 @@ userWidget::userWidget(QWidget *parent) :
 
     setupContextMenu();
 
+    ui->allUserforAdmin->hide();
+
+    QList<User> Users = Tool::getAllUser(loginWin::usersMap);
+
+
+    QStandardItemModel *model = new QStandardItemModel(this);
+    model->setHorizontalHeaderLabels({"用户列表 "});
+
+    foreach (const User user, Users) {
+        QStandardItem *item = new QStandardItem(user.name);
+
+        model->appendRow(item);
+    }
+
+    ui->userList->setModel(model);
+
+    // foreach (const User user, Users) {
+    //     QListWidgetItem *item = new QListWidgetItem(QString("%1 (%2)").arg(user.name).arg(user.password));
+    //     // 存储用户对象指针以便后续使用
+    //     item->setData(Qt::UserRole, QVariant::fromValue(user));
+    //     ui->userList->addItem(item);
+    // }
+
+    // // 为QListWidget设置点击事件监听器以处理修改和删除
+    // connect(ui->userList, &QListWidget::itemDoubleClicked, this, [&](QListWidgetItem* item){
+    //     User user = item->data(Qt::UserRole).value<User>();
+    //     // 显示修改对话框
+    //     bool ok;
+    //     QString newName = QInputDialog::getText(this, tr("修改用户名"),tr("新用户名:"), QLineEdit::Normal,user.name, &ok);
+    //     if(ok && !newName.isEmpty()){
+    //         // 更新用户数据
+    //         user.name = newName;
+    //         item->setText(QString("%1 (%2)").arg(user.name).arg(user.password));
+    //         item->setData(Qt::UserRole, QVariant::fromValue(user));
+    //     }
+    // });
+
+
+
 }
 
 userWidget::~userWidget()
@@ -37,14 +79,14 @@ bool userWidget::eventFilter(QObject *obj, QEvent *event)
         if (event->type() == QEvent::MouseButtonPress)
         {
             qDebug()<<"clicked";
-//            if (event->buttons() & Qt::LeftButton)
-//            {
-//                QModelIndex index = ui->file_treeView->indexAt(event->pos());
-//                if (!index.isValid())
-//                {
-//                    ui->file_treeView->setCurrentIndex(QModelIndex());
-//                }
-//            }
+           // if (event->buttons() & Qt::LeftButton)
+           // {
+           //     QModelIndex index = ui->file_treeView->indexAt(event->pos());
+           //     if (!index.isValid())
+           //     {
+           //         ui->file_treeView->setCurrentIndex(QModelIndex());
+           //     }
+           // }
         }
     }
     return QObject::eventFilter(obj, event);
@@ -174,11 +216,11 @@ void userWidget::setupContextMenu() {
         QApplication::clipboard()->setText(ui->lab_filePath->text());
         emit message("复制成功");
     });
-
-
 }
 
 void userWidget::freshUserDetails(User user){
+
+    // qDebug()<<user;
 
     QString header = user.headerPic;
     if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
@@ -238,7 +280,7 @@ void userWidget::on_pushButton_clicked()
     QFile::copy(tempHeaderPath, targetFilePath);
     MainWindow::user.headerPic = targetFilePath;
 
-    Tool::freshUser(MainWindow::user,&(MainWindow::usersMap));
+    Tool::freshUser(MainWindow::user,&(loginWin::usersMap));
 
     emit message("保存成功");
 }

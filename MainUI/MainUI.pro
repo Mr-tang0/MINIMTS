@@ -1,6 +1,11 @@
 QT       += core gui
 QT       += charts
- # QT += webenginewidgets
+QT      += serialport
+QT += xml
+QT += network
+QT += concurrent
+
+
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
@@ -66,37 +71,18 @@ else:unix: LIBS += -L$$OUT_PWD/../tool/ -ltool
 INCLUDEPATH += $$PWD/../tool
 DEPENDPATH += $$PWD/../tool
 
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../MGMotorLogic/release/ -lMGMotorLogic
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../MGMotorLogic/debug/ -lMGMotorLogic
-else:unix: LIBS += -L$$OUT_PWD/../MGMotorLogic/ -lMGMotorLogic
+# win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../MGMotorLogic/release/ -lMGMotorLogic
+# else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../MGMotorLogic/debug/ -lMGMotorLogic
+# else:unix: LIBS += -L$$OUT_PWD/../MGMotorLogic/ -lMGMotorLogic
 
-INCLUDEPATH += $$PWD/../MGMotorLogic
-DEPENDPATH += $$PWD/../MGMotorLogic
+# INCLUDEPATH += $$PWD/../MGMotorLogic
+# DEPENDPATH += $$PWD/../MGMotorLogic
 
 
 RC_ICONS = res\icon\icon.ico
 
 msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
 msvc:QMAKE_CXXFLAGS += -source-charset:utf-8
-
-# win32:LIBS+=$$PWD/libs/libcomponents32.a
-# else:LIBS+=$$PWD/libs/libcomponents64.a
-# INCLUDEPATH+=$$PWD/libs/Include
-
-
-
-# win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/release/ -lcomponents
-# else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/debug/ -lcomponents
-# else:unix: LIBS += -L$$OUT_PWD/../../qt-material-widgets/components/ -lcomponents
-
-# INCLUDEPATH += $$PWD/../../qt-material-widgets/components
-# DEPENDPATH += $$PWD/../../qt-material-widgets/components
-
-# win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/release/libcomponents.a
-# else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/debug/libcomponents.a
-# else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/release/components.lib
-# else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/debug/components.lib
-# else:unix: PRE_TARGETDEPS += $$OUT_PWD/../../qt-material-widgets/components/libcomponents.a
 
 win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../components/release/ -lcomponents
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../components/debug/ -lcomponents
@@ -110,3 +96,29 @@ else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../comp
 else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/release/components.lib
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/debug/components.lib
 else:unix: PRE_TARGETDEPS += $$OUT_PWD/../components/libcomponents.a
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../MiniMTSLogic/release/ -lMiniMTSLogic
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../MiniMTSLogic/debug/ -lMiniMTSLogic
+else:unix: LIBS += -L$$OUT_PWD/../MiniMTSLogic/ -lMiniMTSLogic
+
+INCLUDEPATH += $$PWD/../MiniMTSLogic
+DEPENDPATH += $$PWD/../MiniMTSLogic
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/release/libMiniMTSLogic.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/debug/libMiniMTSLogic.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/release/MiniMTSLogic.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/debug/MiniMTSLogic.lib
+else:unix: PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/libMiniMTSLogic.a
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../qtTools/release/ -lqtTools
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../qtTools/debug/ -lqtTools
+else:unix: LIBS += -L$$OUT_PWD/../qtTools/ -lqtTools
+
+INCLUDEPATH += $$PWD/../qtTools
+DEPENDPATH += $$PWD/../qtTools
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/release/libqtTools.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/debug/libqtTools.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/release/qtTools.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/debug/qtTools.lib
+else:unix: PRE_TARGETDEPS += $$OUT_PWD/../qtTools/libqtTools.a

@@ -40,14 +40,14 @@ struct LimitDetails{
     bool enable = true;
 };
 
-struct LoginedUSER{
-    QString userName = "";
-    QString password = "";
-    QString role = "";
-    QString userDefaultName = "";
-    QString userfilePath = "";
-    QString lastTestTime = "";
-};
+// struct LoginedUSER{
+//     QString userName = "";
+//     QString password = "";
+//     QString role = "";
+//     QString userDefaultName = "";
+//     QString userfilePath = "";
+//     QString lastTestTime = "";
+// };
 
 
 
@@ -89,12 +89,15 @@ public:
     static LimitDetails limitDetails;
 
     QTimer *searchTimer = new QTimer(this);
+    QTimer *searchTimer_limit = new QTimer(this);
 
 private:
     QMap<QString, QString> cmdMap;
     QMap<QString, QString> weighMap;
     QMap<QString, QString> ioMap;
     myPort *porter = new myPort;
+
+
 
 
 signals:

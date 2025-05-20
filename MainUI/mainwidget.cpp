@@ -1,7 +1,8 @@
 #include "mainwidget.h"
 #include "ui_mainwidget.h"
 #include "mainwindow.h"
-
+#include "xmlreader.h"
+#include <QtConcurrent>
 
 mainWidget::mainWidget(QWidget *parent) :
     QWidget(parent),
@@ -9,48 +10,37 @@ mainWidget::mainWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    initChart();
     initWidget();
+
+    initChart();
+
     initPort();
+
     initConnect();
+
     initSystem();
+
+    ui->btn_emergence->setFixedSize(QSize(120,80));
+    ui->btn_start->setFixedSize(QSize(120,80));
+    ui->btn_stop->setFixedSize(QSize(120,80));
+
+    ui->speedCW->setFixedSize(QSize(120,60));
+    ui->speedCCW->setFixedSize(QSize(120,60));
+    ui->speedStop->setFixedSize(QSize(120,60));
+
 }
 
 mainWidget::~mainWidget()
 {
-    logic->motorStop();
+    minilogic->motorStop();
+    minilogic->motorStop();
+    minilogic->motorOff();
+    minilogic->motorOff();
     delete ui;
-    uiFreshTimer->stop();
-    delete uiFreshTimer;
 }
 
 void mainWidget::initWidget(){
-    //加载样式表
-//    QString qss;
-//    QFile file(":/qss/res/core_qss/qss/blacksoft.css");
-//    if (file.open(QFile::ReadOnly)) {
-//        qss = QLatin1String(file.readAll());
-//        QString paletteColor = qss.mid(20, 7);
-//        qApp->setPalette(QPalette(paletteColor));
-//        qApp->setStyleSheet(qss);
-//        file.close();
-//    }
-
-//    //先从样式表中取出对应的颜色
-//    QString textColor, panelColor, borderColor, normalColorStart, normalColorEnd, darkColorStart, darkColorEnd, highColor;
-//    getQssColor(qss, textColor, panelColor, borderColor, normalColorStart, normalColorEnd, darkColorStart, darkColorEnd, highColor);
-
-//    //将对应颜色设置到控件
-//    this->borderColor = highColor;
-//    this->normalBgColor = normalColorStart;
-//    this->darkBgColor = panelColor;
-//    this->normalTextColor = textColor;
-//    this->darkTextColor = normalTextColor;
-
-
     QList<int> iconsMain;
-//    QList<int> iconsConfig;
-//    QList<QAbstractButton *> btnsConfig;
 
     iconsMain << 0xf0c1 << 0xf016 <<0xf16a<<0xf0c7<<0xf114;
     btnsMain << ui->btn_connect << ui->btn_pro <<ui->btn_test <<ui->btn_save<<ui->btn_read;
@@ -76,47 +66,19 @@ void mainWidget::initWidget(){
 }
 
 void mainWidget::initChart(){
-    chart->legend()->hide();
+    ui->graphics->addSeries("载荷-时间", "Force", "Time");
+    ui->graphics->addSeries("位移-时间", "Length", "Time");
+    ui->graphics->addSeries("应力-应变", "Stress", "Strian");
+    ui->graphics->addSeries("速度-时间", "Speed", "Time");
 
-    QFont font;
-    font.setFamily("Arial");
-    font.setPointSize(12);
-    chartXAxis->setTitleText("Time (Secs)");//标题
-
-    chartXAxis->setTitleFont(font);
-    chartXAxis->setTickCount(6); //主分隔个数：0到10分成20个单位
-    chartXAxis->setMinorTickCount(4); //每个单位之间绘制了多少虚网线
-
-
-    chartXAxis->setLabelsFont(font);
-    chartXAxis->setLabelFormat("%.2f"); //标签格式：每个单位保留几位小数
-
-
-    chartYAxis->setTitleFont(font);
-    chartYAxis->setTitleText("Force (N)");//标题
-    chartYAxis->setTickCount(6); //主分隔个数：0到10分成20个单位
-    chartYAxis->setMinorTickCount(4); //每个单位之间绘制了多少虚网线
-
-    chartYAxis->setLabelsFont(font);
-    chartYAxis->setLabelFormat("%.3f"); //标签格式：每个单位保留几位小数
-
-    chart->addSeries(factSeries);
-
-    ui->graphicsView->setChart(chart);
-
-
-    chart->setAxisX(chartXAxis,factSeries);
-    chart->setAxisY(chartYAxis,factSeries);
-
+    ui->graphics->longShow();
+    ui->graphics->showSeries("载荷-时间");
 
     ui->ForceLCD->setKey("载荷 N");
     ui->ForceLCD->setDecimals(1);
 
-    ui->lengthLCD->setKey("理论位移 mm");
+    ui->lengthLCD->setKey("位移 mm");
     ui->lengthLCD->setDecimals(3);
-
-    ui->factLengthLCD->setKey("实际位移 mm");
-    ui->factLengthLCD->setDecimals(3);
 
     ui->stressLCD->setKey("应力 MPa");
     ui->stressLCD->setDecimals(1);
@@ -124,24 +86,16 @@ void mainWidget::initChart(){
     ui->strainLCD->setKey("应变");
     ui->strainLCD->setDecimals(3);
 
+    ui->speedLCD->setKey("速度 mm/s");
+    ui->speedLCD->setDecimals(3);
+
     ui->timeLCD->setKey("时长 Secs");
     ui->timeLCD->setDecimals(1);
-
-    for (int i = 0;i<5;i++) {
-        lineSeriesList.append(new QLineSeries);
-        QList<float> points;
-        axisPointsList.append(points);
-    }
-
-    ui->checkBox->toggle();
-    zreoTime = QDateTime::currentMSecsSinceEpoch();
-    zreoTime = QDateTime::currentMSecsSinceEpoch();
-    freshUi();
 }
 
 void mainWidget::initPort(){
     ui->portName->clear();
-    ui->portName->addItems(logic->findPort());
+    ui->portName->addItems(minilogic->findPort());
 
     ui->buandRate->clear();
     QStringList buandRateList = {"9600","19200","38400","57600","115200","230400","460800"};
@@ -150,30 +104,41 @@ void mainWidget::initPort(){
 }
 
 void mainWidget::initConnect(){
-    connect(ui->refresh,&QPushButton::clicked,this,[=](){initPort();emit refresh();});
 
+    connect(dataFreshTimer,&QTimer::timeout,this,&mainWidget::freshData);
+
+    // 串口刷新按钮
+    connect(ui->refresh,&QPushButton::clicked,this,[=](){
+        initPort();
+        emit refresh();
+    });
+
+    //  串口连接按钮
     connect(ui->connect,&QPushButton::clicked,this,[=](){
         if(ui->connect->text()=="连接"){
             QString portName = ui->portName->currentText();
             int buandRate = ui->buandRate->currentText().toInt();
-            motorConnectFlag = logic->connectMotor(portName,buandRate);
+            motorConnectFlag = minilogic->connectDevice(portName,buandRate, 50);
             if(motorConnectFlag){
+
                 ui->connect->setText("断开");
                 addStateBox("连接到串口:"+portName);
                 addStateBox("波特率:"+QString::number(buandRate));
+                zreoTime = QDateTime::currentMSecsSinceEpoch();
+
             }else addStateBox("连接失败:"+portName);
             emit connected(motorConnectFlag);
 
         }else{
-            logic->disConnectMotor();
+            minilogic->disConnectDevice();
             ui->connect->setText("连接");
             motorConnectFlag = false;
             addStateBox("断开连接");
             emit disconnected();
         }
-
     });
 
+    // 串口测试按钮
     connect(ui->testConnect,&QPushButton::clicked,[=](){
         if(!motorConnectFlag){
             emit message("串口未连接");
@@ -182,47 +147,24 @@ void mainWidget::initConnect(){
         emit message("测试连接中");
         addStateBox("->测试连接中");
 
-        logic->searchTimer->stop();
-        logic->testConnect();
+        minilogic->testConnect();
         Tool::delay(1000);
-        logic->testConnect();
-        Tool::delay(1000);
-        logic->testConnect();
-        Tool::delay(1000);
-        logic->searchTimer->start();
-
 
     });
-    connect(ui->motorDetails,&QPushButton::clicked,[=](){
-        if(!motorConnectFlag){
-            emit message("串口未连接");
-            return;
-        }
 
-        emit message("查询电机信息");
-        addStateBox("->查询电机信息");
-
-        logic->searchTimer->stop();
-        logic->seacherMotor();
-        Tool::delay(1000);
-        logic->seacherMotor();
-        Tool::delay(1000);
-        logic->seacherMotor();
-        Tool::delay(1000);
-        logic->searchTimer->start();
-
-
-    });
+    // 快捷打开设置按钮
     connect(ui->toSet,&QPushButton::clicked,[=](){
         emit btnClicked("toSet");
     });
+
+    // 清空状态框按钮
     connect(ui->clearWin,&QPushButton::clicked,[=](){
         clearStateBox();
         addStateBox("已清除");
         addStateBox("----------------");
     });
 
-
+    // 按钮按下，cw运动
     connect(ui->speedCW,&QPushButton::pressed,[=](){
         if(!motorConnectFlag){
             emit message("串口未连接");
@@ -230,10 +172,12 @@ void mainWidget::initConnect(){
         }
 
         float speed = ui->speed->value();
-        logic->motorSpeedMove(speed);
+        minilogic->motorSpeedMove(speed);
+        moveFlag = true;
+        addState("正向运动中");
     });
 
-
+    // 按钮按下，ccw运动
     connect(ui->speedCCW,&QPushButton::pressed,[=](){
         if(!motorConnectFlag){
             emit message("串口未连接");
@@ -241,162 +185,269 @@ void mainWidget::initConnect(){
         }
 
         float speed = ui->speed->value();
-        logic->motorSpeedMove(-speed);
+        minilogic->motorSpeedMove(-speed);
+        addState("负向运动中");
+        moveFlag = true;
     });
 
+    // 按钮松开，停止运动
     connect(ui->speedCW,&QPushButton::released,[=](){
-        logic->motorStop();
+        minilogic->motorStop();
+        minilogic->motorStop();
+        addState("运动停止");
+        moveFlag = false;
     });
 
+
+    // 按钮松开，停止运动
     connect(ui->speedCCW,&QPushButton::released,[=](){
-        logic->motorStop();
+        minilogic->motorStop();
+        minilogic->motorStop();
+        addState("运动停止");
+        moveFlag = false;
     });
 
+    // 停止运动
     connect(ui->speedStop,&QPushButton::clicked,[=](){
-        logic->motorStop();
+        minilogic->motorStop();
+        minilogic->motorStop();
+        addState("运动停止");
+        moveFlag = false;
     });
+
+    connect(ui->ForceLCD, &MyLCD::doubleClicked, [=]() {
+        QMessageBox::StandardButton reply = QMessageBox::question(nullptr, "确认", "您确定要将载荷归零吗？",
+                                                                  QMessageBox::Yes | QMessageBox::No);
+        if (reply == QMessageBox::Yes) { // 如果用户点击了“是”
+            minilogic->setChannalZero("weigh");
+            emit message("载荷归零");
+            addState("载荷归零");
+        } else { // 如果用户点击了“否”
+            addState("用户取消");
+        }
+    });
+
+    connect(ui->lengthLCD, &MyLCD::doubleClicked, [=]() {
+        // 弹出确认对话框
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "您确定要将位移归零吗？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+            minilogic->setChannalZero("motor");
+            emit message("位移归零");
+            addState("位移归零");
+        }else { // 如果用户点击了“否”
+            addState("用户取消");
+        }
+    });
+
+    connect(ui->timeLCD, &MyLCD::doubleClicked, [=]() {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "您确定要将时间归零吗？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+            zreoTime = QDateTime::currentMSecsSinceEpoch();
+            emit message("时间归零");
+            addState("时间归零");
+        }else { // 如果用户点击了“否”
+            addState("用户取消");
+        }
+    });
+
 
     connect(ui->Checked,&QPushButton::clicked,[=](){
+        if(ui->targetLength->value()<=0){
+            emit message("目标运动距离不能为零");return;
+        }else if(ui->targetSpeed->value()<=0){
+            emit message("目标运动速度不能为零");return;
+        }else if(ui->size->value()<=0){
+            emit message("样品尺寸不能为零");return;
+        }else if(ui->length->value()<=0){
+            emit message("样品标距段不能为零");return;
+        }
+
+
         testDetails.userName = ui->userName_lineEidt->text();
         testDetails.testNumber = ui->number_lineEidt->text();
         testDetails.testTime = ui->time_lineEidt->text();
 
         if(ui->pull_radioButton->isChecked())testDetails.testType = "strech";
         else if(ui->push_radioButton->isChecked())testDetails.testType = "compress";
-        testDetails.length = ui->length_doubleSpinBox->value();
-        testDetails.speed = ui->speed_doubleSpinBox_2->value();
+        testDetails.length = ui->targetLength->value();
+        testDetails.speed = ui->targetSpeed->value();
 
-        testDetails.sampleSquare = ui->size_doubleSpinBox->value();
-        testDetails.sampleLength = ui->length_doubleSpinBox_2->value();
-        testDetails.autoStopType = ui->stopAction_comboBox->currentText();
-        testDetails.autoStopValue = ui->stopActionValue_doubleSpinBox->value();
+        testDetails.sampleSquare = ui->size->value();
+        testDetails.sampleLength = ui->length->value();
+        testDetails.autoStopType = ui->stopAction->currentText();
+        testDetails.autoStopValue = ui->stopActionValue->value();
 
-        testDetails.userFilePath = ui->filePath_lineEdit->text();
-        testDetails.userFileName = ui->filePath_lineEdit_2->text();
-        // qDebug()<<testDetails.userFilePath<<testDetails.userFileName;
+        testDetails.userFilePath = ui->filePath->text();
+        testDetails.userFileName = ui->fileName->text();
 
         MainWindow::user.userfilePath = testDetails.userFilePath;
         MainWindow::user.userDefaultName = testDetails.userFileName;
+
+        historyMap[MainWindow::user.name]["type"] = ui->pull_radioButton->isChecked()?"pull_radioButton":"push_radioButton";
+
+        historyMap[MainWindow::user.name]["targetLength"] = QString::number(ui->targetLength->value());
+        historyMap[MainWindow::user.name]["targetSpeed"] = QString::number(ui->targetSpeed->value());
+        historyMap[MainWindow::user.name]["size"] = QString::number(ui->size->value());
+        historyMap[MainWindow::user.name]["length"] = QString::number(ui->length->value());
+
+        historyMap[MainWindow::user.name]["stopAction"] = ui->stopAction->currentText();
+        historyMap[MainWindow::user.name]["stopActionValue"] = QString::number(ui->stopActionValue->value());
+
+        historyMap[MainWindow::user.name]["index"] = ui->number_lineEidt->text();
+
+        XMLReader::Save_XML_File(historyMap,userHistroyPath);
 
         ui->btn_test->click();
         emit message("项目保存成功");
     });
 
     connect(ui->cancel,&QPushButton::clicked,[=](){
-        ui->btn_test->click();
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "当前项目未保存，是否取消？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+            ui->btn_test->click();
+        }
     });
 
 
-    connect(uiFreshTimer,&QTimer::timeout,[=](){freshUi();});
-    uiFreshTimer->start(100);
 
-    connect(dataFreshTimer,&QTimer::timeout,[=](){freshData();});
-
-    dataFreshTimer->start(1000/MainWindow::systemMap["normal"]["sampleRate"].toInt());
-
-    connect(ui->lineSerialsCheck, QOverload<int, bool>::of(&QButtonGroup::buttonToggled),
-          [=](int id, bool checked){
-        if(checked)
-        {
-            currentLineSeriesID = abs(id+2);
-        }
-        switch (currentLineSeriesID) {
-        case 0:
-            chartYAxis->setTitleText("Force (N)");
-            chartXAxis->setTitleText("Time (Secs)");
-        break;
-        case 1:
-            chartYAxis->setTitleText("Stress (Mpa)");
-            chartXAxis->setTitleText("Strain");
-        break;
-        case 2:
-            chartYAxis->setTitleText("Length (mm)");
-            chartXAxis->setTitleText("Time (Secs)");
-        break;
-        case 3:
-            chartYAxis->setTitleText("Speed (mm/s)");
-            chartXAxis->setTitleText("Time (Secs)");
-        break;
-        case 4:
-            chartYAxis->setTitleText("Temp (°C)");
-            chartXAxis->setTitleText("Time (Secs)");
-        break;
-        }
-        pointsCount=0;
-        freshUi();
-    });
-
-    connect(ui->ForceLCD,&MyLCD::doubleClicked,[=](){zreoForce=currentValueList[0];});
-    connect(ui->lengthLCD,&MyLCD::doubleClicked,[=](){zreoLength=currentValueList[1];});
-    connect(ui->factLengthLCD,&MyLCD::doubleClicked,[=](){zreoFactLength=currentValueList[2];});
-    connect(ui->timeLCD,&MyLCD::doubleClicked,[=](){zreoTime=currentValueList[4];});
 
     connect(ui->clearChart,&QPushButton::clicked,[=](){
-        for (int i = 0;i<5;i++) {
-            lineSeriesList[i]->clear();
-            axisPointsList[i].clear();
-        }
-        ui->timeLCD->doubleClick();
-        chartXAxis->setRange(0,1);
-        chartYAxis->setRange(0,1);
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "是否要清除所有数据？",
+            QMessageBox::Yes | QMessageBox::No
+            );
 
-        pointsCount = 0;
-        emit message("已清除");
+        if (reply == QMessageBox::Yes) {
+            zreoTime = QDateTime::currentMSecsSinceEpoch();
+            ui->graphics->clearAll();
+            emit message("已清除");
+            addState("数据已清除");
+        }
 
     });
+
     connect(ui->setZreo,&QPushButton::clicked,[=](){
         ui->lengthLCD->doubleClick();
-        ui->factLengthLCD->doubleClick();
+        ui->speedLCD->doubleClick();
     });
 
     connect(ui->chooseFilePath_pushButton, &QPushButton::clicked, this, [=](){
         QString home = MainWindow::user.userfilePath;
         QString filePath = QFileDialog::getExistingDirectory(this, tr("Select Directory"), home);
         if (!filePath.isEmpty()) {
-            ui->filePath_lineEdit->setText(filePath);
+            ui->filePath->setText(filePath);
         }
     });
 
-    connect(logic,&MGMotorLogic::testOK,[=](){addStateBox("测试在线");});
-    connect(logic,&MGMotorLogic::mDetails,[=](QString m){addStateBox(m);});
-
-
-    connect(ui->openSampleProtect,&QRadioButton::toggled,[=](bool f){sampleProtectFlag=f;});
+    connect(minilogic,&MiniMTSLogic::testOK,[=](QString device){addStateBox(device+"测试在线");});
 
 }
 
 void mainWidget::initSystem(){
     //初始化连接界面
-    ui->portName->setCurrentText(MainWindow::systemMap["normal"]["defaultPort"]);
-    ui->buandRate->setCurrentText(MainWindow::systemMap["normal"]["defaultBuandRate"]);
+    ui->portName->setCurrentText(systemWidget::systemMap["normal"]["defaultPort"]);
+    ui->buandRate->setCurrentText(systemWidget::systemMap["normal"]["defaultBuandRate"]);
+
+    // 初始化运动系统
+    MINI_MotorDetails md;
+    md.ID = systemWidget::systemMap["normal"]["motorID"];
+    md.dirFlag = systemWidget::systemMap["normal"]["motorDir"].toInt();
+    md.resolution = systemWidget::systemMap["normal"]["motorResulution"].toFloat();
+
+    MINI_WeighDetails wd;
+    wd.ID = systemWidget::systemMap["normal"]["forceID"];
+    wd.forceRate = systemWidget::systemMap["normal"]["forceResulution"].toFloat();
+    wd.forceFlag = systemWidget::systemMap["normal"]["forceDir"].toFloat();
+
+    MINI_LimitDetails ld;
+    ld.ID = systemWidget::systemMap["normal"]["hardLimitID"];
+    ld.cwLimit = systemWidget::systemMap["normal"]["cwLimit"].toInt();
+    ld.ccwLimit = systemWidget::systemMap["normal"]["ccwLimit"].toInt();
+
+    minilogic->setDevicesParams(md,wd,ld);
 
     //初始化表单界面
+    userHistroyPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +"/Tang/MiniMTS/Users/" +MainWindow::user.name;
+    userHistroyPath = userHistroyPath +"/histroy.xml";
+
+    //获取特定用户历史文件
+    historyMap = XMLReader::Read_XML_File(userHistroyPath);
+    // qDebug()<<userHistroyPath;
+
+    //将历史添加到表格
     ui->userName_lineEidt->setText(MainWindow::user.name);
-    ui->number_lineEidt->setText("0");
     ui->time_lineEidt->setText(QDateTime::currentDateTime().toString("yy-MM-dd-hh:mm:ss"));
-    ui->filePath_lineEdit->setText(MainWindow::user.userfilePath);
-    ui->filePath_lineEdit_2->setText(MainWindow::user.userDefaultName);
 
+    if(historyMap[MainWindow::user.name]["type"]=="pull_radioButton")
+        ui->pull_radioButton->setChecked(true);
+    else
+        ui->push_radioButton->setChecked(true);
 
-    logic->setMotorParam(MainWindow::systemMap["normal"]);
-    logic->setOtherParam(MainWindow::systemMap["normal"]);
+    ui->targetLength->setValue(historyMap[MainWindow::user.name]["targetLength"].toFloat());
+    ui->targetSpeed->setValue(historyMap[MainWindow::user.name]["targetSpeed"].toFloat());
+    ui->size->setValue(historyMap[MainWindow::user.name]["size"].toFloat());
+    ui->length->setValue(historyMap[MainWindow::user.name]["length"].toFloat());
+    ui->stopAction->setCurrentText(historyMap[MainWindow::user.name]["stopAction"]);
+    ui->stopActionValue->setValue(historyMap[MainWindow::user.name]["stopActionValue"].toFloat());
+
+    ui->number_lineEidt->setText(QString::number(historyMap[MainWindow::user.name]["index"].toInt()+1));
+
+    ui->filePath->setText(MainWindow::user.userfilePath);
+    ui->fileName->setText(MainWindow::user.userDefaultName);
 
     //更新采样率
     dataFreshTimer->stop();
-    dataFreshTimer->start(1000/MainWindow::systemMap["normal"]["sampleRate"].toInt());
+    dataFreshTimer->start(1000/systemWidget::systemMap["normal"]["sampleRate"].toInt());
+
+
+    //根据设置更改表格显示
+
+    //曲线缩放
+    if(systemWidget::systemMap["advance"]["enableZoom"]=="是")
+    {
+        ui->graphics->axisZoom("x", 0.1, 1);
+        ui->graphics->axisZoom("y", 0.1, 1);
+    }else{
+        ui->graphics->axisZoom("x", 0, 0);
+        ui->graphics->axisZoom("y", 0, 0);
+    }
+
+    //曲线平滑
+    if(systemWidget::systemMap["advance"]["enableFilter_timely"]=="yes")
+        ui->graphics->setSmooth(systemWidget::systemMap["advance"]["filterMethod_timely"],systemWidget::systemMap["advance"]["filterWindow_timely"].toInt());
 }
 
-void mainWidget::stopOption(bool flag, int dir){
+void mainWidget::limitStopOption(bool flag, int dir){
 
     if (flag){
-        logic->motorStop();
-        logic->motorStop();
+        minilogic->motorStop();
+        minilogic->motorStop();
     }
 
     ui->btn_start->setEnabled(!flag);
-    if (dir == MainWindow::systemMap["normal"]["cwLimit"].toInt())
+    if (dir == systemWidget::systemMap["normal"]["cwLimit"].toInt())
         ui->speedCW->setEnabled(!flag);
-    else if (dir == MainWindow::systemMap["normal"]["ccwLimit"].toInt())
+    else if (dir == systemWidget::systemMap["normal"]["ccwLimit"].toInt())
         ui->speedCCW->setEnabled(!flag);
     else
     {
@@ -426,87 +477,138 @@ void mainWidget::leftMainClick()
     }else if (name == "测试"){
         ui->stackedWidget->setCurrentIndex(2);
     }else if (name == "保存"){
-        if(axisPointsList[0].empty()){
-            emit message("空数据无法保存");
+        QMap<QString,QLineSeries*> smap;
+        ui->graphics->getAllSeries(&smap);
+
+        if(smap.first()->count()<=10){
+            emit message("数据量过小无法保存");
             return;
-        }
-        QStringList header = {"force","length","fact length","speed","time"};
-        bool flag = saveCsv(axisPointsList,header);
-        if(flag)emit message("文件保存成功");
-        else emit message("文件保存失败");
+        }else emit message("保存文件中");
+
+
+        QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
+        connect(futureWatcher, &QFutureWatcher<bool>::finished, this, [=]() {
+            bool result = futureWatcher->result();
+            // 更新UI或者其他操作
+            if(result)emit message("文件保存成功");
+            else emit message("文件保存失败");
+        });
+
+        QFuture<bool> future = QtConcurrent::run(this, &mainWidget::saveCsv, smap);
+        futureWatcher->setFuture(future);
+
     }else if (name == "读取"){
         if(motorConnectFlag){
             emit message("连接未断开");
             return;
         }else{
             QString filePath = QFileDialog::getOpenFileName(this, "选择文件", MainWindow::user.userfilePath, "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)");
-            if(filePath=="")return;
-            emit message("读取文件中");
-            QStringList header;
-            QList<QList<float>> data = Tool::loadCsvData(filePath,header);
 
-            for (int i = 0;i<5;i++) {
-                lineSeriesList[i] = new QLineSeries;
-                axisPointsList[i].clear();
-                axisPointsList[i]=data[i];
-            }
-            ui->timeLCD->doubleClick();
-            chartXAxis->setRange(0,1);
-            chartYAxis->setRange(0,1);
+            if(filePath=="")
+                return;
+            else
+                ui->stackedWidget->setCurrentIndex(2);
 
-            pointsCount = 0;
-            for (int i = 0;i<axisPointsList[0].length();i++) {
-                *lineSeriesList[0]<<QPointF(axisPointsList[4][i],axisPointsList[0][i]);
-                *lineSeriesList[1]<<QPointF(axisPointsList[0][i]/testDetails.sampleSquare,axisPointsList[2][i]/testDetails.sampleLength);
-                *lineSeriesList[2]<<QPointF(axisPointsList[4][i],axisPointsList[2][i]);
-                *lineSeriesList[3]<<QPointF(axisPointsList[4][i],axisPointsList[3][i]);
-                *lineSeriesList[4]<<QPointF(axisPointsList[4][i],axisPointsList[0][i]);
-            }
 
-            pointsCount=0;
-            freshUi();
+            QFutureWatcher<bool> *futureWatcher = new QFutureWatcher<bool>(this);
+            connect(futureWatcher, &QFutureWatcher<bool>::finished, this, [=]() {
+                bool result = futureWatcher->result();
+                // 更新UI或者其他操作
+                if(result)emit message("文件读取成功");
+                else emit message("文件读取失败");
+            });
+
+            QFuture<bool> future = QtConcurrent::run(this, &mainWidget::readCsv, filePath);
+            futureWatcher->setFuture(future);
         }
     }
+}
+
+bool mainWidget::readCsv(QString path){
+
+    QStringList header;//("force", "length", "strain", "stress", "speed", "time")
+    QList<QList<float>> data = Tool::loadCsvData(path,header);
+
+    if(data.length()<=0||data[0].length()<=0)return false;
+
+    QList<QPointF> forceTimePoints;
+    QList<QPointF> lengthTimePoints;
+    QList<QPointF> stresStrainPoints;
+    QList<QPointF> speedTimePoints;
+
+    for (int var = 0; var < data[0].length(); ++var) {
+        forceTimePoints.append(QPointF(data[5][var], data[0][var]));
+        lengthTimePoints.append(QPointF(data[5][var], data[1][var]));
+        stresStrainPoints.append(QPointF(data[2][var], data[3][var]));
+        speedTimePoints.append(QPointF(data[5][var], data[4][var]));
+    }
+
+    ui->graphics->clearAll();
+    ui->graphics->addPoints("载荷-时间",forceTimePoints);
+    ui->graphics->addPoints("位移-时间",lengthTimePoints);
+    ui->graphics->addPoints("应力-应变",stresStrainPoints);
+    ui->graphics->addPoints("速度-时间",speedTimePoints);
+
+    return true;
+}
+
+bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
+    if(data.first()->count()<=0)return false;
+
+    QList<QList<float>> datalist;
+
+    for (auto it = data.begin(); it != data.end(); ++it) {
+        QString seriesName = it.key();
+        QLineSeries *series = it.value();
+
+        const auto points = series->points();
+
+        QList<float> xData,yData;
+        foreach (const QPointF &point, points) {
+            xData.append(point.x());
+            yData.append(point.y());
+        }
+        datalist.append(xData);
+        datalist.append(yData);
+    }
+
+    QList<QList<float>> newdatalist;
+    //force
+    newdatalist.append(datalist[5]);
+    newdatalist.append(datalist[1]);
+    newdatalist.append(datalist[2]);
+    newdatalist.append(datalist[3]);
+    newdatalist.append(datalist[7]);
+    newdatalist.append(datalist[6]);
+
+
+    QStringList header = {"force","length","strain","stress", "speed","time"};
+    return saveCsv(newdatalist,header);
 }
 
 bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     //考虑进子线程计算
 
-    QString fileName = MainWindow::user.userDefaultName+MainWindow::systemMap["advance"]["format"];
-    qDebug()<<fileName;
+    if(data.empty()||data[0].empty())return false;
+
+    QString fileName = MainWindow::user.userDefaultName+systemWidget::systemMap["advance"]["format"];
+
     QString filePath = MainWindow::user.userfilePath+"/"+QDateTime::currentDateTime().toString("yy-MM-dd");
-    qDebug()<<filePath;
 
-    //加入应力应变
-
-    QList<float> stressList;
-    foreach(float num,data[1]){
-        stressList.append(num/testDetails.sampleSquare);
-    }
-
-    QList<float> strainList;
-    foreach(float num,data[2]){
-        strainList.append(abs(num/testDetails.sampleLength));
-    }
-    data<<stressList;
-    data<<strainList;
-    header<<"stress";
-    header<<"strain";
-
-    if(MainWindow::systemMap["advance"]["enableFilter"]=="yes"){
+    if(systemWidget::systemMap["advance"]["enableFilter"]=="yes"){
         //滤波开启
-        int window = MainWindow::systemMap["advance"]["filterWindow"].toInt();
-        QString type = MainWindow::systemMap["advance"]["filterMethod"];
+        int window = systemWidget::systemMap["advance"]["filterWindow"].toInt();
+        QString type = systemWidget::systemMap["advance"]["filterMethod"];
         for (int i = 0;i<data.length();i++) {
             Tool::dataSmooth(data[i],type,window);
         }
 
     }
-    if(MainWindow::systemMap["advance"]["enableInterpolation"]=="yes"){
+    if(systemWidget::systemMap["advance"]["enableInterpolation"]=="yes"){
         //插值开启
 
-        int count = MainWindow::systemMap["advance"]["interpolationCount"].toInt();
-        QString type = MainWindow::systemMap["advance"]["interpolationMethod"];
+        int count = systemWidget::systemMap["advance"]["interpolationCount"].toInt();
+        QString type = systemWidget::systemMap["advance"]["interpolationMethod"];
         for (int i = 0;i<data.length();i++) {
             Tool::interpolation(data[i],type,count);
         }
@@ -530,8 +632,6 @@ bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     return flag;
 }
 
-
-
 void mainWidget::getQssColor(const QString &qss, const QString &flag, QString &color)
 {
     int index = qss.indexOf(flag);
@@ -554,183 +654,48 @@ void mainWidget::getQssColor(const QString &qss, QString &textColor, QString &pa
     getQssColor(qss, "HighColor:", highColor);
 }
 
-void mainWidget::freshUi(){
-    if(axisPointsList.empty()||axisPointsList[0].empty())return;
-
-    if(pointsCount==axisPointsList[0].length())
-    {
-        return;
-    }
-
-    pointsCount=axisPointsList[0].length();
-
-
-    ui->ForceLCD->display(axisPointsList[0].last());
-    ui->lengthLCD->display(axisPointsList[1].last());
-    ui->factLengthLCD->display(axisPointsList[2].last());
-    ui->stressLCD->display(axisPointsList[0].last()/testDetails.sampleSquare);
-    ui->strainLCD->display(axisPointsList[2].last()/testDetails.sampleLength);
-    ui->timeLCD->display(axisPointsList[4].last());
-
-    while(!chart->series().isEmpty())
-    {
-        chart->removeSeries(chart->series().first());
-    }
-
-    *lineSeriesList[0]<<QPointF(axisPointsList[4].last(),axisPointsList[0].last());
-    *lineSeriesList[1]<<QPointF(axisPointsList[0].last()/testDetails.sampleSquare,axisPointsList[2].last()/testDetails.sampleLength);
-    *lineSeriesList[2]<<QPointF(axisPointsList[4].last(),axisPointsList[2].last());
-    *lineSeriesList[3]<<QPointF(axisPointsList[4].last(),axisPointsList[3].last());
-    *lineSeriesList[4]<<QPointF(axisPointsList[4].last(),axisPointsList[0].last());
-
-
-
-
-    chart->addSeries(lineSeriesList[currentLineSeriesID]);
-    float XMAX,XMIN,YMAX,YMIN;
-
-    switch (currentLineSeriesID) {
-        //force-time
-        case 0:
-            XMAX = Tool::max(axisPointsList[4]);
-            XMIN = Tool::min(axisPointsList[4]);
-            YMAX = Tool::max(axisPointsList[0]);
-            YMIN = Tool::min(axisPointsList[0]);
-        break;
-        //应力应变
-        case 1:
-            XMAX = Tool::max(axisPointsList[2])/testDetails.sampleLength;
-            XMIN = Tool::min(axisPointsList[2])/testDetails.sampleLength;
-            YMAX = Tool::max(axisPointsList[0])/testDetails.sampleSquare;
-            YMIN = Tool::min(axisPointsList[0])/testDetails.sampleSquare;
-        break;
-        //位移时间
-        case 2:
-            XMAX = Tool::max(axisPointsList[4]);
-            XMIN = Tool::min(axisPointsList[4]);
-            YMAX = Tool::max(axisPointsList[2]);
-            YMIN = Tool::min(axisPointsList[2]);
-        break;
-        //速度时间
-        case 3:
-            XMAX = Tool::max(axisPointsList[4]);
-            XMIN = Tool::min(axisPointsList[4]);
-            YMAX = Tool::max(axisPointsList[3]);
-            YMIN = Tool::min(axisPointsList[3]);
-        break;
-        //温度时间
-        case 4:
-            XMAX = Tool::max(axisPointsList[4]);
-            XMIN = Tool::min(axisPointsList[4]);
-
-            YMAX = Tool::max(axisPointsList[5]);
-            YMIN = Tool::min(axisPointsList[5]);
-        break;
-    }
-    chartXAxis->setRange(XMIN,XMAX);
-    chartYAxis->setRange(YMIN,YMAX);
-
-
-}
-
 void mainWidget::freshData(){
     if(!motorConnectFlag)return;
 
-    float force,length,fact,speed;
-    logic->getCurrentValue(&length,&fact,&force,&speed);
+    minilogic->refresh();
 
-    //实时滤波
-    if(MainWindow::systemMap["advance"]["enableFilter_timely"]=="yes"){
-        int window = MainWindow::systemMap["advance"]["filterWindow_timely"].toInt();
+    float force = minilogic->currentWeighValue*systemWidget::systemMap["normal"]["forceDir"].toFloat() * displayDir;
+    float length = minilogic->currentMotorValue*systemWidget::systemMap["normal"]["motorDir"].toFloat() * displayDir;
+    float speed = minilogic->currentSpeedValue;
 
-
-        if(MainWindow::systemMap["advance"]["filterMethod_timely"]=="平均加权"){
-            if (axisPointsList[0].length()>window){
-                for (int i = 0;i<window;i++){
-                    force = force+axisPointsList[0][axisPointsList[0].length()-i-1] + zreoForce;
-                }
-                force = force/(window+1);
-            }
-        }else if(MainWindow::systemMap["advance"]["filterMethod_timely"]=="中值滤波"){
-            if (axisPointsList[0].length()>window){
-                QList<float> temp;
-                for (int i = 0;i<window;i++){
-                    temp.append(axisPointsList[0][axisPointsList[0].length()-i-1] + zreoForce);
-                }
-                temp.append(force);
-                force = Tool::median(temp);
-            }
-        }
-    }
-
-    //force
-    axisPointsList[0].append(force-zreoForce);
-
-    //motorangle
-    axisPointsList[1].append(length-zreoLength);
-
-    //factlength
-    fact = length;
-    axisPointsList[2].append(fact-zreoFactLength);
-
-    //speed
-    axisPointsList[3].append(speed);
-
-    //time
     long currentTime = QDateTime::currentMSecsSinceEpoch();
     float time = float(currentTime-zreoTime)/1000;
-    axisPointsList[4].append(time);
 
+    ui->ForceLCD->display(force);
 
-
-    currentValueList[0]=force;
-    currentValueList[1]=length;
-    currentValueList[2]=fact;
-    currentValueList[3]=speed;
-    currentValueList[4]=currentTime;
-
-
-    //自动停止
-    if(startTestFlag)
-    {
-        qDebug()<<testDetails.autoStopType<<fact-zreoFactLength<<testDetails.autoStopValue;
-        if(testDetails.autoStopType=="Fixed time(s)"){
-            if(abs(time)>=testDetails.autoStopValue){
-                ui->btn_stop->click();
-                startTestFlag = false;
-            }
-
-        }else if(testDetails.autoStopType=="Maximum load (N)"){
-
-            if(abs(force-zreoForce)>=testDetails.autoStopValue){
-                ui->btn_stop->click();
-                startTestFlag = false;
-            }
-
-        }else if(testDetails.autoStopType=="Maximum Distance(mm)"){
-
-            if(abs(fact-zreoFactLength)>=testDetails.autoStopValue){
-                ui->btn_stop->click();
-                startTestFlag = false;
-            }
-        }
+    //此处为判断是否存在有释放按钮但电机未能响应停止而采取的补救措施
+    if(!moveFlag&&abs(length-ui->lengthLCD->currentValue())>0.005){
+        minilogic->motorStop();
+        // qDebug()<<"补救停止";
     }
+    ui->lengthLCD->display(length);
 
-    //样品保护
+    ui->stressLCD->display(force/testDetails.sampleSquare);
+    ui->strainLCD->display(length/testDetails.sampleLength);
+    ui->timeLCD->display(time);
 
-    if(sampleProtectFlag){
-        if(force-zreoForce>5){
-            float speed = 0.5;
-            logic->motorSpeedMove(-speed);
-        }else if(force-zreoForce<-5){
-            float speed = 0.5;
-            logic->motorSpeedMove(speed);
-        }else{
-            logic->motorStop();
-        }
+    ui->graphics->addPoint("载荷-时间",QPointF(time,force));
+    ui->graphics->addPoint("位移-时间",QPointF(time,length));
+    ui->graphics->addPoint("应力-应变",QPointF(length/testDetails.sampleLength,force/testDetails.sampleSquare));
+    ui->graphics->addPoint("速度-时间",QPointF(time,speed));
+
+
+    //最值限制
+    if(abs(force)>systemWidget::systemMap["normal"]["maxForce"].toFloat()&&moveFlag){
+        minilogic->motorStop();
+        moveFlag = false;
+        emit message("载荷超限，已自动停止");
     }
-
-
+    if(abs(length)>systemWidget::systemMap["normal"]["maxMotorLength"].toFloat()&&moveFlag){
+        minilogic->motorStop();
+        moveFlag = false;
+        emit message("电机超限，已自动停止");
+    }
 
 
 }
@@ -741,40 +706,66 @@ void mainWidget::on_btn_start_clicked()
         emit message("串口未连接");
         return;
     }
-    for (int i = 0;i<5;i++) {
-        lineSeriesList[i] = new QLineSeries;
-        axisPointsList[i].clear();
-    }
-    ui->timeLCD->doubleClick();
-    chartXAxis->setRange(0,1);
-    chartYAxis->setRange(0,1);
 
-    pointsCount = 0;
+
+    if(testDetails.length==0||testDetails.speed==0||testDetails.sampleSquare==0||testDetails.sampleLength==0)
+    {
+        emit message("项目参数保存有误，请检查");
+        return;
+    }
+
+    if(abs(ui->lengthLCD->currentValue())>=0.001)
+    {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "当前位移并非零点，是否继续测试？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+
+        }else{
+            emit message("测试取消");
+            addState("测试取消");
+            return;
+        }
+    }
+
+    if(abs(testDetails.sampleLength/testDetails.speed)>1000||abs(testDetails.sampleLength/testDetails.speed)<100)
+    {
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            QString("当前标距段设置运动速度不匹配, 标距段长度：%1 mm, 速度设置：%2 mm/s, 是否继续？").arg(testDetails.sampleLength).arg(testDetails.speed),
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+
+        }else{
+            emit message("测试取消");
+            addState("测试取消");
+            return;
+        }
+    }
+
+    ui->clearChart->click();
 
     if(ui->btn_start->text()=="开始"){
-        qDebug()<<testDetails.testType;
-        if(testDetails.testType=="strech"){
-            logic->motorLengthMove(logic->motorDetails.dirFlag1,testDetails.length,testDetails.speed);
-        }else if(testDetails.testType=="compress"){
 
-            logic->motorLengthMove(!logic->motorDetails.dirFlag1,testDetails.length,testDetails.speed);
+        if(testDetails.testType=="strech"){
+            minilogic->motorLengthMove(testDetails.length,testDetails.speed);
+            displayDir=1;
+        }else if(testDetails.testType=="compress"){
+            minilogic->motorLengthMove(-testDetails.length,testDetails.speed);
+            displayDir=-1;
         }
-//        ui->btn_start->setText("暂停");
     }
-    /*else if(ui->btn_start->text()=="暂停"){
-//        logic->motorStop();
-//        ui->btn_start->setText("继续");
-//    }else if(ui->btn_start->text()=="继续"){
-//        float tempLength = ui->lengthLCD->currentValue();
-//        if(testDetails.testType=="strech"){
-//            logic->motorLengthMove(logic->motorDetails.dirFlag1,testDetails.length-abs(tempLength),testDetails.speed);
-//        }else if(testDetails.testType=="compress"){
-//            logic->motorLengthMove(!logic->motorDetails.dirFlag1,testDetails.length-abs(tempLength),testDetails.speed);
-//        }
-//        ui->btn_start->setText("暂停");
-//    }*/
-//    startTestFlag = true;
+
     emit message("开始测试");
+    addState("开始测试");
+    moveFlag = true;
 }
 
 void mainWidget::on_btn_stop_clicked()
@@ -784,17 +775,34 @@ void mainWidget::on_btn_stop_clicked()
         return;
     }
 
-    logic->motorStop();
+    minilogic->motorStop();
     ui->btn_start->text()="开始";
-    startTestFlag = false;
+    moveFlag = false;
     emit message("测试停止");
+    addState("测试停止");
 }
 
 void mainWidget::addStateBox(QString message){
     ui->textBrowser->append(message);
+    addState(message);
+}
+
+void mainWidget::addState(QString msg){
+    ui->state->setText(msg);
 }
 
 void mainWidget::clearStateBox(){
     ui->textBrowser->clear();
 
 }
+
+void mainWidget::on_btn_emergence_clicked()
+{
+    for(int i = 0;i<10;i++){
+        minilogic->motorStop();
+        minilogic->motorOff();
+    }
+    emit message("急停被按下！");
+    emit errOccured("emergence");
+}
+
