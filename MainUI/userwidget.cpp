@@ -16,7 +16,9 @@ userWidget::userWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
-    m_avatar->setImage(QImage(":/main/res/icon/sikh.jpg"));
+    rootPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +"/Tang/MiniMTS/Users";
+
+    m_avatar->setImage(QImage(":/main/res/icon/user.png"));
     m_avatar->setSize(200);
 
     QLayout *layout = ui->userHeader->layout();
@@ -79,14 +81,6 @@ bool userWidget::eventFilter(QObject *obj, QEvent *event)
         if (event->type() == QEvent::MouseButtonPress)
         {
             qDebug()<<"clicked";
-           // if (event->buttons() & Qt::LeftButton)
-           // {
-           //     QModelIndex index = ui->file_treeView->indexAt(event->pos());
-           //     if (!index.isValid())
-           //     {
-           //         ui->file_treeView->setCurrentIndex(QModelIndex());
-           //     }
-           // }
         }
     }
     return QObject::eventFilter(obj, event);
@@ -223,7 +217,7 @@ void userWidget::freshUserDetails(User user){
     // qDebug()<<user;
 
     QString header = user.headerPic;
-    if(!header.contains(":"))header = QCoreApplication::applicationDirPath()+header;
+    if(!header.contains(":"))header = rootPath+header;
 
     m_avatar->setImage(QImage(header));
 
@@ -237,7 +231,7 @@ void userWidget::freshUserDetails(User user){
     tempHeaderPath = user.headerPic;
 
     QString Directory = user.userfilePath;
-    if(!Directory.contains(":"))Directory = QCoreApplication::applicationDirPath()+Directory;
+    if(!Directory.contains(":"))Directory = rootPath+Directory;
     ui->lab_filePath->setText(Directory);
 
     if (!Directory.isEmpty()) {
@@ -249,10 +243,11 @@ void userWidget::freshUserDetails(User user){
 }
 
 void userWidget::chooseHeader(){
-    QString filePath = QFileDialog::getOpenFileName(this, tr("Open Image"), "", tr("Image Files (*.png *.jpg *.bmp)"));
+    QString filePath = QFileDialog::getOpenFileName(this, tr("Open Image"), MainWindow::user.userfilePath, tr("Image Files (*.png *.jpg *.bmp)"));
 
     if (!filePath.isEmpty()) {
         tempHeaderPath = filePath;
+        m_avatar->setImage(QImage(tempHeaderPath));
     }
 
 }
@@ -265,20 +260,25 @@ void userWidget::on_pushButton_clicked()
     MainWindow::user.userDefaultName = ui->defaultFileName->text();
     MainWindow::user.userid = ui->userID->text();
 
-    QString targetPath = QCoreApplication::applicationDirPath()+"/root/users/"+MainWindow::user.name+"/";
+    if(tempHeaderPath!=""&&tempHeaderPath!=MainWindow::user.headerPic)
+    {
+        QString targetPath = rootPath +"/"+MainWindow::user.name;
+        QString fileSuffix = QFileInfo(tempHeaderPath).suffix();
+        QString targetFilePath = targetPath +"/header."+fileSuffix;
 
-    QString fileName = QFileInfo(tempHeaderPath).fileName();
-    QString targetFilePath = targetPath +"user/"+MainWindow::user.name+fileName;
-
-    QDir ndir(targetPath +"user/");
-    if (!ndir.exists()) {
-        if (!ndir.mkpath(targetPath +"user/")) {
-            return;
+        QDir ndir(targetPath);
+        if (!ndir.exists()) {
+            if (!ndir.mkpath(targetPath)) {
+                return;
+            }
         }
+        // 如果目标文件存在，先删除它
+        if (QFile::exists(targetFilePath)&&tempHeaderPath!=targetFilePath) {
+            QFile::remove(targetFilePath);
+        }
+        qDebug()<<QFile::copy(tempHeaderPath, targetFilePath);
+        MainWindow::user.headerPic = targetFilePath;
     }
-
-    QFile::copy(tempHeaderPath, targetFilePath);
-    MainWindow::user.headerPic = targetFilePath;
 
     Tool::freshUser(MainWindow::user,&(loginWin::usersMap));
 
@@ -293,8 +293,7 @@ void userWidget::on_headerChoose_clicked()
 
 void userWidget::on_pushButton_2_clicked()
 {
-    QString home = MainWindow::user.userfilePath;
-    QString filePath = QFileDialog::getExistingDirectory(this, tr("Select Directory"), home);
+    QString filePath = QFileDialog::getExistingDirectory(this, tr("Select Directory"), MainWindow::user.userfilePath);
     if (!filePath.isEmpty()) {
         ui->defaultSavePath->setText(filePath);
     }

@@ -43,6 +43,7 @@ private:
     QtMaterialBadge       *const m_badge;
 
     QString tempHeaderPath = "";
+    QString rootPath = "";
 
 protected:
     bool eventFilter(QObject *obj, QEvent *event);

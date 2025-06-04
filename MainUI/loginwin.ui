@@ -367,6 +367,16 @@ font: 9pt &quot;黑体&quot;;</string>
    </item>
   </layout>
  </widget>
+ <tabstops>
+  <tabstop>userName</tabstop>
+  <tabstop>password</tabstop>
+  <tabstop>password_2</tabstop>
+  <tabstop>loginChecked</tabstop>
+  <tabstop>login_userName</tabstop>
+  <tabstop>login_password</tabstop>
+  <tabstop>loginChecked_2</tabstop>
+  <tabstop>commandLinkButton</tabstop>
+ </tabstops>
  <resources/>
  <connections/>
 </ui>

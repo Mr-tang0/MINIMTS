@@ -9,7 +9,6 @@
 #include <QProcess>
 
 
-
 int main(int argc, char *argv[])
 {
     QUIHelper::initMain();
@@ -29,7 +28,6 @@ int main(int argc, char *argv[])
         file.close();
     }
 
-    // runUpdateCommand();
 
     MainWindow w;
 

@@ -28,6 +28,7 @@ mainWidget::mainWidget(QWidget *parent) :
     ui->speedCCW->setFixedSize(QSize(120,60));
     ui->speedStop->setFixedSize(QSize(120,60));
 
+
 }
 
 mainWidget::~mainWidget()
@@ -38,6 +39,55 @@ mainWidget::~mainWidget()
     minilogic->motorOff();
     delete ui;
 }
+
+
+void mainWidget::keyPressEvent(QKeyEvent *event)
+{
+    if (!event->isAutoRepeat()) {
+        if (event->key() == Qt::Key_W&&(event->modifiers() & Qt::ControlModifier)) {
+            if(!motorConnectFlag){
+                emit message("串口未连接");
+                return;
+            }
+
+            float speed = ui->speed->value();
+            minilogic->motorSpeedMove(speed);
+            moveFlag = true;
+            addState("正向运动中");
+            keyControlMoving = true;
+        }else if(event->key() == Qt::Key_S&&(event->modifiers() & Qt::ControlModifier)){
+            if(!motorConnectFlag){
+                emit message("串口未连接");
+                return;
+            }
+
+            float speed = ui->speed->value();
+            minilogic->motorSpeedMove(-speed);
+            moveFlag = true;
+            addState("负向运动中");
+            keyControlMoving = true;
+        }
+    }
+
+
+
+    QWidget::keyPressEvent(event);
+}
+
+void mainWidget::keyReleaseEvent(QKeyEvent *event){
+    if (!event->isAutoRepeat()) {
+        if ((event->key() == Qt::Key_W || event->key() == Qt::Key_S)&&keyControlMoving) {
+            minilogic->motorStop();
+            minilogic->motorStop();
+            addState("停止运动");
+            keyControlMoving = false;
+        }
+    }
+
+    QWidget::keyReleaseEvent(event);
+}
+
+
 
 void mainWidget::initWidget(){
     QList<int> iconsMain;
@@ -435,6 +485,8 @@ void mainWidget::initSystem(){
     //曲线平滑
     if(systemWidget::systemMap["advance"]["enableFilter_timely"]=="yes")
         ui->graphics->setSmooth(systemWidget::systemMap["advance"]["filterMethod_timely"],systemWidget::systemMap["advance"]["filterWindow_timely"].toInt());
+    else
+        ui->graphics->setSmooth("",1);
 }
 
 void mainWidget::limitStopOption(bool flag, int dir){

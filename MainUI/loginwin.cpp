@@ -35,7 +35,7 @@ loginWin::loginWin(QWidget *parent) :
     m_snackbar->setAutoHideDuration(500);
     m_snackbar->setFontSize(10);
 
-    m_avatar->setImage(QImage(":/main/res/icon/sikh.jpg"));
+    m_avatar->setImage(QImage(":/main/res/icon/user.png"));
     m_avatar->setSize(150);
 
     QLayout *layout = ui->headPic->layout();
@@ -54,14 +54,55 @@ loginWin::loginWin(QWidget *parent) :
         if(ui->commandLinkButton->text()=="没有账号？"){
             ui->stackedWidget->setCurrentIndex(0);
             ui->commandLinkButton->setText("返回登录");
+
+            //tab顺序
+            ui->userName->setFocusPolicy(Qt::StrongFocus);
+            ui->password->setFocusPolicy(Qt::StrongFocus);
+            ui->password_2->setFocusPolicy(Qt::StrongFocus);
+
+            setTabOrder(ui->userName, ui->password);
+            setTabOrder(ui->password, ui->password_2);
+            setTabOrder(ui->password_2, ui->userName);
+
+            ui->login_password->setFocusPolicy(Qt::NoFocus);
+            ui->login_userName->setFocusPolicy(Qt::NoFocus);
+
+            ui->userName->setFocus();
         }else{
             ui->stackedWidget->setCurrentIndex(1);
             ui->commandLinkButton->setText("没有账号？");
+            //tab顺序
+            ui->login_userName->setFocusPolicy(Qt::StrongFocus);
+            ui->login_password->setFocusPolicy(Qt::StrongFocus);
+
+            setTabOrder(ui->login_password, ui->login_userName);
+            setTabOrder(ui->login_userName, ui->login_password);
+
+            ui->password->setFocusPolicy(Qt::NoFocus);
+            ui->password_2->setFocusPolicy(Qt::NoFocus);
+            ui->userName->setFocusPolicy(Qt::NoFocus);
+
+            ui->login_userName->setFocus();
         }
     });
 
+    //tab顺序
+    setTabOrder(ui->login_password, ui->login_userName);
+    setTabOrder(ui->login_userName, ui->login_password);
+
+    ui->password->setFocusPolicy(Qt::NoFocus);
+    ui->password_2->setFocusPolicy(Qt::NoFocus);
+    ui->userName->setFocusPolicy(Qt::NoFocus);
+
+    ui->loginChecked->setFocusPolicy(Qt::NoFocus);
+    ui->loginChecked_2->setFocusPolicy(Qt::NoFocus);
+    ui->commandLinkButton->setFocusPolicy(Qt::NoFocus);
+
+    ui->login_userName->setFocus();
+
     // ui->login_userName->setText("tang");
     // ui->login_password->setText("111111");
+
 
     //从文件提取所有用户信息
     rootPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +"/Tang/MiniMTS/Users";
@@ -70,6 +111,8 @@ loginWin::loginWin(QWidget *parent) :
 
     //从云端获取用户信息
 
+
+
 }
 
 loginWin::~loginWin()
@@ -77,8 +120,16 @@ loginWin::~loginWin()
     delete ui;
 }
 
+void loginWin::keyPressEvent(QKeyEvent *event) {
+    if (event->key() == Qt::Key_Enter || event->key() == Qt::Key_Return) {
+        onEnterPressed();
+    }
+    QWidget::keyPressEvent(event);
+
+}
+
 void loginWin::setHeader(QString path){
-    if(path=="")path = ":/main/res/icon/sikh.jpg";
+    if(path=="")path = ":/main/res/icon/user.png";
     m_avatar->setImage(QImage(path));
 }
 
@@ -90,8 +141,8 @@ void loginWin::setCurrentUser(User user){
         header = rootPath + header;
     if(header == "")
     {
-        setHeader(":/main/res/icon/sikh.jpg");
-        user.headerPic=":/main/res/icon/sikh.jpg";
+        setHeader(":/main/res/icon/user.png");
+        user.headerPic=":/main/res/icon/user.png";
     }
     else
         setHeader(header);
@@ -181,8 +232,8 @@ void loginWin::on_loginChecked_clicked()
         user.password=ui->password->text();
         user.role="user";
 
-        createImageWithInitial(user.name,rootPath+"/temp.jpg");
-        user.headerPic= rootPath+"/temp.jpg";
+        createImageWithInitial(user.name,rootPath+"/"+user.name+"/header.jpg");
+        user.headerPic= rootPath+"/"+user.name+"/header.jpg";
 
         user.userfilePath = rootPath+"/"+user.name;
         user.userDefaultName = "userData-"+user.name;

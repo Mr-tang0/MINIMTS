@@ -1,11 +1,9 @@
 TEMPLATE = subdirs
 
 SUBDIRS += \
-    MGMotorLogic \
+    ../Qt-Advanced-Docking-System/src \
+    ../qtTools \
     MainUI \
     MiniMTSLogic \
     components \
-    qtTools \
-    tool
-
-MainUI.depends = MiniMTSLogic
+    # tool

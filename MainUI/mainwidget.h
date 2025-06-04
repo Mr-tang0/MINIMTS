@@ -59,6 +59,11 @@ public:
 
     MiniMTSLogic *minilogic = new MiniMTSLogic;
 
+protected:
+    void keyPressEvent(QKeyEvent *event) override;
+    void keyReleaseEvent(QKeyEvent *event) override;
+    bool keyControlMoving = false;
+
 public slots:
     void freshData();
     void limitStopOption(bool flag, int dir);

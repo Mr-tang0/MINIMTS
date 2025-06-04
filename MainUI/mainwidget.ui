@@ -17,7 +17,7 @@
    <item row="1" column="1">
     <widget class="QLabel" name="state">
      <property name="text">
-      <string> </string>
+      <string/>
      </property>
     </widget>
    </item>
@@ -1380,6 +1380,9 @@ font: 20pt &quot;黑体&quot;;
                   <height>60</height>
                  </size>
                 </property>
+                <property name="toolTip">
+                 <string extracomment="Ctrl+W">Ctrl+W</string>
+                </property>
                 <property name="styleSheet">
                  <string notr="true">font: 15pt &quot;黑体&quot;;</string>
                 </property>
@@ -1411,6 +1414,9 @@ font: 20pt &quot;黑体&quot;;
                   <width>0</width>
                   <height>60</height>
                  </size>
+                </property>
+                <property name="toolTip">
+                 <string extracomment="Ctrl+S">Ctrl+S</string>
                 </property>
                 <property name="styleSheet">
                  <string notr="true">font: 15pt &quot;黑体&quot;;</string>
@@ -1449,7 +1455,4 @@ font: 20pt &quot;黑体&quot;;
  </customwidgets>
  <resources/>
  <connections/>
- <buttongroups>
-  <buttongroup name="lineSerialsCheck"/>
- </buttongroups>
 </ui>

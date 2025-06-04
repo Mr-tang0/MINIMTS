@@ -10,7 +10,7 @@ MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow),
       m_snackbar(new QtMaterialSnackbar),
-      m_avatar(new QtMaterialAvatar(QImage(":/main/res/icon/sikh.jpg"))),
+      m_avatar(new QtMaterialAvatar(QImage(":/main/res/icon/user.png"))),
       m_badge(new QtMaterialBadge)
 {
     ui->setupUi(this);
@@ -90,7 +90,7 @@ void MainWindow::runUpdateCommand(){
     QStringList arguments;
     arguments << "https://raw.gitcode.com/m0_51547074/update_info/raw/main/minimtsinfo.json"
               << "MINIMTS"
-              << "2";
+              << "3";
 
     QProcess process;
     process.setWorkingDirectory(appDirPath);

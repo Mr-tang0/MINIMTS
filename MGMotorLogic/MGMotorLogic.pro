@@ -34,12 +34,9 @@ unix {
 }
 !isEmpty(target.path): INSTALLS += target
 
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../tool/release/ -ltool
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../tool/debug/ -ltool
-else:unix: LIBS += -L$$OUT_PWD/../tool/ -ltool
-
-INCLUDEPATH += $$PWD/../tool
-DEPENDPATH += $$PWD/../tool
+INCLUDEPATH += $$PWD/../../qtTools/tool/
+DEPENDPATH += $$PWD/../../qtTools/tool/
+include($$PWD/../../qtTools/tool/tool.pri)
 
 msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
 msvc:QMAKE_CXXFLAGS += -source-charset:utf-8

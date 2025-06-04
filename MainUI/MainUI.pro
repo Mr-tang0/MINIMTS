@@ -28,7 +28,6 @@ SOURCES += \
     mainwidget.cpp \
     mainwindow.cpp \
     mylcd.cpp \
-    # mywebengineview.cpp \
     systemwidget.cpp \
     userwidget.cpp
 
@@ -38,7 +37,6 @@ HEADERS += \
     mainwidget.h \
     mainwindow.h \
     mylcd.h \
-    # mywebengineview.h \
     systemwidget.h \
     userwidget.h
 
@@ -56,27 +54,8 @@ qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
 
-INCLUDEPATH += $$PWD/mycore
-include ($$PWD/mycore/mycore.pri)
-
 RESOURCES += \
     res.qrc
-
-
-
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../tool/release/ -ltool
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../tool/debug/ -ltool
-else:unix: LIBS += -L$$OUT_PWD/../tool/ -ltool
-
-INCLUDEPATH += $$PWD/../tool
-DEPENDPATH += $$PWD/../tool
-
-# win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../MGMotorLogic/release/ -lMGMotorLogic
-# else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../MGMotorLogic/debug/ -lMGMotorLogic
-# else:unix: LIBS += -L$$OUT_PWD/../MGMotorLogic/ -lMGMotorLogic
-
-# INCLUDEPATH += $$PWD/../MGMotorLogic
-# DEPENDPATH += $$PWD/../MGMotorLogic
 
 
 RC_ICONS = res\icon\icon.ico
@@ -110,15 +89,30 @@ else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PW
 else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/debug/MiniMTSLogic.lib
 else:unix: PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/libMiniMTSLogic.a
 
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../qtTools/release/ -lqtTools
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../qtTools/debug/ -lqtTools
-else:unix: LIBS += -L$$OUT_PWD/../qtTools/ -lqtTools
 
-INCLUDEPATH += $$PWD/../qtTools
-DEPENDPATH += $$PWD/../qtTools
+INCLUDEPATH += $$PWD/../../Qt-Advanced-Docking-System/src
+DEPENDPATH += $$PWD/../../Qt-Advanced-Docking-System/src
 
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/release/libqtTools.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/debug/libqtTools.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/release/qtTools.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../qtTools/debug/qtTools.lib
-else:unix: PRE_TARGETDEPS += $$OUT_PWD/../qtTools/libqtTools.a
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/lib/ -lqtadvanceddocking
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/lib/ -lqtadvanceddocking
+else:unix: LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/ -lqtadvanceddocking
+
+
+
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../build/qtTools/release/ -lqtTools
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../build/qtTools/debug/ -lqtTools
+else:unix: LIBS += -L$$PWD/../build/qtTools/ -lqtTools
+
+INCLUDEPATH += $$PWD/../../qtTools
+DEPENDPATH += $$PWD/../../qtTools
+
+INCLUDEPATH += $$PWD/../../qtTools/tool/
+DEPENDPATH += $$PWD/../../qtTools/tool/
+include($$PWD/../../qtTools/tool/tool.pri)
+
+INCLUDEPATH += $$PWD/../../qtTools/mycore/
+DEPENDPATH += $$PWD/../../qtTools/mycore/
+include ($$PWD/../../qtTools/mycore/mycore.pri)
+

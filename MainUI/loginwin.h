@@ -1,7 +1,7 @@
 #ifndef LOGINWIN_H
 #define LOGINWIN_H
 
-#include"tool.h"
+#include "tool.h"
 #include <QWidget>
 #include "qtmaterialsnackbar.h"
 #include <QPainter>
@@ -28,12 +28,9 @@ public:
     static QMap<QString, QMap<QString, QString>> usersMap;
 
 protected:
-    void keyPressEvent(QKeyEvent *event) override {
-        if (event->key() == Qt::Key_Enter || event->key() == Qt::Key_Return) {
-            onEnterPressed();
-        }
-        QWidget::keyPressEvent(event);
-    }
+    void keyPressEvent(QKeyEvent *event) override ;
+
+
 
 
 private slots:

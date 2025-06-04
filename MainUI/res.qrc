@@ -11,12 +11,12 @@
         <file>res/core_qss/qss/blacksoft/branch_open.png</file>
         <file>res/core_qss/qss/blacksoft/menu_checked.png</file>
         <file>res/core_qss/qss/blacksoft/radiobutton_unchecked.png</file>
-        <file>res/icon/sikh.jpg</file>
         <file>res/icon/icons8-帮助-100.png</file>
         <file>res/icon/icons8-取消-100.png</file>
         <file>res/icon/icons8-设置-100.png</file>
         <file>res/icon/icons8-用户男性组-100.png</file>
         <file>res/icon/icons8-主页-100.png</file>
+        <file>res/icon/user.png</file>
     </qresource>
     <qresource prefix="/qss">
         <file>res/core_qss/qss/blacksoft/add_bottom.png</file>
