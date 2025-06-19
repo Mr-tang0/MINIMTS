@@ -135,3 +135,89 @@ void systemWidget::leftMainClick()
         ui->stackedWidget->setCurrentIndex(2);
     }
 }
+
+void systemWidget::on_readSet_clicked()
+{
+    // 弹出文件选择对话框
+    QString path = QFileDialog::getOpenFileName(
+        this,
+        tr("选择配置文件"),
+        QDir::homePath(),             // 默认打开用户主目录
+        tr("XML 文件 (*.xml);;所有文件 (*)")
+        );
+
+    // 如果用户取消选择，path 为空，直接返回
+    if (path.isEmpty()) {
+        return;
+    }
+
+
+    QMap<QString,QMap<QString,QString>> tempMap = XMLReader::Read_XML_File(path);
+
+    if (tempMap.isEmpty()) {
+        QMessageBox::warning(this, tr("读取失败"), tr("无法读取 XML 文件或文件格式不正确。\n请检查文件内容后重试。"));
+        return;
+    }
+
+    QWidget *widget = ui->stackedWidget->widget(0);
+    QList<QLineEdit*> lineEdits = widget->findChildren<QLineEdit*>();
+
+    for (QLineEdit *lineEdit : lineEdits) {
+        lineEdit->setText(tempMap["normal"][lineEdit->objectName()]);
+    }
+
+    widget = ui->stackedWidget->widget(1);
+    QList<QComboBox*> comboBoxList = widget->findChildren<QComboBox*>();
+    for (QComboBox *comboBox : comboBoxList) {
+        comboBox->setCurrentText(tempMap["advance"][comboBox->objectName()]);
+    }
+
+    widget = ui->stackedWidget->widget(2);
+    lineEdits.clear();
+    lineEdits = widget->findChildren<QLineEdit*>();
+    for (QLineEdit *lineEdit : lineEdits) {
+        lineEdit->setText(tempMap["users"][lineEdit->objectName()]);
+    }
+
+    QMessageBox::information(this, tr("读取成功"), tr("已经读取配置如下，点击保存立即生效！"));
+}
+
+
+void systemWidget::on_saveSetAs_clicked()
+{
+    // 弹出文件选择对话框
+    QString path = QFileDialog::getSaveFileName(
+        this,
+        tr("编辑配置文件"),
+        QDir::homePath(),             // 默认打开用户主目录
+        tr("XML 文件 (*.xml);;所有文件 (*)")
+    );
+
+    // 如果用户取消选择，path 为空，直接返回
+    if (path.isEmpty()) {
+        return;
+    }
+
+
+    QMap<QString,QMap<QString,QString>> tempMap;
+
+
+    QWidget *widget = ui->stackedWidget->widget(0);
+    QList<QLineEdit*> lineEdits = widget->findChildren<QLineEdit*>();
+
+    for (QLineEdit *lineEdit : lineEdits) {
+        tempMap["normal"][lineEdit->objectName()] = lineEdit->text();
+    }
+
+    widget = ui->stackedWidget->widget(1);
+    QList<QComboBox*> comboBoxList = widget->findChildren<QComboBox*>();
+    for (QComboBox *comboBox : comboBoxList) {
+        tempMap["advance"][comboBox->objectName()] = comboBox->currentText();
+    }
+
+    XMLReader::Save_XML_File(tempMap,path);
+
+    QMessageBox::information(this, tr("保存成功"), tr("已经保存配置到指定位置！"));
+}
+
+

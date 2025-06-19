@@ -3,6 +3,7 @@
 #include "mainwindow.h"
 #include "xmlreader.h"
 #include <QtConcurrent>
+#include <QDir>
 
 mainWidget::mainWidget(QWidget *parent) :
     QWidget(parent),
@@ -14,9 +15,9 @@ mainWidget::mainWidget(QWidget *parent) :
 
     initChart();
 
-    initPort();
-
     initConnect();
+
+    initPort();
 
     initSystem();
 
@@ -27,7 +28,6 @@ mainWidget::mainWidget(QWidget *parent) :
     ui->speedCW->setFixedSize(QSize(120,60));
     ui->speedCCW->setFixedSize(QSize(120,60));
     ui->speedStop->setFixedSize(QSize(120,60));
-
 
 }
 
@@ -113,6 +113,8 @@ void mainWidget::initWidget(){
     styleColor.setColor("#484848", "#DCDCDC", "#444444", "#DCDCDC");
     IconHelper::setStyle(ui->widget_menu, btnsMain, iconsMain, styleColor);
     ui->btn_connect->click();
+
+
 }
 
 void mainWidget::initChart(){
@@ -148,8 +150,10 @@ void mainWidget::initPort(){
     ui->portName->addItems(minilogic->findPort());
 
     ui->buandRate->clear();
-    QStringList buandRateList = {"9600","19200","38400","57600","115200","230400","460800"};
+    QStringList buandRateList = {"9600","19200","115200"};
     ui->buandRate->addItems(buandRateList);
+
+    ui->refresh_hik->click();
 
 }
 
@@ -322,7 +326,12 @@ void mainWidget::initConnect(){
             emit message("样品尺寸不能为零");return;
         }else if(ui->length->value()<=0){
             emit message("样品标距段不能为零");return;
-        }
+        }else if(ui->DICEnable->isChecked()&&ui->DICFilePath->text() =="")
+        {emit message("DIC图片保存位置不能为空");return;}
+        else if(ui->DICEnable->isChecked()&&ui->DICFileName->text()=="")
+        {emit message("DIC图片文件名不能为空");return;}
+        else if(ui->DICEnable->isChecked()&&ui->DICDuration->value()<=200)
+        {emit message("DIC采集时间不得小于200ms");return;}
 
 
         testDetails.userName = ui->userName_lineEidt->text();
@@ -342,6 +351,13 @@ void mainWidget::initConnect(){
         testDetails.userFilePath = ui->filePath->text();
         testDetails.userFileName = ui->fileName->text();
 
+        testDetails.DICFileName = ui->DICFileName->text();
+        testDetails.DICFilePath = ui->DICFilePath->text();
+        testDetails.DICTriggr = ui->DICTriggr->currentText();
+        testDetails.DICDuration = ui->DICDuration->value();
+        testDetails.DICDetectEnable = ui->DICEnable->isChecked();
+
+
         MainWindow::user.userfilePath = testDetails.userFilePath;
         MainWindow::user.userDefaultName = testDetails.userFileName;
 
@@ -356,6 +372,14 @@ void mainWidget::initConnect(){
         historyMap[MainWindow::user.name]["stopActionValue"] = QString::number(ui->stopActionValue->value());
 
         historyMap[MainWindow::user.name]["index"] = ui->number_lineEidt->text();
+
+        historyMap[MainWindow::user.name]["DICDetectEnable"]=ui->DICEnable->isChecked() ? "true" : "false";
+        historyMap[MainWindow::user.name]["DICFileName"] = testDetails.DICFileName;
+        historyMap[MainWindow::user.name]["DICFilePath"] = testDetails.DICFilePath;
+        historyMap[MainWindow::user.name]["DICTriggr"] = testDetails.DICTriggr;
+        historyMap[MainWindow::user.name]["DICDuration"] = QString::number(testDetails.DICDuration);
+
+
 
         XMLReader::Save_XML_File(historyMap,userHistroyPath);
 
@@ -411,6 +435,31 @@ void mainWidget::initConnect(){
 
     connect(minilogic,&MiniMTSLogic::testOK,[=](QString device){addStateBox(device+"测试在线");});
 
+    connect(ui->refresh_hik,&QPushButton::clicked,this,[=](){
+        devices.clear();
+        ui->cameraList->clear();
+        hikCamera.EnumDevices(devices);
+        ui->cameraList->addItems(devices.keys());
+    });
+
+    connect(ui->connect_hik,&QPushButton::clicked,this,[=](){
+        if(ui->connect_hik->text()=="连接")
+        {
+            QString device = ui->cameraList->currentText();
+            int ret = hikCamera.openDevice(device);
+            if(ret ==MV_OK){
+                hikCamera.resize(600,400);
+                hikCamera.show();
+                ui->connect_hik->setText("断开");
+            }
+
+        }else{
+            hikCamera.closeDevice();
+            ui->connect_hik->setText("连接");
+            hikCamera.close();
+        }
+    });
+
 }
 
 void mainWidget::initSystem(){
@@ -465,10 +514,15 @@ void mainWidget::initSystem(){
     ui->filePath->setText(MainWindow::user.userfilePath);
     ui->fileName->setText(MainWindow::user.userDefaultName);
 
+    ui->DICFilePath->setText(historyMap[MainWindow::user.name]["DICFilePath"]);
+    ui->DICFileName->setText(historyMap[MainWindow::user.name]["DICFileName"]);
+    ui->DICTriggr->setCurrentText(historyMap[MainWindow::user.name]["DICTriggr"]);
+    ui->DICDuration->setValue(historyMap[MainWindow::user.name]["DICDuration"].toInt());
+    historyMap[MainWindow::user.name]["DICDetectEnable"]=="true" ? ui->DICEnable->setChecked(true) : ui->DICEnable->setChecked(false);
+
     //更新采样率
     dataFreshTimer->stop();
     dataFreshTimer->start(1000/systemWidget::systemMap["normal"]["sampleRate"].toInt());
-
 
     //根据设置更改表格显示
 
@@ -577,8 +631,7 @@ void mainWidget::leftMainClick()
 }
 
 bool mainWidget::readCsv(QString path){
-
-    QStringList header;//("force", "length", "strain", "stress", "speed", "time")
+    QStringList header; //("force", "length", "strain", "stress", "speed", "time")
     QList<QList<float>> data = Tool::loadCsvData(path,header);
 
     if(data.length()<=0||data[0].length()<=0)return false;
@@ -680,6 +733,15 @@ bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     fileDetails["userFilePath"] = testDetails.userFilePath;
     fileDetails["userFileName"] = testDetails.userFileName;
 
+
+    fileDetails["DICFilePath"] = testDetails.DICFilePath;
+    fileDetails["DICFileName"] = testDetails.DICFileName;
+    fileDetails["DICTriggr"] = testDetails.DICTriggr;
+    fileDetails["DICDuration"] = QString::number(testDetails.DICDuration);
+    fileDetails["DICDetectEnable"] = testDetails.DICDetectEnable?"true":"false";
+
+
+
     bool flag = Tool::saveCsvData(data,header,fileDetails,filePath+"/"+fileName);
     return flag;
 }
@@ -754,6 +816,15 @@ void mainWidget::freshData(){
 
 void mainWidget::on_btn_start_clicked()
 {
+    if(testDetails.DICDetectEnable&&hikCamera.isOpened())
+    {
+        QString fullPath = testDetails.DICFilePath + "/" + testDetails.DICFileName;
+        if(testDetails.DICFilePath.right(1)=="/")fullPath = testDetails.DICFilePath + testDetails.DICFileName;
+
+        hikCamera.startDIC(testDetails.DICFileName, fullPath, testDetails.DICDuration);
+        emit message("开始DIC采集");
+    }
+
     if(!motorConnectFlag){
         emit message("串口未连接");
         return;
@@ -813,7 +884,11 @@ void mainWidget::on_btn_start_clicked()
             minilogic->motorLengthMove(-testDetails.length,testDetails.speed);
             displayDir=-1;
         }
+
+
     }
+
+
 
     emit message("开始测试");
     addState("开始测试");
@@ -822,6 +897,9 @@ void mainWidget::on_btn_start_clicked()
 
 void mainWidget::on_btn_stop_clicked()
 {
+    if(hikCamera.isOpened())
+        hikCamera.stopDIC();
+
     if(!motorConnectFlag){
         emit message("串口未连接");
         return;

@@ -5,6 +5,7 @@ QT += xml
 QT += network
 QT += concurrent
 
+QT += webenginewidgets
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
@@ -53,6 +54,10 @@ FORMS += \
 qnx: target.path = /tmp/$${TARGET}/bin
 else: unix:!android: target.path = /opt/$${TARGET}/bin
 !isEmpty(target.path): INSTALLS += target
+
+CONFIG(debug, debug|release) {
+    DEFINES += DEBUG=1
+}
 
 RESOURCES += \
     res.qrc
@@ -115,4 +120,22 @@ include($$PWD/../../qtTools/tool/tool.pri)
 INCLUDEPATH += $$PWD/../../qtTools/mycore/
 DEPENDPATH += $$PWD/../../qtTools/mycore/
 include ($$PWD/../../qtTools/mycore/mycore.pri)
+
+INCLUDEPATH += $$PWD/../../qtTools/PDF/
+DEPENDPATH += $$PWD/../../qtTools/PDF/
+include ($$PWD/../../qtTools/PDF/PDF.pri)
+
+
+win32: LIBS += -L$$OUT_PWD/../HIKCamera/release/ -lHIKCamera
+
+INCLUDEPATH += $$PWD/../HIKCamera
+DEPENDPATH += $$PWD/../HIKCamera
+
+INCLUDEPATH += $$PWD/../HIKCamera/HIKlib/includes
+DEPENDPATH += $$PWD/../HIKCamera/HIKlib/includes
+
+INCLUDEPATH += $$PWD/../HIKCamera/external/release64/include
+
+
+
 

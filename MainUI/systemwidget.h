@@ -28,6 +28,10 @@ public:
 
 private slots:
     void leftMainClick();
+    void on_readSet_clicked();
+
+    void on_saveSetAs_clicked();
+
 private:
     Ui::systemWidget *ui;
 

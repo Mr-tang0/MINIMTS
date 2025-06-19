@@ -166,7 +166,6 @@ void MiniMTSLogic::setDevicesParams(MINI_MotorDetails md,MINI_WeighDetails wd,MI
     weighDetails = wd;
     limitDetails = ld;
     port->decoder->freshDecoderDetails(md,wd,ld);
-    qDebug()<<"refresh Params";
 }
 
 void MiniMTSLogic::refresh(){

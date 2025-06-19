@@ -104,6 +104,29 @@
            </widget>
           </item>
           <item>
+           <widget class="QToolButton" name="btnDIC">
+            <property name="sizePolicy">
+             <sizepolicy hsizetype="Fixed" vsizetype="Expanding">
+              <horstretch>0</horstretch>
+              <verstretch>0</verstretch>
+             </sizepolicy>
+            </property>
+            <property name="styleSheet">
+             <string notr="true"/>
+            </property>
+            <property name="text">
+             <string>DIC分析</string>
+            </property>
+            <property name="icon">
+             <iconset resource="res.qrc">
+              <normaloff>:/main/res/icon/main_data.png</normaloff>:/main/res/icon/main_data.png</iconset>
+            </property>
+            <property name="toolButtonStyle">
+             <enum>Qt::ToolButtonTextUnderIcon</enum>
+            </property>
+           </widget>
+          </item>
+          <item>
            <widget class="QToolButton" name="btnUser">
             <property name="sizePolicy">
              <sizepolicy hsizetype="Fixed" vsizetype="Expanding">

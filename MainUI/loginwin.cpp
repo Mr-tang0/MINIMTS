@@ -100,8 +100,13 @@ loginWin::loginWin(QWidget *parent) :
 
     ui->login_userName->setFocus();
 
-    // ui->login_userName->setText("tang");
-    // ui->login_password->setText("111111");
+
+#ifdef DEBUG
+    ui->login_userName->setText("tang");
+    ui->login_password->setText("123456");
+#endif
+    ui->login_userName->setText("tang");
+    ui->login_password->setText("123456");
 
 
     //从文件提取所有用户信息

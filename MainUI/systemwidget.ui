@@ -13,43 +13,91 @@
   <property name="windowTitle">
    <string>Form</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_2">
+  <layout class="QGridLayout" name="gridLayout_6">
    <item row="0" column="0">
     <layout class="QHBoxLayout" name="horizontalLayout">
      <item>
-      <layout class="QVBoxLayout" name="verticalLayout">
+      <layout class="QVBoxLayout" name="verticalLayout_7">
        <item>
-        <widget class="QWidget" name="menuWidget" native="true">
-         <layout class="QGridLayout" name="gridLayout">
-          <item row="0" column="0">
-           <widget class="QToolButton" name="normalSet">
-            <property name="text">
-             <string>基本设置</string>
-            </property>
-           </widget>
-          </item>
-          <item row="1" column="0">
-           <widget class="QToolButton" name="advanceSetup">
-            <property name="text">
-             <string>高级设置</string>
-            </property>
-           </widget>
-          </item>
-          <item row="2" column="0">
-           <spacer name="verticalSpacer_3">
-            <property name="orientation">
-             <enum>Qt::Vertical</enum>
-            </property>
-            <property name="sizeHint" stdset="0">
-             <size>
-              <width>20</width>
-              <height>455</height>
-             </size>
-            </property>
-           </spacer>
-          </item>
-         </layout>
-        </widget>
+        <layout class="QVBoxLayout" name="verticalLayout">
+         <item>
+          <widget class="QWidget" name="menuWidget" native="true">
+           <layout class="QGridLayout" name="gridLayout">
+            <item row="1" column="0">
+             <widget class="QToolButton" name="advanceSetup">
+              <property name="text">
+               <string>高级设置</string>
+              </property>
+             </widget>
+            </item>
+            <item row="0" column="0">
+             <widget class="QToolButton" name="normalSet">
+              <property name="text">
+               <string>基本设置</string>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QToolButton" name="advanceSetup_2">
+              <property name="text">
+               <string>相机设置</string>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <spacer name="verticalSpacer_3">
+              <property name="orientation">
+               <enum>Qt::Vertical</enum>
+              </property>
+              <property name="sizeHint" stdset="0">
+               <size>
+                <width>20</width>
+                <height>455</height>
+               </size>
+              </property>
+             </spacer>
+            </item>
+            <item row="3" column="0">
+             <widget class="QToolButton" name="advanceSetup_3">
+              <property name="text">
+               <string>DIC设置</string>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item>
+        <layout class="QVBoxLayout" name="verticalLayout_4">
+         <item>
+          <widget class="QPushButton" name="readSet">
+           <property name="minimumSize">
+            <size>
+             <width>150</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>读取配置</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="saveSetAs">
+           <property name="minimumSize">
+            <size>
+             <width>150</width>
+             <height>0</height>
+            </size>
+           </property>
+           <property name="text">
+            <string>配置另存为</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
        </item>
       </layout>
      </item>
@@ -62,9 +110,9 @@
         <number>0</number>
        </property>
        <widget class="QWidget" name="normalSet">
-        <layout class="QGridLayout" name="gridLayout_6">
+        <layout class="QGridLayout" name="gridLayout_2">
          <item row="0" column="0">
-          <layout class="QVBoxLayout" name="verticalLayout_4">
+          <layout class="QHBoxLayout" name="horizontalLayout_9">
            <item>
             <widget class="QLabel" name="label_26">
              <property name="styleSheet">
@@ -78,348 +126,191 @@
              </property>
             </widget>
            </item>
+          </layout>
+         </item>
+         <item row="1" column="0">
+          <layout class="QHBoxLayout" name="horizontalLayout_2">
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_2">
-             <item>
-              <layout class="QGridLayout" name="gridLayout_3">
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_3">
-                 <property name="text">
-                  <string>通信</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="1" rowspan="3">
-                <layout class="QVBoxLayout" name="verticalLayout_2">
-                 <item>
-                  <widget class="QFrame" name="frame_2">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>80</height>
-                    </size>
-                   </property>
-                   <property name="frameShape">
-                    <enum>QFrame::StyledPanel</enum>
-                   </property>
-                   <property name="frameShadow">
-                    <enum>QFrame::Raised</enum>
-                   </property>
-                   <layout class="QGridLayout" name="gridLayout_9">
-                    <item row="0" column="0">
-                     <layout class="QFormLayout" name="formLayout">
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="label_2">
-                        <property name="text">
-                         <string>默认端口</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLineEdit" name="defaultPort"/>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLabel" name="label_4">
-                        <property name="text">
-                         <string>默认波特率</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLineEdit" name="defaultBuandRate"/>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QLabel" name="label_11">
-                        <property name="text">
-                         <string>采样率</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLineEdit" name="sampleRate"/>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QFrame" name="frame">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>80</height>
-                    </size>
-                   </property>
-                   <property name="frameShape">
-                    <enum>QFrame::StyledPanel</enum>
-                   </property>
-                   <property name="frameShadow">
-                    <enum>QFrame::Raised</enum>
-                   </property>
-                   <layout class="QGridLayout" name="gridLayout_8">
-                    <item row="1" column="0">
-                     <layout class="QFormLayout" name="formLayout_2">
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="label_6">
-                        <property name="text">
-                         <string>电机ID地址</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLineEdit" name="motorID"/>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLabel" name="label_7">
-                        <property name="text">
-                         <string>电机换算比例</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLineEdit" name="motorResulution"/>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QLabel" name="label_10">
-                        <property name="text">
-                         <string>电机转向</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLineEdit" name="motorDir"/>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLineEdit" name="maxMotorLength"/>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QLabel" name="label_37">
-                        <property name="text">
-                         <string>电机保护限制</string>
-                        </property>
-                       </widget>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                 <item>
-                  <widget class="QFrame" name="frame_3">
-                   <property name="minimumSize">
-                    <size>
-                     <width>0</width>
-                     <height>80</height>
-                    </size>
-                   </property>
-                   <property name="frameShape">
-                    <enum>QFrame::StyledPanel</enum>
-                   </property>
-                   <property name="frameShadow">
-                    <enum>QFrame::Raised</enum>
-                   </property>
-                   <layout class="QGridLayout" name="gridLayout_10">
-                    <item row="0" column="0">
-                     <layout class="QFormLayout" name="formLayout_9">
-                      <item row="0" column="0">
-                       <widget class="QLabel" name="label_13">
-                        <property name="text">
-                         <string>传感器ID地址</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="0" column="1">
-                       <widget class="QLineEdit" name="forceID"/>
-                      </item>
-                      <item row="1" column="0">
-                       <widget class="QLabel" name="label_14">
-                        <property name="text">
-                         <string>传感器转换系数</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="1" column="1">
-                       <widget class="QLineEdit" name="forceResulution"/>
-                      </item>
-                      <item row="2" column="0">
-                       <widget class="QLabel" name="label_15">
-                        <property name="text">
-                         <string>传感器方向</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="2" column="1">
-                       <widget class="QLineEdit" name="forceDir"/>
-                      </item>
-                      <item row="3" column="0">
-                       <widget class="QLabel" name="label_16">
-                        <property name="text">
-                         <string>传感器保护限制</string>
-                        </property>
-                       </widget>
-                      </item>
-                      <item row="3" column="1">
-                       <widget class="QLineEdit" name="maxForce"/>
-                      </item>
-                     </layout>
-                    </item>
-                   </layout>
-                  </widget>
-                 </item>
-                </layout>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_5">
-                 <property name="text">
-                  <string>电机</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="2" column="0">
-                <widget class="QLabel" name="label_12">
-                 <property name="text">
-                  <string>压力传感器</string>
-                 </property>
-                </widget>
-               </item>
-              </layout>
+            <layout class="QGridLayout" name="gridLayout_3">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_3">
+               <property name="text">
+                <string>通信</string>
+               </property>
+              </widget>
              </item>
-             <item>
-              <layout class="QGridLayout" name="gridLayout_5">
-               <item row="0" column="0">
-                <widget class="QLabel" name="label_34">
-                 <property name="text">
-                  <string>位移传感器</string>
+             <item row="0" column="1" rowspan="3">
+              <layout class="QVBoxLayout" name="verticalLayout_2">
+               <item>
+                <widget class="QFrame" name="frame_2">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>80</height>
+                  </size>
                  </property>
-                </widget>
-               </item>
-               <item row="0" column="1" rowspan="2">
-                <layout class="QVBoxLayout" name="verticalLayout_3"/>
-               </item>
-               <item row="1" column="0">
-                <widget class="QLabel" name="label_35">
-                 <property name="text">
-                  <string>硬限位</string>
-                 </property>
-                </widget>
-               </item>
-               <item row="0" column="2">
-                <widget class="QFrame" name="frame_5">
                  <property name="frameShape">
                   <enum>QFrame::StyledPanel</enum>
                  </property>
                  <property name="frameShadow">
                   <enum>QFrame::Raised</enum>
                  </property>
-                 <layout class="QGridLayout" name="gridLayout_12">
+                 <layout class="QGridLayout" name="gridLayout_9">
                   <item row="0" column="0">
-                   <layout class="QFormLayout" name="formLayout_3">
+                   <layout class="QFormLayout" name="formLayout">
                     <item row="0" column="0">
-                     <widget class="QLabel" name="label_31">
+                     <widget class="QLabel" name="label_2">
+                      <property name="text">
+                       <string>默认端口</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLineEdit" name="defaultPort"/>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_4">
+                      <property name="text">
+                       <string>默认波特率</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLineEdit" name="defaultBuandRate"/>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="label_11">
+                      <property name="text">
+                       <string>采样率</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLineEdit" name="sampleRate"/>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QFrame" name="frame">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>80</height>
+                  </size>
+                 </property>
+                 <property name="frameShape">
+                  <enum>QFrame::StyledPanel</enum>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Raised</enum>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_8">
+                  <item row="1" column="0">
+                   <layout class="QFormLayout" name="formLayout_2">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_6">
+                      <property name="text">
+                       <string>电机ID地址</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="0" column="1">
+                     <widget class="QLineEdit" name="motorID"/>
+                    </item>
+                    <item row="1" column="0">
+                     <widget class="QLabel" name="label_7">
+                      <property name="text">
+                       <string>电机换算比例</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="1" column="1">
+                     <widget class="QLineEdit" name="motorResulution"/>
+                    </item>
+                    <item row="2" column="0">
+                     <widget class="QLabel" name="label_10">
+                      <property name="text">
+                       <string>电机转向</string>
+                      </property>
+                     </widget>
+                    </item>
+                    <item row="2" column="1">
+                     <widget class="QLineEdit" name="motorDir"/>
+                    </item>
+                    <item row="3" column="1">
+                     <widget class="QLineEdit" name="maxMotorLength"/>
+                    </item>
+                    <item row="3" column="0">
+                     <widget class="QLabel" name="label_37">
+                      <property name="text">
+                       <string>电机保护限制</string>
+                      </property>
+                     </widget>
+                    </item>
+                   </layout>
+                  </item>
+                 </layout>
+                </widget>
+               </item>
+               <item>
+                <widget class="QFrame" name="frame_3">
+                 <property name="minimumSize">
+                  <size>
+                   <width>0</width>
+                   <height>80</height>
+                  </size>
+                 </property>
+                 <property name="frameShape">
+                  <enum>QFrame::StyledPanel</enum>
+                 </property>
+                 <property name="frameShadow">
+                  <enum>QFrame::Raised</enum>
+                 </property>
+                 <layout class="QGridLayout" name="gridLayout_10">
+                  <item row="0" column="0">
+                   <layout class="QFormLayout" name="formLayout_9">
+                    <item row="0" column="0">
+                     <widget class="QLabel" name="label_13">
                       <property name="text">
                        <string>传感器ID地址</string>
                       </property>
                      </widget>
                     </item>
                     <item row="0" column="1">
-                     <widget class="QLineEdit" name="lengthID"/>
+                     <widget class="QLineEdit" name="forceID"/>
                     </item>
                     <item row="1" column="0">
-                     <widget class="QLabel" name="label_32">
+                     <widget class="QLabel" name="label_14">
                       <property name="text">
                        <string>传感器转换系数</string>
                       </property>
                      </widget>
                     </item>
                     <item row="1" column="1">
-                     <widget class="QLineEdit" name="lengthResulution"/>
+                     <widget class="QLineEdit" name="forceResulution"/>
                     </item>
                     <item row="2" column="0">
-                     <widget class="QLabel" name="label_33">
+                     <widget class="QLabel" name="label_15">
                       <property name="text">
                        <string>传感器方向</string>
                       </property>
                      </widget>
                     </item>
                     <item row="2" column="1">
-                     <widget class="QLineEdit" name="lengthDir"/>
+                     <widget class="QLineEdit" name="forceDir"/>
                     </item>
                     <item row="3" column="0">
-                     <widget class="QLabel" name="label_39">
-                      <property name="text">
-                       <string>是否有效</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="3" column="1">
-                     <widget class="QLineEdit" name="lengthEnable"/>
-                    </item>
-                    <item row="4" column="1">
-                     <widget class="QLineEdit" name="maxFactLength"/>
-                    </item>
-                    <item row="4" column="0">
-                     <widget class="QLabel" name="label_30">
+                     <widget class="QLabel" name="label_16">
                       <property name="text">
                        <string>传感器保护限制</string>
                       </property>
                      </widget>
                     </item>
-                   </layout>
-                  </item>
-                 </layout>
-                </widget>
-               </item>
-               <item row="1" column="2">
-                <widget class="QFrame" name="frame_4">
-                 <property name="frameShape">
-                  <enum>QFrame::StyledPanel</enum>
-                 </property>
-                 <property name="frameShadow">
-                  <enum>QFrame::Raised</enum>
-                 </property>
-                 <layout class="QGridLayout" name="gridLayout_11">
-                  <item row="0" column="0">
-                   <layout class="QFormLayout" name="formLayout_4">
-                    <item row="0" column="0">
-                     <widget class="QLabel" name="label_36">
-                      <property name="text">
-                       <string>限位地址</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="0" column="1">
-                     <widget class="QLineEdit" name="hardLimitID"/>
-                    </item>
-                    <item row="1" column="0">
-                     <widget class="QLabel" name="label_40">
-                      <property name="text">
-                       <string>CW方向</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="1" column="1">
-                     <widget class="QLineEdit" name="cwLimit"/>
-                    </item>
-                    <item row="2" column="0">
-                     <widget class="QLabel" name="label_41">
-                      <property name="text">
-                       <string>CCW方向</string>
-                      </property>
-                     </widget>
-                    </item>
-                    <item row="2" column="1">
-                     <widget class="QLineEdit" name="ccwLimit"/>
-                    </item>
-                    <item row="3" column="0">
-                     <widget class="QLabel" name="label_38">
-                      <property name="text">
-                       <string>是否有效</string>
-                      </property>
-                     </widget>
-                    </item>
                     <item row="3" column="1">
-                     <widget class="QLineEdit" name="hardLimitEnable"/>
+                     <widget class="QLineEdit" name="maxForce"/>
                     </item>
                    </layout>
                   </item>
@@ -428,104 +319,261 @@
                </item>
               </layout>
              </item>
-             <item>
-              <spacer name="horizontalSpacer_7">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_5">
+               <property name="text">
+                <string>电机</string>
                </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
+              </widget>
+             </item>
+             <item row="2" column="0">
+              <widget class="QLabel" name="label_12">
+               <property name="text">
+                <string>压力传感器</string>
                </property>
-              </spacer>
+              </widget>
              </item>
             </layout>
            </item>
            <item>
-            <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,0,0,0,9">
-             <item>
-              <spacer name="horizontalSpacer_3">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
-             </item>
-             <item>
-              <widget class="QPushButton" name="save">
-               <property name="minimumSize">
-                <size>
-                 <width>150</width>
-                 <height>0</height>
-                </size>
-               </property>
+            <layout class="QGridLayout" name="gridLayout_5">
+             <item row="0" column="0">
+              <widget class="QLabel" name="label_34">
                <property name="text">
-                <string>保存</string>
+                <string>位移传感器</string>
                </property>
               </widget>
              </item>
-             <item>
-              <spacer name="horizontalSpacer_2">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
-               </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
-               </property>
-              </spacer>
+             <item row="0" column="1" rowspan="2">
+              <layout class="QVBoxLayout" name="verticalLayout_3"/>
              </item>
-             <item>
-              <widget class="QPushButton" name="cancel">
-               <property name="minimumSize">
-                <size>
-                 <width>150</width>
-                 <height>0</height>
-                </size>
-               </property>
+             <item row="1" column="0">
+              <widget class="QLabel" name="label_35">
                <property name="text">
-                <string>取消</string>
+                <string>硬限位</string>
                </property>
               </widget>
              </item>
-             <item>
-              <spacer name="horizontalSpacer">
-               <property name="orientation">
-                <enum>Qt::Horizontal</enum>
+             <item row="0" column="2">
+              <widget class="QFrame" name="frame_5">
+               <property name="frameShape">
+                <enum>QFrame::StyledPanel</enum>
                </property>
-               <property name="sizeHint" stdset="0">
-                <size>
-                 <width>40</width>
-                 <height>20</height>
-                </size>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
                </property>
-              </spacer>
+               <layout class="QGridLayout" name="gridLayout_12">
+                <item row="0" column="0">
+                 <layout class="QFormLayout" name="formLayout_3">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_31">
+                    <property name="text">
+                     <string>传感器ID地址</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QLineEdit" name="lengthID"/>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="label_32">
+                    <property name="text">
+                     <string>传感器转换系数</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QLineEdit" name="lengthResulution"/>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="label_33">
+                    <property name="text">
+                     <string>传感器方向</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QLineEdit" name="lengthDir"/>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QLabel" name="label_39">
+                    <property name="text">
+                     <string>是否有效</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QLineEdit" name="lengthEnable"/>
+                  </item>
+                  <item row="4" column="1">
+                   <widget class="QLineEdit" name="maxFactLength"/>
+                  </item>
+                  <item row="4" column="0">
+                   <widget class="QLabel" name="label_30">
+                    <property name="text">
+                     <string>传感器保护限制</string>
+                    </property>
+                   </widget>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
+             </item>
+             <item row="1" column="2">
+              <widget class="QFrame" name="frame_4">
+               <property name="frameShape">
+                <enum>QFrame::StyledPanel</enum>
+               </property>
+               <property name="frameShadow">
+                <enum>QFrame::Raised</enum>
+               </property>
+               <layout class="QGridLayout" name="gridLayout_11">
+                <item row="0" column="0">
+                 <layout class="QFormLayout" name="formLayout_4">
+                  <item row="0" column="0">
+                   <widget class="QLabel" name="label_36">
+                    <property name="text">
+                     <string>限位地址</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="0" column="1">
+                   <widget class="QLineEdit" name="hardLimitID"/>
+                  </item>
+                  <item row="1" column="0">
+                   <widget class="QLabel" name="label_40">
+                    <property name="text">
+                     <string>CW方向</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="1" column="1">
+                   <widget class="QLineEdit" name="cwLimit"/>
+                  </item>
+                  <item row="2" column="0">
+                   <widget class="QLabel" name="label_41">
+                    <property name="text">
+                     <string>CCW方向</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="2" column="1">
+                   <widget class="QLineEdit" name="ccwLimit"/>
+                  </item>
+                  <item row="3" column="0">
+                   <widget class="QLabel" name="label_38">
+                    <property name="text">
+                     <string>是否有效</string>
+                    </property>
+                   </widget>
+                  </item>
+                  <item row="3" column="1">
+                   <widget class="QLineEdit" name="hardLimitEnable"/>
+                  </item>
+                 </layout>
+                </item>
+               </layout>
+              </widget>
              </item>
             </layout>
            </item>
            <item>
-            <spacer name="verticalSpacer">
+            <spacer name="horizontalSpacer_7">
              <property name="orientation">
-              <enum>Qt::Vertical</enum>
+              <enum>Qt::Horizontal</enum>
              </property>
              <property name="sizeHint" stdset="0">
               <size>
-               <width>20</width>
-               <height>40</height>
+               <width>40</width>
+               <height>20</height>
               </size>
              </property>
             </spacer>
            </item>
           </layout>
+         </item>
+         <item row="2" column="0">
+          <layout class="QHBoxLayout" name="horizontalLayout_3" stretch="1,0,0,0,9">
+           <item>
+            <spacer name="horizontalSpacer_3">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="save">
+             <property name="minimumSize">
+              <size>
+               <width>150</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>保存</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer_2">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget class="QPushButton" name="cancel">
+             <property name="minimumSize">
+              <size>
+               <width>150</width>
+               <height>0</height>
+              </size>
+             </property>
+             <property name="text">
+              <string>取消</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="horizontalSpacer">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint" stdset="0">
+              <size>
+               <width>40</width>
+               <height>20</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+          </layout>
+         </item>
+         <item row="3" column="0">
+          <spacer name="verticalSpacer">
+           <property name="orientation">
+            <enum>Qt::Vertical</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>20</width>
+             <height>40</height>
+            </size>
+           </property>
+          </spacer>
          </item>
         </layout>
        </widget>

@@ -14,7 +14,10 @@
 #include "systemwidget.h"
 #include "aboutwidget.h"
 #include "userwidget.h"
+
+
 #include "tool.h"
+
 
 class QtMaterialAvatar;
 class QtMaterialBadge;
@@ -55,6 +58,8 @@ private:
     aboutWidget *about;
     userWidget *userWin;
 
+
+
     void addErrMessage(QString);
     void deleteErrMessage(QString);
 
@@ -79,6 +84,7 @@ protected:
 
 private:
     QPoint lastPos;
+
 
 };
 #endif // MAINWINDOW_H

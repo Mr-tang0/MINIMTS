@@ -12,9 +12,10 @@ QT_CHARTS_USE_NAMESPACE
 #include "iconhelper.h"
 #include "quihelper.h"
 #include <QAbstractButton>
-// #include "mgmotorlogic.h"
 
 #include "minimtslogic.h"
+
+#include "hikcamera.h"
 
 
 struct TestDetails{
@@ -34,6 +35,14 @@ struct TestDetails{
 
     QString userFilePath = "";
     QString userFileName = "";
+
+    bool DICDetectEnable = false;
+    QString DICFileName = "DIC";
+    QString DICFilePath = "";
+    int DICDuration = 1000;
+    QString DICTriggr = "inner";
+
+    bool DICLengthEnable = false;
 };
 
 
@@ -58,6 +67,8 @@ public:
     void clearStateBox();
 
     MiniMTSLogic *minilogic = new MiniMTSLogic;
+    HIKCamera hikCamera;
+    QMap<QString, MV_CC_DEVICE_INFO*> devices;
 
 protected:
     void keyPressEvent(QKeyEvent *event) override;
@@ -94,6 +105,9 @@ private:
 
     QString userHistroyPath;
     QMap<QString, QMap<QString, QString>> historyMap;
+
+
+
 
 private:
     QList<QToolButton *> btnsMain;

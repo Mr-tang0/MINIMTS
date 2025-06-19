@@ -2,7 +2,7 @@
 #define ABOUTWIDGET_H
 
 #include <QWidget>
-// #include "mywebengineview.h"
+#include "pdfview.h"
 
 namespace Ui {
 class aboutWidget;
@@ -18,16 +18,10 @@ public:
     void initThis();
 
 private slots:
-    // void on_goto_btn_clicked();
-
-    // void on_back_clicked();
-
-    // void on_forward_clicked();
 
 private:
     Ui::aboutWidget *ui;
-    // myWebEngineView *helpEngineView = new myWebEngineView;
-    // myWebEngineView *aboutEngineView = new myWebEngineView;
+    PDFView view;
 
     QStringList urlList;
     QString CurrentUrl;

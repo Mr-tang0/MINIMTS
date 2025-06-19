@@ -367,7 +367,7 @@ void MainWindow::on_btnMenu_Close_clicked()
         "确认",
         "确定退出？",
         QMessageBox::Yes | QMessageBox::No
-        );
+    );
 
     if (reply == QMessageBox::Yes) {
         close();
