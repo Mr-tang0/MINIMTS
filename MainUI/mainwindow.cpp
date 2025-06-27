@@ -370,7 +370,7 @@ void MainWindow::on_btnMenu_Close_clicked()
     );
 
     if (reply == QMessageBox::Yes) {
-        close();
+        exit(0);
     }
 }
 

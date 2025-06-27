@@ -1,10 +1,7 @@
 HEADERS += \
-    $$PWD/imgKernal.h \
-    $$PWD/opticalextensometer.h \
-    $$PWD/sensortracker.h
+    $$PWD/hikextensometer.h \
+    $$PWD/imgKernal.h
 
 SOURCES += \
-    $$PWD/imgKernal.cpp \
-    $$PWD/opticalextensometer.cpp \
-    $$PWD/sensortracker.cpp \
-    $$PWD/test.cpp
+    $$PWD/hikextensometer.cpp \
+    $$PWD/imgKernal.cpp

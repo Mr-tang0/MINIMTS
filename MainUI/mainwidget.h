@@ -42,7 +42,15 @@ struct TestDetails{
     int DICDuration = 1000;
     QString DICTriggr = "inner";
 
-    bool DICLengthEnable = false;
+    bool DICLENEnable = false;
+    float pix = 1000;
+    float trueLength = 10;
+};
+
+struct DataPoint {
+    double timestamp;
+    float x;
+    float y;
 };
 
 
@@ -107,6 +115,8 @@ private:
     QMap<QString, QMap<QString, QString>> historyMap;
 
 
+    std::deque<DataPoint> historyBufferA; // 历史光学引申数据缓存
+    std::deque<DataPoint> historyBufferB;
 
 
 private:

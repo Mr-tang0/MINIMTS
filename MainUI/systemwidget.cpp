@@ -22,9 +22,9 @@ systemWidget::systemWidget(QWidget *parent) :
     QList<int> iconsConfig;
     QList<QAbstractButton *> btnsConfig;
 
-    iconsMain << 0xf013 << 0xf076;
+    iconsMain << 0xf013 << 0xf076<< 0xf033 << 0xf096;
 
-    btnsMain << ui->normalSet << ui->advanceSetup;
+    btnsMain << ui->normalSet << ui->advanceSetup<<ui->cameraSetup<<ui->DICSetup;
     int count = btnsMain.count();
     for (int i = 0; i < count; ++i) {
         QToolButton *btn = (QToolButton *)btnsMain.at(i);
@@ -107,11 +107,13 @@ void systemWidget::advanceSaveSystem(){
     emit saved(XMLReader::Save_XML_File(systemMap,rootPath));
 }
 
-void systemWidget::usersSaveSystem(){
+
+void systemWidget::dicSaveSystem(){
     QWidget *widget = ui->stackedWidget->widget(2);
+
     QList<QComboBox*> comboBoxList = widget->findChildren<QComboBox*>();
     for (QComboBox *comboBox : comboBoxList) {
-        systemMap["users"][comboBox->objectName()] = comboBox->currentText();
+        systemMap["dic"][comboBox->objectName()] = comboBox->currentText();
     }
 
     emit saved(XMLReader::Save_XML_File(systemMap,rootPath));
@@ -131,8 +133,10 @@ void systemWidget::leftMainClick()
         ui->stackedWidget->setCurrentIndex(0);
     }else if (name == "高级设置"){
         ui->stackedWidget->setCurrentIndex(1);
-    }else if (name == "用户设置"){
+    }else if (name == "DIC设置"){
         ui->stackedWidget->setCurrentIndex(2);
+    }else if(name == "相机设置"){
+        emit setupCamera();
     }
 }
 

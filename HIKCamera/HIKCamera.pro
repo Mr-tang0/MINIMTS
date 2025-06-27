@@ -1,12 +1,22 @@
 QT       += core gui
-QT += concurrent
+QT       += concurrent
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
 
-TEMPLATE = lib
-DEFINES += HIKCAMERA_LIBRARY
+DEFINES += BUILD_APP
+
+contains(DEFINES, BUILD_APP) {
+    SOURCES += main.cpp
+    TARGET = HIKCAMERA
+}else{
+    TEMPLATE = lib
+    DEFINES += HIKCAMERA_LIBRARY
+    HEADERS += \
+        hikcamera_global.h
+}
+
 
 # You can make your code fail to compile if it uses deprecated APIs.
 # In order to do so, uncomment the following line.
@@ -14,13 +24,11 @@ DEFINES += HIKCAMERA_LIBRARY
 
 SOURCES += \
     camera.cpp \
-    main.cpp \
     hikcamera.cpp
 
 HEADERS += \
     camera.h \
     hikcamera.h \
-    hikcamera_global.h
 
 FORMS += \
     hikcamera.ui
@@ -31,7 +39,6 @@ FORMS += \
 # !isEmpty(target.path): INSTALLS += target
 
 
-# Default rules for deployment.
 unix {
     target.path = /usr/lib
 }
@@ -62,7 +69,6 @@ LIB_DIR = $$PWD/external/release64/lib/
 
 LIB_FILES = $$files($$LIB_DIR/*.lib, true)
 
-# 添加库路径
 LIBS += -L$$LIB_FILES
 
 

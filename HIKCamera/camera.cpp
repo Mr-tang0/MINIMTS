@@ -192,9 +192,9 @@ int Camera::GetTriggerSource(float &s){
 //设置曝光
 int Camera::SetExposureTime(float time){
     if(time==-1){
-        return SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS);
-    }else if(time == -2){
         return SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_ONCE);
+    }else if(time == -2){
+        return SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_CONTINUOUS);
 
     }else{
         SetEnumValue("ExposureAuto", MV_EXPOSURE_AUTO_MODE_OFF);
@@ -221,9 +221,13 @@ int Camera::GetExposureTime(float &time){
 
 //设置增益
 int Camera::SetGain(float gain){
+    qDebug()<<"gain"<<gain;
     if(gain==-1){
-        //自动增益
+        //单次增益
         return SetEnumValue("GainAuto", 1);
+    }if(gain==-2){
+        //自动增益
+        return SetEnumValue("GainAuto", 2);
     }else{
         SetEnumValue("GainAuto", 0);
         return SetFloatValue("Gain", gain);
@@ -270,9 +274,9 @@ int Camera::GetFrameRate(int &frameRate){
 
 int Camera::SetDigitalGain(float gain){
     if(gain==-1)
-        return SetBoolValue("DigitalShiftEnable", true);
+        return SetBoolValue("DigitalShiftEnable", false);
     else{
-        SetBoolValue("DigitalShiftEnable", false);
+        SetBoolValue("DigitalShiftEnable", true);
         return SetFloatValue("DigitalShift", gain);
     }
 }
@@ -281,11 +285,13 @@ void Camera::getDigitalGain(float *gain){
     bool enable;
     GetBoolValue("DigitalShiftEnable",&enable);
     if(enable)
-        *gain=-1;
-    else{
+    {
         MVCC_FLOATVALUE stFloatValue = {0};
         GetFloatValue("DigitalShift", &stFloatValue);
         *gain = stFloatValue.fCurValue;
+    }
+    else{
+        *gain = -1;
     }
 }
 
@@ -345,24 +351,34 @@ int Camera::setHeight(float h){
 }
 
 void Camera::getHeight(float *h){
-    MVCC_FLOATVALUE stFloatValue = {0};
-    int ret = GetFloatValue("Height", &stFloatValue);
-    *h = stFloatValue.fCurValue;
-    qDebug()<<"height:"<< stFloatValue.fCurValue<< ret;
+    MVCC_INTVALUE_EX stIntValue = {0};
+    GetIntValue("Height", &stIntValue);
+    *h = stIntValue.nCurValue;
+}
+
+void Camera::getMaxHeight(float *h){
+    MVCC_INTVALUE_EX stIntValue = {0};
+    GetIntValue("HeightMax", &stIntValue);
+    *h = stIntValue.nCurValue;
 }
 
 int Camera::setWidth(float w){
     return SetIntValue("Width",w);
 }
 
+void Camera::getMaxWidth(float *w){
+    MVCC_INTVALUE_EX stIntValue = {0};
+    GetIntValue("WidthMax", &stIntValue);
+    *w = stIntValue.nCurValue;
+}
+
 void Camera::getWidth(float *w){
-    MVCC_FLOATVALUE stFloatValue = {0};
-    GetFloatValue("Width", &stFloatValue);
-    *w = stFloatValue.fCurValue;
+    MVCC_INTVALUE_EX stIntValue = {0};
+    GetIntValue("Width", &stIntValue);
+    *w = stIntValue.nCurValue;
 }
 
 int Camera::setXReverse(bool e){
-    if(isOpened())return -1;
     return SetBoolValue("ReverseX",e);
 }
 
@@ -371,8 +387,8 @@ void Camera::getXReverse(bool *e){
 }
 
 int Camera::setYReverse(bool e){
-    if(isOpened())return -1;
     return SetBoolValue("ReverseY",e);
+
 }
 
 void Camera::getYReverse(bool *e){

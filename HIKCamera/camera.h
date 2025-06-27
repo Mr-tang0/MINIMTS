@@ -72,7 +72,9 @@ public slots:
     void getBanlenceWhite(float *white);
     void getGamma(float *gamma);
     void getHeight(float *h);
+    void getMaxHeight(float *h);
     void getWidth(float *w);
+    void getMaxWidth(float *w);
     void getXReverse(bool *e);
     void getYReverse(bool *e);
 

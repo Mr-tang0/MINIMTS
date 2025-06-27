@@ -125,6 +125,9 @@ INCLUDEPATH += $$PWD/../../qtTools/PDF/
 DEPENDPATH += $$PWD/../../qtTools/PDF/
 include ($$PWD/../../qtTools/PDF/PDF.pri)
 
+INCLUDEPATH += $$PWD/../HIKCamera/Extensometer
+# include ($$PWD/../HIKCamera/Extensometer/Extensometer.pri)
+
 
 win32: LIBS += -L$$OUT_PWD/../HIKCamera/release/ -lHIKCamera
 

@@ -103,89 +103,44 @@ cv::Mat kernel(const cv::Mat img, const cv::Point topLeft, const cv::Size kernel
 }
 
 
-void PCM_shift(const cv::Mat roi1, const cv::Mat roi2, double *dx, double *dy, double *corr) {
+void PCM_shift(const cv::Mat &roi1, const cv::Mat &roi2, double *dx, double *dy, double *corr) {
+    // 确保输入图像尺寸相同
     if (roi1.size() != roi2.size()) {
         std::cerr << "Input arrays must have the same shape." << std::endl;
         throw std::invalid_argument("Input arrays must have the same shape.");
     }
 
-
     cv::Mat gray_roi1, gray_roi2;
+
+    // 转换为灰度图像
     if (roi1.channels() > 1) {
         cvtColor(roi1, gray_roi1, cv::COLOR_BGR2GRAY);
-    }
-    else {
+    } else {
         gray_roi1 = roi1.clone();
     }
     if (roi2.channels() > 1) {
         cvtColor(roi2, gray_roi2, cv::COLOR_BGR2GRAY);
-    }
-    else {
+    } else {
         gray_roi2 = roi2.clone();
     }
 
-    //// 对比度受限的自适应直方图均衡化(CLAHE)
-    //cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
-    //clahe->apply(gray_roi1, gray_roi1);
-    //clahe->apply(gray_roi2, gray_roi2);
+    // 归一化亮度和对比度
+    cv::normalize(gray_roi1, gray_roi1, 0, 255, NORM_MINMAX);
+    cv::normalize(gray_roi2, gray_roi2, 0, 255, NORM_MINMAX);
 
-    //// 高斯模糊以减少高频噪声
-    //GaussianBlur(gray_roi1, gray_roi1, cv::Size(3, 3), 0);
-    //GaussianBlur(gray_roi2, gray_roi2, cv::Size(3, 3), 0);
-
-    //cv::imshow("gray_roi1 ", gray_roi1);
-    //cv::imshow("gray_roi2 ", gray_roi2);
+    // 创建汉宁窗
+    Mat window;
+    createHanningWindow(window, gray_roi1.size(), CV_32F);
 
     // 转换为浮点型并做零均值化
     gray_roi1.convertTo(gray_roi1, CV_32F);
     gray_roi2.convertTo(gray_roi2, CV_32F);
-    //gray_roi1 -= cv::mean(gray_roi1)[0];
-    //gray_roi2 -= cv::mean(gray_roi2)[0];
 
-    // 相位相关计算
-    Point2d point = cv::phaseCorrelate(gray_roi1, gray_roi2, noArray(), corr);
+    // 使用汉宁窗进行相位相关计算
+    Point2d point = cv::phaseCorrelate(gray_roi1, gray_roi2, window, corr);
 
     *dx = point.x;
     *dy = point.y;
-
-
-
-
-    //// 亚像素级峰值检测
-    //auto subpixelPeak = [](const cv::Mat& matrix, const cv::Point2d& peak) -> cv::Point2d {
-    //    int x = static_cast<int>(peak.x);
-    //    int y = static_cast<int>(peak.y);
-
-    //    // 边界检查
-    //    if (x <= 0 || x >= matrix.cols - 1 || y <= 0 || y >= matrix.rows - 1) {
-    //        return peak; // 如果在边界，则返回原始位置
-    //    }
-
-    //    double dx = (matrix.at<float>(y, x - 1) - matrix.at<float>(y, x + 1)) /
-    //        (2 * matrix.at<float>(y, x - 1) - 4 * matrix.at<float>(y, x) + 2 * matrix.at<float>(y, x + 1));
-    //    double dy = (matrix.at<float>(y - 1, x) - matrix.at<float>(y + 1, x)) /
-    //        (2 * matrix.at<float>(y - 1, x) - 4 * matrix.at<float>(y, x) + 2 * matrix.at<float>(y + 1, x));
-
-    //    return cv::Point2d(peak.x + dx, peak.y + dy);
-    //    };
-
-    //// 计算亚像素级别的偏移
-    //cv::Mat corrMap;
-    //cv::phaseCorrelate(gray_roi1, gray_roi2, cv::noArray(), corr, &corrMap);
-    //point = subpixelPeak(corrMap, point);
-
-
-
-
-   /* gray_roi1.convertTo(gray_roi1, CV_32F);
-    gray_roi2.convertTo(gray_roi2, CV_32F);
-
-
-
-    Point2d point = cv::phaseCorrelate(gray_roi1, gray_roi2, noArray(), corr);
-
-    *dx = point.x;
-    *dy = point.y;*/
 }
 
 
@@ -203,27 +158,25 @@ Point2d FCD(const cv::Mat src) {
     else
         gray = src;
 
-    // 高斯模糊
-    cv::GaussianBlur(gray, gray, cv::Size(5, 5), 0);
-
     // 全局二值化
     cv::Mat threshold_img;
-    double retval = cv::threshold(gray, threshold_img, 120, 255, cv::THRESH_BINARY);
+    cv::threshold(gray, threshold_img, 120, 255, cv::THRESH_BINARY);
 
     // 反色处理，使黑色区域变为白色
     cv::Mat inverted_threshold_img;
     bitwise_not(threshold_img, inverted_threshold_img);
 
+
     // 计算图像的矩
     cv::Moments moments = cv::moments(inverted_threshold_img, true);
 
     Point2d center;
-    // 计算几何中心（质心）
+    // 计算几何中心
     if (moments.m00 > 0) { // 确保面积不为零避免除以零错误
         float centerX = static_cast<float>(moments.m10) / moments.m00;
         float centerY = static_cast<float>(moments.m01) / moments.m00;
 
-        //std::cout << "黑色区域几何中心坐标: (" << centerX << ", " << centerY << ")" << std::endl;
+        // std::cout << "黑色区域几何中心坐标: (" << centerX << ", " << centerY << ")" << std::endl;
         center = Point2d(centerX, centerY);
     }
     else {
@@ -300,4 +253,18 @@ Mat draw_rectangle(cv::Mat img, cv::Point center, cv::Size size, cv::Scalar colo
     cv::rectangle(img, topLeft, bottomRight, color, thickness);
     return img;
 }
+
+void sharpenCustomKernel(cv::Mat &image) {
+    if(image.empty()) return;
+
+    // 定义锐化卷积核
+    float sharpen_kernel_data[] = {0, -1, 0,
+                                   -1, 5, -1,
+                                   0, -1, 0};
+    cv::Mat sharpen_kernel(3, 3, CV_32F, sharpen_kernel_data);
+
+    // 应用卷积核
+    cv::filter2D(image, image, -1 , sharpen_kernel);
+}
+
 

@@ -6,14 +6,14 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>912</width>
-    <height>597</height>
+    <width>982</width>
+    <height>644</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>HIKCamera</string>
   </property>
-  <layout class="QGridLayout" name="gridLayout_9">
+  <layout class="QGridLayout" name="gridLayout_5">
    <item row="0" column="0">
     <layout class="QGridLayout" name="gridLayout_6">
      <item row="0" column="0">
@@ -21,22 +21,9 @@
        <property name="styleSheet">
         <string notr="true"/>
        </property>
-       <layout class="QGridLayout" name="gridLayout_5">
-        <property name="leftMargin">
-         <number>1</number>
-        </property>
-        <property name="topMargin">
-         <number>1</number>
-        </property>
-        <property name="rightMargin">
-         <number>1</number>
-        </property>
+       <layout class="QGridLayout" name="gridLayout_4">
         <item row="0" column="0">
-         <layout class="QGridLayout" name="gridLayout_4" rowstretch="0" columnstretch="0">
-          <item row="0" column="0">
-           <widget class="QGraphicsView" name="graphicsView"/>
-          </item>
-         </layout>
+         <widget class="QGraphicsView" name="graphicsView"/>
         </item>
        </layout>
       </widget>
@@ -48,10 +35,196 @@
          <layout class="QVBoxLayout" name="verticalLayout">
           <item>
            <layout class="QGridLayout" name="gridLayout">
+            <item row="16" column="1">
+             <widget class="QCheckBox" name="Y_reverse">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="11" column="1">
+             <widget class="QSpinBox" name="imgWidth">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
+              <property name="maximum">
+               <number>999999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="13" column="0">
+             <widget class="QLabel" name="FrameRateLabel_5">
+              <property name="text">
+               <string>图像高</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="14" column="1">
+             <widget class="QLabel" name="maxH">
+              <property name="text">
+               <string>0</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="6" column="0">
+             <widget class="QLabel" name="FrameRateLabel">
+              <property name="text">
+               <string>采集帧率</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="13" column="1">
+             <widget class="QSpinBox" name="imgHight">
+              <property name="enabled">
+               <bool>true</bool>
+              </property>
+              <property name="maximum">
+               <number>999999</number>
+              </property>
+             </widget>
+            </item>
+            <item row="14" column="0">
+             <widget class="QLabel" name="label_2">
+              <property name="text">
+               <string>最大高</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="12" column="0">
+             <widget class="QLabel" name="label_3">
+              <property name="text">
+               <string>最大宽</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="16" column="0">
+             <widget class="QLabel" name="FrameRateLabel_7">
+              <property name="text">
+               <string>垂直翻转</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="12" column="1">
+             <widget class="QLabel" name="maxW">
+              <property name="text">
+               <string>0</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="15" column="1">
+             <widget class="QCheckBox" name="X_reverse">
+              <property name="text">
+               <string/>
+              </property>
+             </widget>
+            </item>
+            <item row="9" column="1">
+             <widget class="QComboBox" name="enableGamma">
+              <item>
+               <property name="text">
+                <string>关闭</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>开启</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="4" column="1">
+             <widget class="QComboBox" name="enableDigitalGain">
+              <item>
+               <property name="text">
+                <string>关闭</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>开启</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="2" column="0">
+             <widget class="QLabel" name="GainLabel">
+              <property name="text">
+               <string>增益</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="7" column="1">
+             <widget class="QComboBox" name="enableBanlenceWhite">
+              <item>
+               <property name="text">
+                <string>手动</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>自动</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="5" column="1">
+             <widget class="QDoubleSpinBox" name="digitalGainRate">
+              <property name="minimum">
+               <double>0.000000000000000</double>
+              </property>
+              <property name="maximum">
+               <double>99999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
+            <item row="11" column="0">
+             <widget class="QLabel" name="FrameRateLabel_4">
+              <property name="text">
+               <string>图像宽</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="10" column="1">
+             <widget class="QDoubleSpinBox" name="gammaRate">
+              <property name="maximum">
+               <double>99999.000000000000000</double>
+              </property>
+             </widget>
+            </item>
             <item row="0" column="0">
              <widget class="QLabel" name="ExposureLabel">
               <property name="text">
                <string>曝光</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
               </property>
              </widget>
             </item>
@@ -60,6 +233,40 @@
               <item>
                <property name="text">
                 <string>手动</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>单次自动</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>连续自动</string>
+               </property>
+              </item>
+             </widget>
+            </item>
+            <item row="9" column="0">
+             <widget class="QLabel" name="FrameRateLabel_3">
+              <property name="text">
+               <string>伽马校正</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="2" column="1">
+             <widget class="QComboBox" name="enableGain">
+              <item>
+               <property name="text">
+                <string>手动</string>
+               </property>
+              </item>
+              <item>
+               <property name="text">
+                <string>单次自动</string>
                </property>
               </item>
               <item>
@@ -79,25 +286,34 @@
               </property>
              </widget>
             </item>
-            <item row="2" column="0">
-             <widget class="QLabel" name="GainLabel">
+            <item row="15" column="0">
+             <widget class="QLabel" name="FrameRateLabel_6">
               <property name="text">
-               <string>增益</string>
+               <string>水平翻转</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
               </property>
              </widget>
             </item>
-            <item row="2" column="1">
-             <widget class="QComboBox" name="enableGain">
-              <item>
-               <property name="text">
-                <string>手动</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>连续自动</string>
-               </property>
-              </item>
+            <item row="7" column="0">
+             <widget class="QLabel" name="FrameRateLabel_2">
+              <property name="text">
+               <string>白平衡</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
+             </widget>
+            </item>
+            <item row="4" column="0">
+             <widget class="QLabel" name="GainLabel_2">
+              <property name="text">
+               <string>数字增益</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignCenter</set>
+              </property>
              </widget>
             </item>
             <item row="3" column="1">
@@ -107,44 +323,6 @@
               </property>
               <property name="maximum">
                <double>999999.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="0">
-             <widget class="QLabel" name="GainLabel_2">
-              <property name="text">
-               <string>数字增益</string>
-              </property>
-             </widget>
-            </item>
-            <item row="4" column="1">
-             <widget class="QComboBox" name="enableDigitalGain">
-              <item>
-               <property name="text">
-                <string>关闭</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>开启</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="5" column="1">
-             <widget class="QDoubleSpinBox" name="digitalGainRate">
-              <property name="minimum">
-               <double>0.000000000000000</double>
-              </property>
-              <property name="maximum">
-               <double>99999.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="6" column="0">
-             <widget class="QLabel" name="FrameRateLabel">
-              <property name="text">
-               <string>帧率</string>
               </property>
              </widget>
             </item>
@@ -158,108 +336,13 @@
               </property>
              </widget>
             </item>
-            <item row="7" column="0">
-             <widget class="QLabel" name="FrameRateLabel_2">
-              <property name="text">
-               <string>白平衡</string>
-              </property>
-             </widget>
-            </item>
-            <item row="7" column="1">
-             <widget class="QComboBox" name="enableBanlenceWhite">
-              <item>
-               <property name="text">
-                <string>手动</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>自动</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="8" column="0">
-             <widget class="QLabel" name="FrameRateLabel_3">
-              <property name="text">
-               <string>伽马校正</string>
-              </property>
-             </widget>
-            </item>
             <item row="8" column="1">
-             <widget class="QComboBox" name="enableGamma">
-              <item>
-               <property name="text">
-                <string>关闭</string>
-               </property>
-              </item>
-              <item>
-               <property name="text">
-                <string>开启</string>
-               </property>
-              </item>
-             </widget>
-            </item>
-            <item row="9" column="1">
-             <widget class="QDoubleSpinBox" name="gammaRate">
+             <widget class="QDoubleSpinBox" name="BanlenceWhite">
+              <property name="minimum">
+               <double>-5.000000000000000</double>
+              </property>
               <property name="maximum">
                <double>99999.000000000000000</double>
-              </property>
-             </widget>
-            </item>
-            <item row="10" column="0">
-             <widget class="QLabel" name="FrameRateLabel_4">
-              <property name="text">
-               <string>图像宽</string>
-              </property>
-             </widget>
-            </item>
-            <item row="10" column="1">
-             <widget class="QSpinBox" name="imgWidth">
-              <property name="maximum">
-               <number>999999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="11" column="0">
-             <widget class="QLabel" name="FrameRateLabel_5">
-              <property name="text">
-               <string>图像高</string>
-              </property>
-             </widget>
-            </item>
-            <item row="11" column="1">
-             <widget class="QSpinBox" name="imgHight">
-              <property name="maximum">
-               <number>999999</number>
-              </property>
-             </widget>
-            </item>
-            <item row="12" column="1">
-             <widget class="QCheckBox" name="X_reverse">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="13" column="1">
-             <widget class="QCheckBox" name="Y_reverse">
-              <property name="text">
-               <string/>
-              </property>
-             </widget>
-            </item>
-            <item row="12" column="0">
-             <widget class="QLabel" name="FrameRateLabel_6">
-              <property name="text">
-               <string>水平翻转</string>
-              </property>
-             </widget>
-            </item>
-            <item row="13" column="0">
-             <widget class="QLabel" name="FrameRateLabel_7">
-              <property name="text">
-               <string>垂直翻转</string>
               </property>
              </widget>
             </item>
@@ -301,13 +384,6 @@
              </widget>
             </item>
            </layout>
-          </item>
-          <item>
-           <widget class="QPushButton" name="close">
-            <property name="text">
-             <string>退出</string>
-            </property>
-           </widget>
           </item>
           <item>
            <spacer name="verticalSpacer">
@@ -393,6 +469,13 @@
              </size>
             </property>
            </spacer>
+          </item>
+          <item>
+           <widget class="QPushButton" name="setupCamera">
+            <property name="text">
+             <string>相机设置</string>
+            </property>
+           </widget>
           </item>
          </layout>
         </item>

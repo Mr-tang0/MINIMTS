@@ -21,7 +21,7 @@ public:
 
     void normolSaveSystem();
     void advanceSaveSystem();
-    void usersSaveSystem();
+    void dicSaveSystem();
 
     static QMap<QString, QMap<QString, QString>> systemMap;
     QList<QToolButton *> btnsMain;
@@ -39,6 +39,7 @@ private:
 
 signals:
     void saved(bool);
+    void setupCamera();
 };
 
 #endif // SYSTEMWIDGET_H

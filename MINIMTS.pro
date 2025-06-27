@@ -6,5 +6,7 @@ SUBDIRS += \
     HIKCamera \
     MainUI \
     MiniMTSLogic \
+    NCorr \
+    OpenCorr \
     components \
     untitled

@@ -81,6 +81,10 @@ void mainWidget::keyReleaseEvent(QKeyEvent *event){
             minilogic->motorStop();
             addState("停止运动");
             keyControlMoving = false;
+        } else if (event->key() == Qt::Key_F5) {
+            hikCamera.show();
+            hikCamera.raise();
+            hikCamera.activateWindow();
         }
     }
 
@@ -122,6 +126,11 @@ void mainWidget::initChart(){
     ui->graphics->addSeries("位移-时间", "Length", "Time");
     ui->graphics->addSeries("应力-应变", "Stress", "Strian");
     ui->graphics->addSeries("速度-时间", "Speed", "Time");
+    ui->graphics->addSeries("AX-时间", "AX", "Time");
+    ui->graphics->addSeries("AY-时间", "AY", "Time");
+    ui->graphics->addSeries("BX-时间", "BX", "Time");
+    ui->graphics->addSeries("BY-时间", "BY", "Time");
+    ui->graphics->addSeries("DIC-时间", "DIC", "Time");
 
     ui->graphics->longShow();
     ui->graphics->showSeries("载荷-时间");
@@ -140,6 +149,9 @@ void mainWidget::initChart(){
 
     ui->speedLCD->setKey("速度 mm/s");
     ui->speedLCD->setDecimals(3);
+
+    ui->DICLCD->setKey("DIC mm");
+    ui->DICLCD->setDecimals(3);
 
     ui->timeLCD->setKey("时长 Secs");
     ui->timeLCD->setDecimals(1);
@@ -299,6 +311,24 @@ void mainWidget::initConnect(){
         }
     });
 
+    connect(ui->DICLCD, &MyLCD::doubleClicked, [=]() {
+        // 弹出确认对话框
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "您确定要将光学引伸距离归零吗？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+            hikCamera.setCurrentZreo();
+            emit message("光学引伸距离归零");
+            addState("光学引伸距离归零");
+        }else { // 如果用户点击了“否”
+            addState("用户取消");
+        }
+    });
+
     connect(ui->timeLCD, &MyLCD::doubleClicked, [=]() {
         QMessageBox::StandardButton reply = QMessageBox::question(
             nullptr,
@@ -332,6 +362,16 @@ void mainWidget::initConnect(){
         {emit message("DIC图片文件名不能为空");return;}
         else if(ui->DICEnable->isChecked()&&ui->DICDuration->value()<=200)
         {emit message("DIC采集时间不得小于200ms");return;}
+        else if(ui->DICLENEnable->isChecked()){
+            if (ui->pix->text()==""||ui->trueLength->text()=="")
+            {
+                emit message("还未进行标定");
+                return;
+            }else if(ui->pointA->text()==""||ui->pointB->text()==""){
+                emit message("必须选择两个标识点");
+                return;
+            }
+        }
 
 
         testDetails.userName = ui->userName_lineEidt->text();
@@ -351,11 +391,17 @@ void mainWidget::initConnect(){
         testDetails.userFilePath = ui->filePath->text();
         testDetails.userFileName = ui->fileName->text();
 
+        //dic
         testDetails.DICFileName = ui->DICFileName->text();
         testDetails.DICFilePath = ui->DICFilePath->text();
         testDetails.DICTriggr = ui->DICTriggr->currentText();
         testDetails.DICDuration = ui->DICDuration->value();
         testDetails.DICDetectEnable = ui->DICEnable->isChecked();
+
+        //diclength
+        testDetails.pix = ui->pix->text().toFloat();
+        testDetails.trueLength = ui->trueLength->text().toFloat();
+        testDetails.DICLENEnable = ui->DICLENEnable->isChecked();
 
 
         MainWindow::user.userfilePath = testDetails.userFilePath;
@@ -373,11 +419,21 @@ void mainWidget::initConnect(){
 
         historyMap[MainWindow::user.name]["index"] = ui->number_lineEidt->text();
 
-        historyMap[MainWindow::user.name]["DICDetectEnable"]=ui->DICEnable->isChecked() ? "true" : "false";
+        historyMap[MainWindow::user.name]["DICDetectEnable"] = ui->DICEnable->isChecked() ? "true" : "false";
         historyMap[MainWindow::user.name]["DICFileName"] = testDetails.DICFileName;
         historyMap[MainWindow::user.name]["DICFilePath"] = testDetails.DICFilePath;
         historyMap[MainWindow::user.name]["DICTriggr"] = testDetails.DICTriggr;
         historyMap[MainWindow::user.name]["DICDuration"] = QString::number(testDetails.DICDuration);
+
+        historyMap[MainWindow::user.name]["DICLENEnable"] = ui->DICLENEnable->isChecked() ? "true" : "false";
+        historyMap[MainWindow::user.name]["trueLength"] = QString::number(testDetails.trueLength);
+        historyMap[MainWindow::user.name]["pix"] = QString::number(testDetails.pix);
+
+        if(ui->DICLENEnable->isChecked())
+        {
+            hikCamera.startTracker(true, true);
+            hikCamera.setDistenceRate(testDetails.pix/testDetails.trueLength);
+        }else hikCamera.startTracker(false, false);
 
 
 
@@ -460,7 +516,30 @@ void mainWidget::initConnect(){
         }
     });
 
+    connect(ui->selectPointA,&QPushButton::clicked,this,[=](){
+        hikCamera.addTracker("A");
+    });
+    connect(ui->selectPointB,&QPushButton::clicked,this,[=](){
+        hikCamera.addTracker("B");
+    });
+
+    connect(&hikCamera, &HIKCamera::HIKEAROI, this, [=](Rect rect){
+        QString rectText = QString("X:%1 Y:%2 W:%3 H:%4")
+        .arg(rect.x).arg(rect.y).arg(rect.width).arg(rect.height);
+        ui->pointA->setText(rectText);
+    });
+
+    connect(&hikCamera, &HIKCamera::HIKEBROI, this, [=](Rect rect){
+        QString rectText = QString("X:%1 Y:%2 W:%3 H:%4")
+        .arg(rect.x).arg(rect.y).arg(rect.width).arg(rect.height);
+        ui->pointB->setText(rectText);
+    });
+
+    connect(ui->drawPix,&QPushButton::clicked,this,[=](){
+        hikCamera.selectLine("LINE");
+    });
 }
+
 
 void mainWidget::initSystem(){
     //初始化连接界面
@@ -666,6 +745,8 @@ bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
         QString seriesName = it.key();
         QLineSeries *series = it.value();
 
+        qDebug()<<seriesName;
+
         const auto points = series->points();
 
         QList<float> xData,yData;
@@ -678,16 +759,24 @@ bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
     }
 
     QList<QList<float>> newdatalist;
-    //force
-    newdatalist.append(datalist[5]);
-    newdatalist.append(datalist[1]);
-    newdatalist.append(datalist[2]);
-    newdatalist.append(datalist[3]);
-    newdatalist.append(datalist[7]);
-    newdatalist.append(datalist[6]);
 
+    newdatalist.append(datalist[15]); //force
+    newdatalist.append(datalist[11]); //length
+    newdatalist.append(datalist[14]); //strain
+    newdatalist.append(datalist[13]); //stress
+    newdatalist.append(datalist[11]); //speed
 
-    QStringList header = {"force","length","strain","stress", "speed","time"};
+    newdatalist.append(datalist[1]); //AX
+    newdatalist.append(datalist[3]); //AY
+
+    newdatalist.append(datalist[5]); //BX
+    newdatalist.append(datalist[7]); //BY
+
+    newdatalist.append(datalist[9]); //DIC
+
+    newdatalist.append(datalist[2]); //time
+
+    QStringList header = {"force","length","strain","stress", "speed", "AX", "AY", "BX", "BY", "DIC", "time"};
     return saveCsv(newdatalist,header);
 }
 
@@ -768,6 +857,26 @@ void mainWidget::getQssColor(const QString &qss, QString &textColor, QString &pa
     getQssColor(qss, "HighColor:", highColor);
 }
 
+template<typename Func>
+float estimateValue(const std::deque<DataPoint>& buffer, double targetTime, Func getVal) {
+    if (buffer.size() == 1) {
+        return getVal(buffer.front());
+    }
+
+    for (size_t i = 1; i < buffer.size(); ++i) {
+        const auto& p1 = buffer[i - 1];
+        const auto& p2 = buffer[i];
+
+        if (targetTime >= p1.timestamp && targetTime <= p2.timestamp) {
+            double t = (targetTime - p1.timestamp) / (p2.timestamp - p1.timestamp);
+            return static_cast<float>((1 - t) * getVal(p1) + t * getVal(p2));
+        }
+    }
+
+    // 如果目标时间在所有历史时间之后，返回最后一个值（保持不变）
+    return getVal(buffer.back());
+}
+
 void mainWidget::freshData(){
     if(!motorConnectFlag)return;
 
@@ -811,6 +920,47 @@ void mainWidget::freshData(){
         emit message("电机超限，已自动停止");
     }
 
+    float ax = hikCamera.A.x;
+    float ay = hikCamera.A.y;
+
+    float bx = hikCamera.B.x;
+    float by = hikCamera.B.y;
+
+    float distance = hikCamera.A_to_B_Distense * displayDir;
+    ui->DICLCD->display(distance);
+    ui->graphics->addPoint("DIC-时间", QPointF(time, distance));
+
+    historyBufferA.push_back({time, ax, ay});
+
+    const int maxBufferSize = 20;
+    if (historyBufferA.size() > maxBufferSize) {
+        historyBufferA.pop_front();
+    }
+
+    if (historyBufferA.empty()) return;
+
+    float estimatedAx = estimateValue(historyBufferA, time, [](const DataPoint& p){ return p.x; });
+    float estimatedAy = estimateValue(historyBufferA, time, [](const DataPoint& p){ return p.y; });
+
+    ui->graphics->addPoint("AX-时间", QPointF(time, estimatedAx));
+    ui->graphics->addPoint("AY-时间", QPointF(time, estimatedAy));
+
+
+
+    historyBufferB.push_back({time, bx, by});
+
+
+    if (historyBufferB.size() > maxBufferSize) {
+        historyBufferB.pop_front();
+    }
+
+    if (historyBufferB.empty()) return;
+
+    float estimatedBx = estimateValue(historyBufferB, time, [](const DataPoint& p){ return p.x; });
+    float estimatedBy = estimateValue(historyBufferB, time, [](const DataPoint& p){ return p.y; });
+
+    ui->graphics->addPoint("BX-时间", QPointF(time, estimatedBx));
+    ui->graphics->addPoint("BY-时间", QPointF(time, estimatedBy));
 
 }
 
