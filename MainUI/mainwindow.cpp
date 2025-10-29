@@ -72,6 +72,10 @@ MainWindow::MainWindow(QWidget *parent)
 
     login->show();
 
+    connect(system,&systemWidget::openPIDContorl,this,[=](){
+        mainwd->minilogic->openPIDControl(systemWidget::systemMap["normal"]);
+    });
+
 }
 
 MainWindow::~MainWindow()
@@ -83,29 +87,24 @@ MainWindow::~MainWindow()
 void MainWindow::runUpdateCommand(){
     QString appDirPath = QCoreApplication::applicationDirPath();
 
-    qDebug()<<"findNew";
+    QString thisID = QString::number(VersionID);
+
+    qDebug() << "find new "<<"this id is "+ thisID;
 
     // 构造命令和参数
     QString program = appDirPath + "/update";
     QStringList arguments;
     arguments << "https://raw.gitcode.com/m0_51547074/update_info/raw/main/minimtsinfo.json"
               << "MINIMTS"
-              << "3";
+              << thisID;
 
-    QProcess process;
-    process.setWorkingDirectory(appDirPath);
-    process.start(program, arguments);
+    // 使用 startDetached 异步启动进程
+    bool success = QProcess::startDetached(program, arguments, appDirPath);
 
-    // 等待进程启动成功
-    if (!process.waitForStarted()) {
-        qDebug() << "无法启动 update 程序";
-        return;
-    }
-
-    //超时时间300s
-    if (!process.waitForFinished(3000000)) {
-        qDebug() << "执行过程中发生错误：" << process.errorString();
-        return;
+    if (!success) {
+        qDebug() << "Failed to start update program.";
+    } else {
+        qDebug() << "Update command started successfully.";
     }
 }
 
@@ -258,8 +257,6 @@ void MainWindow::initThis(){
                    "border-width:0px 0px 0px %1px;}").arg(borderWidth);
     this->setStyleSheet(qss.join(""));
 
-    qDebug()<<"dd";
-
     QSize icoSize(32, 32);
     int icoWidth = 85;
 
@@ -337,7 +334,10 @@ void MainWindow::buttonClick()
 
     }else if (name == "用户") {
         ui->stackedWidget->setCurrentIndex(3);
+    }else if (name == "DIC分析") {
+        m_snackbar->addMessage("暂不可用！");
     }
+
 }
 
 void MainWindow::on_btnMenu_Min_clicked()

@@ -12,14 +12,18 @@ CONFIG += c++17
 #DEFINES += QT_DISABLE_DEPRECATED_BEFORE=0x060000    # disables all the APIs deprecated before Qt 6.0.0
 
 SOURCES += \
+    minimts_ex.cpp \
     minimtsdecoder.cpp \
     minimtslogic.cpp \
-    minimtsport.cpp
+    minimtsport.cpp \
+    pidcontrol.cpp
 
 HEADERS += \
+    minimts_ex.h \
     minimtsdecoder.h \
     minimtslogic.h \
-    minimtsport.h
+    minimtsport.h \
+    pidcontrol.h
 
 # Default rules for deployment.
 unix {
@@ -28,7 +32,8 @@ unix {
 !isEmpty(target.path): INSTALLS += target
 
 FORMS += \
-    minimtsport.ui
+    minimtsport.ui \
+    pidcontrol.ui
 
 msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
 msvc:QMAKE_CXXFLAGS += -source-charset:utf-8

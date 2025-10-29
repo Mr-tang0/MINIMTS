@@ -24,6 +24,8 @@ void PCM_shift(const cv::Mat &roi1, const cv::Mat &roi2, double *dx, double *dy,
 
 Point2d FCD(const cv::Mat img);
 
+Point2d findDominantBlobCenter(const cv::Mat& src, bool debug = false);
+
 Mat img_add_border(const cv::Mat& img, int border_size);
 
 double ZNCC(const cv::Mat& img_old, const cv::Mat& img_new);

@@ -11,6 +11,8 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
 
+DEFINES += VersionID=5
+
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
 # depend on your compiler). Please consult the documentation of the
@@ -104,8 +106,6 @@ else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../build/Qt-Advanced-Do
 else:unix: LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/ -lqtadvanceddocking
 
 
-
-
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../build/qtTools/release/ -lqtTools
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../build/qtTools/debug/ -lqtTools
 else:unix: LIBS += -L$$PWD/../build/qtTools/ -lqtTools
@@ -142,3 +142,23 @@ INCLUDEPATH += $$PWD/../HIKCamera/external/release64/include
 
 
 
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../QTOpenCorr/release/ -lQTOpenCorr
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../QTOpenCorr/debug/ -lQTOpenCorr
+else:unix: LIBS += -L$$OUT_PWD/../QTOpenCorr/ -lQTOpenCorr
+
+INCLUDEPATH += $$PWD/../QTOpenCorr
+DEPENDPATH += $$PWD/../QTOpenCorr
+
+INCLUDEPATH += $$PWD/../fftw3/include
+DEPENDPATH += $$PWD/../fftw3/include
+
+LIB_DIR = $$PWD/../fftw3/lib/
+LIB_FILES = $$files($$LIB_DIR/*.lib, true)
+LIBS += $$LIB_FILES
+
+
+INCLUDEPATH += $$PWD/../Eigen3
+INCLUDEPATH += $$PWD/../Eigen3/Eigen
+
+INCLUDEPATH += $$PWD/../nanoflann

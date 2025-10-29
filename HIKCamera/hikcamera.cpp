@@ -5,8 +5,12 @@
 #include <QDir>
 #include <QtConcurrent>
 #include <QScreen>
+#include <QThread>
+#include "imgKernal.h"
 
-
+#include "hikextensometer.h"
+#include "opencorrextensometer.h"
+#include "pyrlkextensometer.h"
 
 
 HIKCamera::HIKCamera(QWidget *parent)
@@ -26,10 +30,13 @@ HIKCamera::HIKCamera(QWidget *parent)
     enableConnectWidget(true);
 #endif
 
-
+    extensometerA = new PyrLKExtensometer;
+    extensometerB = new PyrLKExtensometer;
 
 
     connect(DetectTimer, &QTimer::timeout, this, &HIKCamera::catchOneFrameAndShow);
+    connect(DICDetectTimer, &QTimer::timeout, this, &HIKCamera::DICSavePIC);
+
     connect(detailsTimer, &QTimer::timeout, this, &HIKCamera::getCameraDetails);
 
     connect(ui->SetParam, &QPushButton::clicked, this, &HIKCamera::setParamsClicked);
@@ -84,11 +91,10 @@ HIKCamera::HIKCamera(QWidget *parent)
 
     });
 
-    connect(&HIKEA,&HIKExtensometer::resultEmit,this,&HIKCamera::refreshPointA);
-    connect(&HIKEB,&HIKExtensometer::resultEmit,this,&HIKCamera::refreshPointB);
+    connect(extensometerA,&Extensometer::resultEmit,this,&HIKCamera::refreshPointA);
+    connect(extensometerB,&Extensometer::resultEmit,this,&HIKCamera::refreshPointB);
 
     ui->refresh->click();
-
 }
 
 HIKCamera::~HIKCamera()
@@ -175,17 +181,13 @@ int HIKCamera::startDIC(QString fileName,QString filePath,int duration){
     DICCounts = 0;
     DICFileName = fileName;
     DICFilePath = filePath;
-    DICEnable = true;
 
-    startDetect(false);
-    DetectTimer->start(duration);
+    DICDetectTimer->start(duration);
     return 0;
 }
 
 int HIKCamera::stopDIC(){
-    DICEnable = false;
-
-    startDetect(true);
+    DICDetectTimer->stop();
     return 0;
 }
 
@@ -208,14 +210,6 @@ void HIKCamera::startDetect(bool detect) {
     }
 }
 
-/**
- * 在给定的图像上绘制一个矩形框。
- *
- * @param image 输入输出图像，矩形框将被绘制在此图像上。
- * @param rect 要绘制的矩形框的位置和大小。
- * @param color 矩形边框的颜色，以Scalar对象表示 (B, G, R)。
- * @param thickness 矩形边框的粗细。如果为负值，如 FILLED，则填充矩形。
- */
 void drawRectangle(cv::Mat& image, const cv::Rect& rect, const cv::Scalar& color, int thickness = 1) {
     // 检查图像是否为空
     if(image.empty()) {
@@ -227,34 +221,54 @@ void drawRectangle(cv::Mat& image, const cv::Rect& rect, const cv::Scalar& color
     cv::rectangle(image, rect, color, thickness);
 }
 
-
 void HIKCamera::catchOneFrameAndShow() {
 
     float m = 99;
     camera->GetTriggerMode(m);
     if (m == 1)startDetect(false);
 
-    Mat currentFrame;
+    cv::Mat lastFrame = currentFrame.clone();
+
+
     int ret = camera->getOneImgMat(&currentFrame,10);
     if (ret != MV_OK)return;
 
-    //追踪器
+    // 追踪器
+    cv::Mat cloneFrame = currentFrame.clone();
     if (trackerWorkFlagA){
-        HIKEA.caculateImgAsync(currentFrame);
-        drawRectangle(currentFrame,HIKEA.ROI, cv::Scalar(0, 0, 255),2);
+        extensometerA->caculateImgAsync(currentFrame);
+        drawRectangle(cloneFrame,extensometerA->ROI, cv::Scalar(0, 0, 255),5);
     }
     if(trackerWorkFlagB) {
-        HIKEB.caculateImgAsync(currentFrame);
-        drawRectangle(currentFrame,HIKEB.ROI, cv::Scalar(0, 255, 0),2);
+        extensometerB->caculateImgAsync(currentFrame);
+        drawRectangle(cloneFrame,extensometerB->ROI, cv::Scalar(0, 255, 0),5);
     }
 
+
     cv::Mat rgbImg;
-    if (currentFrame.channels() == 3) {
-        cvtColor(currentFrame, rgbImg, cv::COLOR_BGR2RGB);
+    if (cloneFrame.channels() == 3) {
+        cvtColor(cloneFrame, rgbImg, cv::COLOR_BGR2RGB);
     }
     else {
-        currentFrame.copyTo(rgbImg);
+        cloneFrame.copyTo(rgbImg);
     }
+
+    if(boxEnable){
+        if (boxRect.size() == 4) {
+            std::vector<cv::Point> points;
+            for (const auto& pt : boxRect) {
+                points.push_back(cv::Point(static_cast<int>(pt.x), static_cast<int>(pt.y)));
+            }
+            cv::polylines(rgbImg, points, true, cv::Scalar(0, 255, 255), 3);
+        }
+
+        if(boxPosition.first!=boxPosition.second){
+            cv::Point startPoint(static_cast<int>(boxPosition.first.x), static_cast<int>(boxPosition.first.y));
+            cv::Point endPoint(static_cast<int>(boxPosition.second.x), static_cast<int>(boxPosition.second.y));
+            cv::line(rgbImg, startPoint, endPoint, cv::Scalar(0, 255, 0), 3);
+        }
+    }
+
     QImage qimg;
     if (rgbImg.channels() == 1)
         qimg = QImage(rgbImg.data, rgbImg.cols, rgbImg.rows, rgbImg.step, QImage::Format_Grayscale8);
@@ -270,13 +284,15 @@ void HIKCamera::catchOneFrameAndShow() {
     viewScene->addItem(item);
     ui->graphicsView->fitInView(item, Qt::KeepAspectRatio);
 
-    if(DICEnable)
-    {
-        DICCounts ++;
-        QtConcurrent::run([=]() {
-            this->saveImageWithTimestamp(DICFileName, DICFilePath, currentFrame, DICCounts);
-        });
-    }
+
+}
+
+void HIKCamera::DICSavePIC(){
+    DICCounts ++;
+    QtConcurrent::run([=]() {
+        Mat img = currentFrame.clone();
+        this->saveImageWithTimestamp(DICFileName, DICFilePath, img, DICCounts);
+    });
 }
 
 
@@ -455,20 +471,49 @@ void HIKCamera::setParamsClicked() {
     camera->StartGrabbing();
 }
 
+Point2f nearestPointOnLine(QPair<Point2f, Point2f> position, Point2f point) {
+    Point2f p1 = position.first;
+    Point2f p2 = position.second;
+
+    Point2f v = p2 - p1;            // 直线方向向量
+    Point2f w = point - p1;         // 从 p1 到 point 的向量
+
+    double dot_v_w = v.dot(w);      // 向量点积 v · w
+    double dot_v_v = v.dot(v);      // v · v (即 |v|²)
+
+    // 防止除以零（两点重合）
+    if (dot_v_v == 0.0) {
+        qDebug() << "Warning: Line points are identical.";
+        return p1;
+    }
+
+    double t = dot_v_w / dot_v_v;   // 参数 t
+
+    // 垂足坐标
+    Point2f projection = p1 + t * v;
+
+    // 计算点到直线的距离
+    double distance = norm(point - projection);
+
+    // 使用 qDebug 打印距离
+    // qDebug() << "Distance from point to line:" << distance;
+
+    return projection;
+}
+
 void HIKCamera::refreshPointA(float x, float y){
-    A.x = x;
-    A.y = y;
-    current_A_to_B = (current_A_to_B+std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2)) / DistenceRate)/2;
-    current_A_to_B = int(current_A_to_B*1000)/1000.0;
+
+    A=nearestPointOnLine(boxPosition,Point2f(x,y));
+
+    current_A_to_B = (current_A_to_B+norm(A-B))/DistenceRate;
 
     A_to_B_Distense = current_A_to_B - A_to_B_Zreo;
 }
 
 void HIKCamera::refreshPointB(float x, float y){
-    B.x = x;
-    B.y = y;
-    current_A_to_B = (current_A_to_B+std::sqrt(std::pow(B.x - A.x, 2) + std::pow(B.y - A.y, 2)) / DistenceRate)/2;
-    current_A_to_B = int(current_A_to_B*1000)/1000.0;
+    B=nearestPointOnLine(boxPosition,Point2f(x,y));
+
+    current_A_to_B = (current_A_to_B+norm(A-B))/DistenceRate;
 
     A_to_B_Distense = current_A_to_B - A_to_B_Zreo;
 }
@@ -524,21 +569,29 @@ void HIKCamera::addTracker(QString ID) {
 
         if(ID=="A"){
             startTracker(false,trackerWorkFlagB);
-            HIKEA.uninit();
-            HIKEA.setOrignalImg(img);
-            HIKEA.setROI(roi_box);
-            HIKEA.init();
-            HIKEA.debug(true);
+
+            extensometerA->setOrignalImg(img);
+            extensometerA->setROI(roi_box);
+
+            extensometerA->uninit();
+            extensometerA->init();
+
+            extensometerA->debug(true);
+
             emit HIKEAROI(roi_box);
         }else if(ID=="B"){
             startTracker(trackerWorkFlagB,false);
-            HIKEB.uninit();
-            HIKEB.setOrignalImg(img);
-            HIKEB.setROI(roi_box);
-            HIKEB.init();
-            HIKEB.debug(false);
+
+            extensometerB->setOrignalImg(img);
+            extensometerB->setROI(roi_box);
+
+            extensometerB->uninit();
+            extensometerB->init();
+
+            extensometerB->debug(false);
+
             emit HIKEBROI(roi_box);
-        } else return;
+        }else return;
     }
 }
 
@@ -547,12 +600,16 @@ void HIKCamera::addTracker(QString ID) {
 double onMouse_length = 0;
 bool onMouse_drawing = false;
 cv::Point ptStart(-1, -1), ptEnd(-1, -1);
-void onMouse(int event, int x, int y, int flags, void*) {
+cv::Point mousePosition(-1, -1); // 用于存储当前鼠标位置
+
+void onMouseAction(int event, int x, int y, int flags, void*) {
     if (event == cv::EVENT_LBUTTONDOWN) { // 左键按下
         ptStart = cv::Point(x, y);
         onMouse_drawing = true;
+        mousePosition = cv::Point(x, y);
     }
     else if (event == cv::EVENT_MOUSEMOVE) { // 鼠标移动
+        mousePosition = cv::Point(x, y);
         if (onMouse_drawing) {
             ptEnd = cv::Point(x, y);
         }
@@ -592,25 +649,67 @@ void HIKCamera::selectLine(std::string windowtitle, Mat img) {
 
     img = *resizedImage;
     cv::namedWindow(windowtitle);
-    cv::setMouseCallback(windowtitle, onMouse, 0);
+    cv::setMouseCallback(windowtitle, onMouseAction, 0);
+
+
+    int i = 0;
 
     while (true) {
         cv::Mat imgCopy = img.clone();
         if (ptStart.x >= 0 && ptStart.y >= 0 && ptEnd.x >= 0 && ptEnd.y >= 0) {
-            cv::line(imgCopy, ptStart, ptEnd, cv::Scalar(0, 0, 255), 2); // 绘制红色线条
+            cv::line(imgCopy, ptStart, ptEnd, cv::Scalar(0, 0, 255), 1); // 绘制红色线条
         }
+
+        // 根据鼠标位置绘制放大视图
+        if(mousePosition.x > 0 && mousePosition.y > 0){
+            int margin = 20;
+            cv::Rect roi(cv::Point(mousePosition.x - margin, mousePosition.y - margin),
+                         cv::Point(mousePosition.x + margin, mousePosition.y + margin));
+            roi &= cv::Rect(0, 0, imgCopy.cols, imgCopy.rows);
+            cv::Mat roiImg = imgCopy(roi);
+            cv::Mat zoomedRoi;
+            int scale = 5;
+            cv::resize(roiImg, zoomedRoi, cv::Size(), scale, scale);
+
+
+            int cx = zoomedRoi.cols / 2;
+            int cy = zoomedRoi.rows / 2;
+            int len = 10;
+            int thickness = 1;
+
+            cv::line(zoomedRoi, cv::Point(cx - len, cy), cv::Point(cx + len, cy), cv::Scalar(0, 255, 0), thickness);
+            cv::line(zoomedRoi, cv::Point(cx, cy - len), cv::Point(cx, cy + len), cv::Scalar(0, 255, 0), thickness);
+
+            cv::circle(zoomedRoi, cv::Point(cx, cy), 1, cv::Scalar(0, 0, 255), -1);
+
+
+            cv::imshow("Zoomed View", zoomedRoi);
+
+            if(i ==0)
+            {
+                cv::setWindowProperty("Zoomed View", cv::WND_PROP_TOPMOST, 1);
+                i =2;
+            }
+
+
+        }
+
         cv::imshow(windowtitle, imgCopy);
 
         int key = cv::waitKey(10);
         if (key == 27) {
             destroyWindow(windowtitle);
+            destroyWindow("Zoomed View");
             break;
         }
         else if (key == 13) {
             destroyWindow(windowtitle);
+            destroyWindow("Zoomed View");
             float scale = (float)originalSize.width / resizedSize.width;
             lineLength = onMouse_length * scale;
-            qDebug() << "lineLength" << lineLength;
+
+            emit LineSeclected(lineLength);
+
             break;
         }
     }
@@ -624,3 +723,216 @@ void HIKCamera::selectLine(std::string windowtitle){
     if(ret==MV_OK)
         selectLine(windowtitle, img);
 }
+
+// 鼠标画线绘制方向 created by Tang 2025/10/15 18:37
+void HIKCamera::selectPositionLine(std::string windowtitle){
+    if(camera==MV_NULL)return;
+
+    cv::Mat img;
+    int ret = camera->getOneImgMat(&img, 500);
+    if(ret!=MV_OK)
+        return;
+
+
+    QPoint windowPosition = this->geometry().topLeft();
+    QScreen* screen = QGuiApplication::screenAt(windowPosition);
+    int screenWidth = 1920;
+    int screenHeight = 1080;
+    if (screen) {
+        QRect screenGeometry = screen->geometry();
+        screenWidth = screenGeometry.width();
+        screenHeight = screenGeometry.height();
+    }
+
+    cv::Mat* resizedImage = new cv::Mat;
+    Size originalSize = img.size();
+
+    if (originalSize.width > originalSize.height) {
+        cv::resize(img, *resizedImage, Size(screenWidth / 2, screenWidth / 2 * originalSize.height / originalSize.width));
+    }
+    else {
+        cv::resize(img, *resizedImage, Size(screenHeight / 2 * originalSize.width / originalSize.height, screenHeight / 2));
+    }
+    Size resizedSize = resizedImage->size();
+
+    float scaleX = (float)originalSize.width / resizedSize.width;
+    float scaleY = (float)originalSize.height / resizedSize.height;
+
+
+    img = *resizedImage;
+    cv::namedWindow(windowtitle);
+    cv::setMouseCallback(windowtitle, onMouseAction, 0);
+
+
+    while (true) {
+        cv::Mat imgCopy = img.clone();
+        if (ptStart.x >= 0 && ptStart.y >= 0 && ptEnd.x >= 0 && ptEnd.y >= 0) {
+            cv::line(imgCopy, ptStart, ptEnd, cv::Scalar(0, 0, 255), 1); // 绘制红色线条
+        }
+
+        cv::imshow(windowtitle, imgCopy);
+
+        int key = cv::waitKey(10);
+        if (key == 27) {
+            destroyWindow(windowtitle);
+            break;
+        }
+        else if (key == 13) {
+            destroyWindow(windowtitle);
+            Mat output = resizedImage->clone();
+            line(output, ptStart, ptEnd, Scalar(0, 255, 0), 1);
+
+            // 显示结果
+            imshow("Fitted Rectangles", output);
+            waitKey(0);
+            destroyAllWindows();
+
+            Point2f scaleNewMid1 = Point2f(ptStart.x*scaleX, ptStart.y*scaleY);
+            Point2f scaleNewMid2 = Point2f(ptEnd.x*scaleX, ptEnd.y*scaleY);
+
+            boxRect.clear();
+            boxPosition = qMakePair(scaleNewMid1,scaleNewMid2);
+            emit PositionSelected(scaleNewMid1, scaleNewMid2);
+
+            break;
+        }
+    }
+}
+
+// 鼠标画框自动识别方向 created by Tang 2025/10/15 19:06
+void HIKCamera::autoSelectPositionLine(std::string windowtitle){
+    if(camera==MV_NULL)return;
+
+    cv::Mat img;
+    int ret = camera->getOneImgMat(&img, 500);
+    if(ret!=MV_OK)
+        return;
+
+    QPoint windowPosition = this->geometry().topLeft();
+    QScreen* screen = QGuiApplication::screenAt(windowPosition);
+    int screenWidth = 1920;
+    int screenHeight = 1080;
+    if (screen) {
+        QRect screenGeometry = screen->geometry();
+        screenWidth = screenGeometry.width();
+        screenHeight = screenGeometry.height();
+    }
+
+    cv::Mat* resizedImage = new cv::Mat;
+    Size originalSize = img.size();
+
+    if (originalSize.width > originalSize.height) {
+        cv::resize(img, *resizedImage, Size(screenWidth/2, screenWidth / 2 * originalSize.height / originalSize.width));
+    }
+    else {
+        cv::resize(img, *resizedImage, Size(screenHeight / 2 * originalSize.width / originalSize.height, screenHeight / 2));
+    }
+
+    Size resizedSize = resizedImage->size();
+    float scaleX = (float)originalSize.width / resizedSize.width;
+    float scaleY = (float)originalSize.height / resizedSize.height;
+
+    namedWindow(windowtitle, cv::WINDOW_AUTOSIZE);
+    Rect box = cv::selectROI(windowtitle, *resizedImage, false);
+    destroyWindow(windowtitle);
+
+    if (box.empty()) {
+        qDebug() << "No ROI selected.";
+        return;
+    }
+
+    // 提取 ROI
+    Mat roi = (*resizedImage)(box).clone();
+
+    // 转为灰度图
+    Mat gray;
+    cvtColor(roi, gray, COLOR_BGR2GRAY);
+
+    // 二值化
+    Mat binary;
+    threshold(gray, binary, 0, 255, THRESH_BINARY | THRESH_OTSU);
+
+    // 形态学操作去除噪声
+    morphologyEx(binary, binary, MORPH_OPEN, getStructuringElement(MORPH_ELLIPSE, Size(3,3)));
+
+    // 查找轮廓
+    std::vector<std::vector<cv::Point>> contours;
+    std::vector<Vec4i> hierarchy;
+    findContours(binary, contours, hierarchy, RETR_EXTERNAL, CHAIN_APPROX_SIMPLE);
+
+    // 没有轮廓退出
+    if (contours.empty()) {
+        qDebug() << "No contour found in ROI.";
+        return;
+    }
+    // 找最大轮廓（假设是条状标距段）
+    int maxIdx = 0;
+    double maxArea = 0;
+    for (int i = 0; i < contours.size(); i++) {
+        double area = contourArea(contours[i]);
+        if (area > maxArea) {
+            maxArea = area;
+            maxIdx = i;
+        }
+    }
+
+    // 获取最大轮廓
+    std::vector<cv::Point> largestContour = contours[maxIdx];
+
+    // 计算最小外接旋转矩形
+    RotatedRect minRect = minAreaRect(largestContour);
+    Point2f rectPoints[4];
+    minRect.points(rectPoints);
+
+    // 将旋转矩形的顶点从 ROI 坐标转换为显示图像坐标
+    for(int i = 0; i < 4; ++i){
+        rectPoints[i].x += box.x;
+        rectPoints[i].y += box.y;
+    }
+
+    // 创建输出图像
+    Mat output = resizedImage->clone();
+
+    // 绘制识别到的矩形
+    boxRect.clear();
+    for(int i = 0; i < 4; ++i){
+        line(output, rectPoints[i], rectPoints[(i+1)%4], Scalar(0, 255, 255), 1);
+        boxRect.append(Point2f(rectPoints[i].x*scaleX, rectPoints[i].y*scaleY));
+    }
+
+    // 计算四条边的长度，找出长边
+    double len01 = norm(rectPoints[1] - rectPoints[0]);
+    double len12 = norm(rectPoints[2] - rectPoints[1]);
+
+    Point2f mid1, mid2;
+    if (len01 < len12) {
+        // 边 0-1 和 2-3 是长边
+        mid1 = (rectPoints[0] + rectPoints[1]) * 0.5f;
+        mid2 = (rectPoints[2] + rectPoints[3]) * 0.5f;
+    } else {
+        // 边 1-2 和 3-0 是长边
+        mid1 = (rectPoints[1] + rectPoints[2]) * 0.5f;
+        mid2 = (rectPoints[3] + rectPoints[0]) * 0.5f;
+    }
+
+    // 计算中线的方向向量
+    Point2f direction = mid2 - mid1;
+    direction = direction / norm(direction);// 归一化
+
+    // 延长中线至两倍长度
+    Point2f newMid1 = mid1 - direction * norm(mid2 - mid1);
+    Point2f newMid2 = mid2 + direction * norm(mid2 - mid1);
+
+    Point2f scaleNewMid1 = Point2f(newMid1.x*scaleX, newMid1.y*scaleY);
+    Point2f scaleNewMid2 = Point2f(newMid2.x*scaleX, newMid2.y*scaleY);
+    boxPosition = qMakePair(scaleNewMid1,scaleNewMid2);
+
+    emit PositionSelected(scaleNewMid1, scaleNewMid2);
+}
+
+// 自动选择标记点
+void HIKCamera::autoAddTracker(std::string windowtitle){
+
+}
+
+// 棋盘格畸变校正

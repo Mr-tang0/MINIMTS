@@ -5,7 +5,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
 
-DEFINES += BUILD_APP
+DEFINES += BUILD_LIB
 
 contains(DEFINES, BUILD_APP) {
     SOURCES += main.cpp
@@ -44,6 +44,8 @@ unix {
 }
 !isEmpty(target.path): INSTALLS += target
 
+msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
+msvc:QMAKE_CXXFLAGS += -source-charset:utf-8
 
 INCLUDEPATH += $$PWD/Extensometer
 include ($$PWD/Extensometer/Extensometer.pri)
@@ -62,10 +64,10 @@ else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/HIKl
 else:unix: PRE_TARGETDEPS += $$PWD/HIKlib/x64/libMvCameraControl.a
 
 
-INCLUDEPATH += $$PWD/external/release64/include
-DEPENDPATH += $$PWD/external/release64/include
+INCLUDEPATH += $$PWD/external/release/include
+DEPENDPATH += $$PWD/external/release/include
 
-LIB_DIR = $$PWD/external/release64/lib/
+LIB_DIR = $$PWD/external/release/lib/
 
 LIB_FILES = $$files($$LIB_DIR/*.lib, true)
 
@@ -73,3 +75,23 @@ LIBS += -L$$LIB_FILES
 
 
 
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../QTOpenCorr/release/ -lQTOpenCorr
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../QTOpenCorr/debug/ -lQTOpenCorr
+else:unix: LIBS += -L$$OUT_PWD/../QTOpenCorr/ -lQTOpenCorr
+
+INCLUDEPATH += $$PWD/../QTOpenCorr
+DEPENDPATH += $$PWD/../QTOpenCorr
+
+INCLUDEPATH += $PWD/../fftw3/include
+DEPENDPATH += $$PWD/../fftw3/include
+
+LIB_DIR = $$PWD/../fftw3/lib/
+LIB_FILES = $$files($$LIB_DIR/*.lib, true)
+LIBS += $$LIB_FILES
+
+
+INCLUDEPATH += $$PWD/../Eigen3
+INCLUDEPATH += $$PWD/../Eigen3/Eigen
+
+INCLUDEPATH += $$PWD/../nanoflann

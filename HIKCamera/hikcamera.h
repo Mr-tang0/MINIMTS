@@ -10,8 +10,17 @@
 #include "opencv2/opencv.hpp"
 #include <QDateTime>
 #include <QVariant>
+#include <QPair>
+#include <QPointF>
+#include <QLineF>
+
 #include "MvCameraControl.h"
+
+#include "extensometer.h"
 #include "hikextensometer.h"
+
+
+#include "qtopencorr.h"
 
 
 QT_BEGIN_NAMESPACE
@@ -58,6 +67,7 @@ public:
     int startDIC(QString fileName,QString filePath,int duration);
     // 停止拍摄
     int stopDIC();
+
     //DIC距离归零
     void setCurrentZreo();
 
@@ -69,13 +79,18 @@ public:
     //开启连接面板
     void enableConnectWidget(bool enable);
 
-
     // 标志点AB
-    Rect2f A;
-    Rect2f B;
+    cv::Point2f A;
+    cv::Point2f B;
+
+
+    //测试数据
+    float resultCorr = 0;
 
     // 标志点AB的几何距离
     float A_to_B_Distense = 0.0;
+    // 标志点A2B2的几何距离
+    float A2_to_B2_Distense = 0.0;
 
     // 像素距离与物理距离的转换率
     float DistenceRate = 1.0;
@@ -97,9 +112,23 @@ public:
         trackerWorkFlagB = flagB;
     }
 
-    // 鼠标画线
+    //设置标距段可见
+    void setBoxEnable(bool enable){boxEnable = enable;};
+
+    // 鼠标画线绘制标定线
     void selectLine(std::string windowtitle, Mat img);
     void selectLine(std::string windowtitle);
+
+    // 鼠标画线绘制方向
+    void selectPositionLine(std::string windowtitle);
+
+    // 鼠标画框自动识别方向
+    void autoSelectPositionLine(std::string windowtitle);
+
+    // 自动选择标记点
+    void autoAddTracker(std::string windowtitle);
+
+    // 棋盘格畸变校正
 
 public slots:
     //获取相机信息
@@ -112,8 +141,10 @@ private:
     Ui::HIKCamera *ui;
     QMap<QString, MV_CC_DEVICE_INFO*> devices;
     Camera *camera;
+    Mat currentFrame;
 
     QTimer * DetectTimer = new QTimer;
+    QTimer *DICDetectTimer = new QTimer;
     QTimer* detailsTimer = new QTimer;
     int imgheight = 640;
     int imgwidth = 480;
@@ -122,27 +153,33 @@ private:
 
     QString DICFileName = "";
     QString DICFilePath = "";
-    bool DICEnable = false;
     int DICCounts = 0;
 
     // 光学追踪
     bool trackerWorkFlagA = false;
     bool trackerWorkFlagB = false;
 
+    bool boxEnable = true;
 
-    HIKExtensometer HIKEA;
-
-    HIKExtensometer HIKEB;
+    Extensometer *extensometerA;
+    Extensometer *extensometerB;
 
     float lineLength = 0;
 
-    float A_to_B_Zreo = 0.0;
-    float current_A_to_B = 0.0;
+    double A_to_B_Zreo = 0.0;
+    double current_A_to_B = 0.0;
+
+    //方向和标距段保存
+    QPair<cv::Point2f, cv::Point2f> boxPosition;
+    QList<cv::Point2f> boxRect;
 
 
 private slots:
     // 获取并显示一张图
     void catchOneFrameAndShow();
+
+    // DIC保存一张图
+    void DICSavePIC();
 
     //保存一张图
     void saveImageWithTimestamp(QString fileName, QString filePath,
@@ -156,13 +193,18 @@ private slots:
 
 signals:
     void updateResult(int id, double dx, double dy);
+
     void trackerWork(QVariant img);
+
     void throwError(QString err);
 
     void HIKEAROI(cv::Rect);
     void HIKEBROI(cv::Rect);
 
-    void lineSeclected(double length);
+    void LineSeclected(float length);
+
+    void PositionSelected(Point2f A, Point2f B);
+
 
 };
 #endif // HIKCAMERA_H

@@ -1,18 +1,18 @@
 #include "hikextensometer.h"
 #include <QDebug>
 #include "imgKernal.h"
-
+#include <opencv2/tracking.hpp>
 
 HIKExtensometer::HIKExtensometer(QObject *parent)
-    : QObject{parent}
+    : Extensometer{parent}
 {
-    tracker = cv::TrackerMIL::create(); // 创建新 tracker
 }
 
 void HIKExtensometer::setOrignalImg(Mat ori){
     int blur_kernel_size = 5;
     GaussianBlur(ori, ori, Size(blur_kernel_size, blur_kernel_size), 0);
     origanlImg = ori.clone();
+    lastFrameMat = origanlImg.clone();
 
 }
 
@@ -21,11 +21,18 @@ void HIKExtensometer::setROI(Rect roi){
 }
 
 void HIKExtensometer::uninit(){
-    // if (tracker) {
-    //     qDebug() << "release";
-    //     tracker.release(); // 安全释放 OpenCV 的智能指针
-    //     qDebug() << "release ok";
-    // }
+    if (tracker!= nullptr) {
+        tracker.release();
+        tracker = cv::TrackerKCF::create();
+        qDebug() << "release ok";
+
+    }
+    else
+    {
+        tracker = cv::TrackerKCF::create();
+        qDebug() << "create ok";
+    }
+
 }
 
 
@@ -52,77 +59,76 @@ void HIKExtensometer::caculateImgAsync(const cv::Mat& img) {
     futureWatcher->setFuture(future);
 }
 
+cv::Mat enhanceContrast(const cv::Mat& img) {
+    // 如果输入不是单通道，则先转为灰度图
+    cv::Mat gray;
+    if (img.channels() != 1) {
+        cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
+    } else {
+        gray = img.clone();
+    }
 
+    // 使用CLAHE提高对比度
+    cv::Ptr<cv::CLAHE> clahe = cv::createCLAHE();
+    clahe->setClipLimit(4); // 设置限制阈值
+    cv::Mat contrastImg;
+    clahe->apply(gray, contrastImg);
+
+    return contrastImg;
+}
+
+cv::Mat sharpenImage(const cv::Mat& img) {
+    cv::Mat blurred, sharpened;
+    // 高斯模糊
+    cv::GaussianBlur(img, blurred, cv::Size(0, 0), 3);
+    // 拉普拉斯算子
+    cv::addWeighted(img, 1.5, blurred, -0.5, 0, sharpened);
+    return sharpened;
+}
 
 void HIKExtensometer::caculateImg(Mat img) {
 
-    // sharpenCustomKernel(img);
+    cv::Mat roi_in_this_frame = kernel(img, cv::Point(ROI.x, ROI.y), cv::Size(ROI.width, ROI.height));
 
-    // 更新追踪器以定位标志点
-    tracker->update(img, ROI);
+    int blur_kernel_size = 5;
 
-    // 获取新的ROI位置
-    float new_x = ROI.x;
-    float new_y = ROI.y;
+    // roi_in_this_frame = enhanceContrast(roi_in_this_frame);
+    GaussianBlur(roi_in_this_frame, roi_in_this_frame, cv::Size(blur_kernel_size, blur_kernel_size), 0);
+    roi_in_this_frame = sharpenImage(roi_in_this_frame);
+    // GaussianBlur(roi_in_this_frame, roi_in_this_frame, cv::Size(blur_kernel_size, blur_kernel_size), 0);
 
-    // 定义四个子ROI的大小
-    int sub_roi_width = ROI.width / 2;
-    int sub_roi_height = ROI.height / 2;
-
-    // 初始化变量用于存储结果
-    std::vector<Point2d> centers(4);
-
-    int blur_kernel_size = 7;
-    GaussianBlur(img, img, Size(blur_kernel_size, blur_kernel_size), 0);
-    GaussianBlur(img, img, Size(blur_kernel_size, blur_kernel_size), 0);
-    GaussianBlur(img, img, Size(blur_kernel_size, blur_kernel_size), 0);
-
-    // 遍历四个子区域
-    for (int i = 0; i < 4; ++i) {
-        // 计算子ROI的位置
-        int sub_x = new_x + (i % 2) * sub_roi_width;
-        int sub_y = new_y + (i / 2) * sub_roi_height;
-
-        // 提取子ROI
-        Mat this_sub_roi_in_old_frame = kernel(lastFrameMat, Point(sub_x, sub_y), Size(sub_roi_width, sub_roi_height));
-        Mat this_sub_roi_in_this_frame = kernel(img, Point(sub_x, sub_y), Size(sub_roi_width, sub_roi_height));
-
-        // 调整大小
-        this_sub_roi_in_old_frame = img_resize(this_sub_roi_in_old_frame, 2);
-        this_sub_roi_in_this_frame = img_resize(this_sub_roi_in_this_frame, 2);
+    cv::Point2d center = findDominantBlobCenter(roi_in_this_frame, debugFlag);
 
 
-        // 计算中心点
-        Point2d center_new = FCD(this_sub_roi_in_this_frame);
-        centers[i] = center_new;
+
+    float len = std::sqrt(std::pow(center_old.x - (ROI.x+center.x), 2) + std::pow(center_old.y - (ROI.y+center.y), 2));
+    if(debugFlag)
+        qDebug()<<len;
+
+    if(len<0.02){
+        emit resultEmit(center_old.x, center_old.y);
+    }else
+        emit resultEmit(ROI.x+center.x, ROI.y+center.y);
+
+    if(len>1)
+    {
+        if(debugFlag)
+            qDebug()<<QString("update:old(%1,%2),new(%3,%4),len:%5").arg(center_old.x).arg(center_old.y).arg(center.x).arg(center.y).arg(len);
+
+        center_old = cv::Point2d(ROI.x+center.x, ROI.y+center.y);
+
+        // 更新追踪器以定位标志点
+        int i =tracker->update(img, ROI);
+
+        if(i!=1){
+            emit ROINotFound();
+            qDebug()<<"ROINotFound";
+        }
+
     }
 
-
-
-    double avg_dx = (centers[0].x+centers[1].x+centers[2].x+centers[3].x)/4.0;
-
-    // 计算dys的平均值
-    double avg_dy = (centers[0].y+centers[1].y+centers[2].y+centers[3].y)/4.0;
-
-    if(debugFlag)qDebug()<<avg_dx<<avg_dy;
-
-
-    Mat this_sub_roi_in_old_frame = kernel(lastFrameMat, Point(new_x, new_y), Size(120, 120));
-    Mat this_sub_roi_in_this_frame = kernel(img, Point(new_x, new_y), Size(120, 120));
-
-    double dx, dy, corr;
-
-    // 计算PCM偏移
-    PCM_shift(this_sub_roi_in_this_frame, this_sub_roi_in_old_frame, &dx, &dy, &corr);
-    // 计算旧中心
-    Point2d center_old = FCD(this_sub_roi_in_old_frame);
-    center_old = Point2d(center_old.x+dx, center_old.y+dy);
-
-
-    emit resultEmit(ROI.x+avg_dx*0.2+center_old.x*0.8, ROI.y+avg_dy*0.2+center_old.y*0.8);
-
-    // 更新上一帧图像
     lastFrameMat = img.clone();
+
 }
 
 void HIKExtensometer::onCalculationFinished() {
@@ -130,7 +136,3 @@ void HIKExtensometer::onCalculationFinished() {
 }
 
 
-
-void HIKExtensometer::imgResolve(Mat &img){
-
-}

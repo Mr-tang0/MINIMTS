@@ -7,10 +7,6 @@ Camera::Camera(QObject *parent)
     m_hDevHandle = NULL;
 }
 
-
-
-
-
 Camera::~Camera()
 {
     if (m_hDevHandle)

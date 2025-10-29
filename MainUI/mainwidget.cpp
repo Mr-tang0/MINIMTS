@@ -68,9 +68,6 @@ void mainWidget::keyPressEvent(QKeyEvent *event)
             keyControlMoving = true;
         }
     }
-
-
-
     QWidget::keyPressEvent(event);
 }
 
@@ -130,7 +127,9 @@ void mainWidget::initChart(){
     ui->graphics->addSeries("AY-时间", "AY", "Time");
     ui->graphics->addSeries("BX-时间", "BX", "Time");
     ui->graphics->addSeries("BY-时间", "BY", "Time");
-    ui->graphics->addSeries("DIC-时间", "DIC", "Time");
+    ui->graphics->addSeries("视频引伸-时间", "视频引伸", "Time");
+    ui->graphics->addSeries("测试曲线-时间", "测试曲线", "Time");
+
 
     ui->graphics->longShow();
     ui->graphics->showSeries("载荷-时间");
@@ -150,11 +149,20 @@ void mainWidget::initChart(){
     ui->speedLCD->setKey("速度 mm/s");
     ui->speedLCD->setDecimals(3);
 
-    ui->DICLCD->setKey("DIC mm");
+    ui->DICLCD->setKey("视频引伸 mm");
     ui->DICLCD->setDecimals(3);
 
     ui->timeLCD->setKey("时长 Secs");
     ui->timeLCD->setDecimals(1);
+
+    ui->graphics->hideSeries("AX-时间");
+    ui->graphics->hideSeries("AY-时间");
+    ui->graphics->hideSeries("BX-时间");
+    ui->graphics->hideSeries("BY-时间");
+    ui->graphics->hideSeries("视频引伸-时间");
+
+    ui->DICLCD->hide();
+
 }
 
 void mainWidget::initPort(){
@@ -170,6 +178,8 @@ void mainWidget::initPort(){
 }
 
 void mainWidget::initConnect(){
+
+    //*****************************************连接窗口****************************************************
 
     connect(dataFreshTimer,&QTimer::timeout,this,&mainWidget::freshData);
 
@@ -229,6 +239,35 @@ void mainWidget::initConnect(){
         addStateBox("已清除");
         addStateBox("----------------");
     });
+
+    connect(minilogic,&MiniMTSLogic::testOK,[=](QString device){addStateBox(device+"测试在线");});
+
+    connect(ui->refresh_hik,&QPushButton::clicked,this,[=](){
+        devices.clear();
+        ui->cameraList->clear();
+        hikCamera.EnumDevices(devices);
+        ui->cameraList->addItems(devices.keys());
+    });
+
+    connect(ui->connect_hik,&QPushButton::clicked,this,[=](){
+        if(ui->connect_hik->text()=="连接")
+        {
+            QString device = ui->cameraList->currentText();
+            int ret = hikCamera.openDevice(device);
+            if(ret ==MV_OK){
+                hikCamera.resize(600,400);
+                hikCamera.show();
+                ui->connect_hik->setText("断开");
+            }
+
+        }else{
+            hikCamera.closeDevice();
+            ui->connect_hik->setText("连接");
+            hikCamera.close();
+        }
+    });
+
+    //************************************设备运动窗口**********************************************
 
     // 按钮按下，cw运动
     connect(ui->speedCW,&QPushButton::pressed,[=](){
@@ -346,6 +385,44 @@ void mainWidget::initConnect(){
         }
     });
 
+    connect(ui->clearChart,&QPushButton::clicked,[=](){
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "是否要清除所有数据？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+
+        if (reply == QMessageBox::Yes) {
+            zreoTime = QDateTime::currentMSecsSinceEpoch();
+            ui->graphics->clearAll();
+            emit message("已清除");
+            addState("数据已清除");
+        }
+
+    });
+
+    connect(ui->setZreo,&QPushButton::clicked,[=](){
+        // 弹出确认对话框
+        QMessageBox::StandardButton reply = QMessageBox::question(
+            nullptr,
+            "确认",
+            "您确定要将位移归零吗？",
+            QMessageBox::Yes | QMessageBox::No
+            );
+        if(reply==QMessageBox::Yes){
+            minilogic->setChannalZero("motor");
+            hikCamera.setCurrentZreo();
+        }else{
+            emit message("用户取消");
+        }
+
+    });
+
+
+
+    //************************************项目设置窗口**********************************************
+
 
     connect(ui->Checked,&QPushButton::clicked,[=](){
         if(ui->targetLength->value()<=0){
@@ -433,9 +510,24 @@ void mainWidget::initConnect(){
         {
             hikCamera.startTracker(true, true);
             hikCamera.setDistenceRate(testDetails.pix/testDetails.trueLength);
-        }else hikCamera.startTracker(false, false);
+            ui->graphics->showSeries("AX-时间");
+            ui->graphics->showSeries("AY-时间");
+            ui->graphics->showSeries("BX-时间");
+            ui->graphics->showSeries("BY-时间");
+            ui->graphics->showSeries("视频引伸-时间");
 
+            ui->DICLCD->show();
+        }else {
+            hikCamera.startTracker(false, false);
 
+            ui->graphics->hideSeries("AX-时间");
+            ui->graphics->hideSeries("AY-时间");
+            ui->graphics->hideSeries("BX-时间");
+            ui->graphics->hideSeries("BY-时间");
+            ui->graphics->hideSeries("视频引伸-时间");
+
+            ui->DICLCD->hide();
+        }
 
         XMLReader::Save_XML_File(historyMap,userHistroyPath);
 
@@ -456,30 +548,14 @@ void mainWidget::initConnect(){
         }
     });
 
-
-
-
-    connect(ui->clearChart,&QPushButton::clicked,[=](){
-        QMessageBox::StandardButton reply = QMessageBox::question(
-            nullptr,
-            "确认",
-            "是否要清除所有数据？",
-            QMessageBox::Yes | QMessageBox::No
-            );
-
-        if (reply == QMessageBox::Yes) {
-            zreoTime = QDateTime::currentMSecsSinceEpoch();
-            ui->graphics->clearAll();
-            emit message("已清除");
-            addState("数据已清除");
-        }
-
+    connect(ui->stopAction,&QComboBox::currentTextChanged,this,[=](QString text){
+        if(text.contains("("))
+            ui->stopActionValue->show();
+        else
+            ui->stopActionValue->hide();
     });
+    ui->stopActionValue->hide();
 
-    connect(ui->setZreo,&QPushButton::clicked,[=](){
-        ui->lengthLCD->doubleClick();
-        ui->speedLCD->doubleClick();
-    });
 
     connect(ui->chooseFilePath_pushButton, &QPushButton::clicked, this, [=](){
         QString home = MainWindow::user.userfilePath;
@@ -489,30 +565,11 @@ void mainWidget::initConnect(){
         }
     });
 
-    connect(minilogic,&MiniMTSLogic::testOK,[=](QString device){addStateBox(device+"测试在线");});
-
-    connect(ui->refresh_hik,&QPushButton::clicked,this,[=](){
-        devices.clear();
-        ui->cameraList->clear();
-        hikCamera.EnumDevices(devices);
-        ui->cameraList->addItems(devices.keys());
-    });
-
-    connect(ui->connect_hik,&QPushButton::clicked,this,[=](){
-        if(ui->connect_hik->text()=="连接")
-        {
-            QString device = ui->cameraList->currentText();
-            int ret = hikCamera.openDevice(device);
-            if(ret ==MV_OK){
-                hikCamera.resize(600,400);
-                hikCamera.show();
-                ui->connect_hik->setText("断开");
-            }
-
-        }else{
-            hikCamera.closeDevice();
-            ui->connect_hik->setText("连接");
-            hikCamera.close();
+    connect(ui->chooseDICFilePath, &QPushButton::clicked, this, [=](){
+        QString home = MainWindow::user.userfilePath;
+        QString filePath = QFileDialog::getExistingDirectory(this, tr("Select DIC Directory"), home);
+        if (!filePath.isEmpty()) {
+            ui->DICFilePath->setText(filePath);
         }
     });
 
@@ -522,6 +579,15 @@ void mainWidget::initConnect(){
     connect(ui->selectPointB,&QPushButton::clicked,this,[=](){
         hikCamera.addTracker("B");
     });
+
+    connect(ui->autoSelectPositionLine,&QPushButton::clicked,this,[=](){
+        hikCamera.autoSelectPositionLine("绘制标距段所在区域");
+    });
+
+    connect(ui->selectPositionLine,&QPushButton::clicked,this,[=](){
+        hikCamera.selectPositionLine("绘制标距段方向");
+    });
+
 
     connect(&hikCamera, &HIKCamera::HIKEAROI, this, [=](Rect rect){
         QString rectText = QString("X:%1 Y:%2 W:%3 H:%4")
@@ -538,6 +604,16 @@ void mainWidget::initConnect(){
     connect(ui->drawPix,&QPushButton::clicked,this,[=](){
         hikCamera.selectLine("LINE");
     });
+
+    connect(&hikCamera,&HIKCamera::LineSeclected,this,[=](float len){
+        qDebug()<<"length";
+        ui->pix->setText(QString::number(len));
+    });
+
+
+    //**********************************其他（（**********************************
+
+
 }
 
 
@@ -620,6 +696,9 @@ void mainWidget::initSystem(){
         ui->graphics->setSmooth(systemWidget::systemMap["advance"]["filterMethod_timely"],systemWidget::systemMap["advance"]["filterWindow_timely"].toInt());
     else
         ui->graphics->setSmooth("",1);
+
+    //设置minimts PID
+    minilogic->init_MINIMTSPID(systemWidget::systemMap["normal"]);
 }
 
 void mainWidget::limitStopOption(bool flag, int dir){
@@ -920,6 +999,10 @@ void mainWidget::freshData(){
         emit message("电机超限，已自动停止");
     }
 
+    float resultCorr = hikCamera.resultCorr;
+    ui->graphics->addPoint("测试曲线-时间", QPointF(time,resultCorr));
+
+
     float ax = hikCamera.A.x;
     float ay = hikCamera.A.y;
 
@@ -928,7 +1011,7 @@ void mainWidget::freshData(){
 
     float distance = hikCamera.A_to_B_Distense * displayDir;
     ui->DICLCD->display(distance);
-    ui->graphics->addPoint("DIC-时间", QPointF(time, distance));
+    ui->graphics->addPoint("视频引伸-时间", QPointF(time, distance));
 
     historyBufferA.push_back({time, ax, ay});
 
@@ -946,7 +1029,6 @@ void mainWidget::freshData(){
     ui->graphics->addPoint("AY-时间", QPointF(time, estimatedAy));
 
 
-
     historyBufferB.push_back({time, bx, by});
 
 
@@ -961,6 +1043,8 @@ void mainWidget::freshData(){
 
     ui->graphics->addPoint("BX-时间", QPointF(time, estimatedBx));
     ui->graphics->addPoint("BY-时间", QPointF(time, estimatedBy));
+
+
 
 }
 
@@ -979,6 +1063,9 @@ void mainWidget::on_btn_start_clicked()
         emit message("串口未连接");
         return;
     }
+
+    minilogic->run(false);
+    ui->btn_stop->setText("停止");
 
 
     if(testDetails.length==0||testDetails.speed==0||testDetails.sampleSquare==0||testDetails.sampleLength==0)
@@ -1038,8 +1125,6 @@ void mainWidget::on_btn_start_clicked()
 
     }
 
-
-
     emit message("开始测试");
     addState("开始测试");
     moveFlag = true;
@@ -1047,19 +1132,55 @@ void mainWidget::on_btn_start_clicked()
 
 void mainWidget::on_btn_stop_clicked()
 {
-    if(hikCamera.isOpened())
-        hikCamera.stopDIC();
+    if(testDetails.autoStopType=="Force Hold"){
 
-    if(!motorConnectFlag){
-        emit message("串口未连接");
-        return;
+
+        if(ui->btn_stop->text()=="停止"){
+            if(!motorConnectFlag){
+                emit message("串口未连接");
+                return;
+            }
+
+            minilogic->setTargetForce(minilogic->currentWeighValue);
+            minilogic->run(true);
+            //数据采集存在一点延时，补偿回来
+            QTimer::singleShot(260,this,[=](){minilogic->setTargetForce(minilogic->currentWeighValue);});
+
+
+            ui->btn_stop->setText("停止保持");
+            emit message("保持当前力");
+            addState("测试停止");
+        }else if(ui->btn_stop->text()=="停止保持"){
+            if(!motorConnectFlag){
+                emit message("串口未连接");
+                return;
+            }
+
+            ui->btn_stop->setText("停止");
+            minilogic->run(false);
+
+            moveFlag = false;
+            emit message("测试停止");
+            addState("测试停止");
+        }
+
+
+    }else{
+        if(hikCamera.isOpened())
+            hikCamera.stopDIC();
+
+        if(!motorConnectFlag){
+            emit message("串口未连接");
+            return;
+        }
+
+        minilogic->motorStop();
+        moveFlag = false;
+        minilogic->run(false);
+        emit message("测试停止");
+        addState("测试停止");
     }
 
-    minilogic->motorStop();
-    ui->btn_start->text()="开始";
-    moveFlag = false;
-    emit message("测试停止");
-    addState("测试停止");
 }
 
 void mainWidget::addStateBox(QString message){

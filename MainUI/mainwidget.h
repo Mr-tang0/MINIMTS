@@ -13,10 +13,9 @@ QT_CHARTS_USE_NAMESPACE
 #include "quihelper.h"
 #include <QAbstractButton>
 
-#include "minimtslogic.h"
+#include "minimts_ex.h"
 
 #include "hikcamera.h"
-
 
 struct TestDetails{
     QString userName = "default";
@@ -74,7 +73,7 @@ public:
     void addStateBox(QString message);
     void clearStateBox();
 
-    MiniMTSLogic *minilogic = new MiniMTSLogic;
+    MiniMTS_EX *minilogic = new MiniMTS_EX;
     HIKCamera hikCamera;
     QMap<QString, MV_CC_DEVICE_INFO*> devices;
 
@@ -94,8 +93,6 @@ public slots:
     bool saveCsv(QMap<QString, QLineSeries*> data);
 
     bool readCsv(QString path);
-
-
 
 private:
     Ui::mainWidget *ui;

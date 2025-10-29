@@ -58,8 +58,6 @@ private:
     aboutWidget *about;
     userWidget *userWin;
 
-
-
     void addErrMessage(QString);
     void deleteErrMessage(QString);
 

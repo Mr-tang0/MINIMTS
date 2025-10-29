@@ -225,3 +225,9 @@ void systemWidget::on_saveSetAs_clicked()
 }
 
 
+
+void systemWidget::on_openPIDController_clicked()
+{
+    emit openPIDContorl();
+}
+

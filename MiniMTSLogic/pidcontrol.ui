@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>PIDControl</class>
+ <widget class="QWidget" name="PIDControl">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>367</width>
+    <height>283</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Form</string>
+  </property>
+  <layout class="QGridLayout" name="gridLayout">
+   <item row="0" column="0">
+    <layout class="QGridLayout" name="gridLayout_12">
+     <item row="0" column="0">
+      <widget class="QLabel" name="label_26">
+       <property name="text">
+        <string>PID</string>
+       </property>
+      </widget>
+     </item>
+     <item row="0" column="1">
+      <widget class="QFrame" name="frame_2">
+       <property name="frameShape">
+        <enum>QFrame::StyledPanel</enum>
+       </property>
+       <property name="frameShadow">
+        <enum>QFrame::Raised</enum>
+       </property>
+       <layout class="QGridLayout" name="gridLayout_2">
+        <item row="0" column="0">
+         <layout class="QFormLayout" name="formLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="label_27">
+            <property name="text">
+             <string>Kp</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLineEdit" name="Kp"/>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="label_28">
+            <property name="text">
+             <string>Ki</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLineEdit" name="Ki"/>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="label_29">
+            <property name="text">
+             <string>Kd</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLineEdit" name="Kd"/>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="label_42">
+            <property name="text">
+             <string>Δt</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLineEdit" name="delta_t"/>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="label_43">
+            <property name="text">
+             <string>Max speed</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLineEdit" name="max_output"/>
+          </item>
+          <item row="5" column="0">
+           <widget class="QLabel" name="label_44">
+            <property name="text">
+             <string>Min speed</string>
+            </property>
+           </widget>
+          </item>
+          <item row="5" column="1">
+           <widget class="QLineEdit" name="min_output"/>
+          </item>
+          <item row="6" column="0">
+           <widget class="QLabel" name="label_45">
+            <property name="text">
+             <string>PID方向</string>
+            </property>
+           </widget>
+          </item>
+          <item row="6" column="1">
+           <widget class="QLineEdit" name="pidDir"/>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item row="1" column="0">
+    <widget class="QPushButton" name="pushButton">
+     <property name="text">
+      <string>确认</string>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

@@ -32,6 +32,8 @@ private slots:
 
     void on_saveSetAs_clicked();
 
+    void on_openPIDController_clicked();
+
 private:
     Ui::systemWidget *ui;
 
@@ -40,6 +42,7 @@ private:
 signals:
     void saved(bool);
     void setupCamera();
+    void openPIDContorl();
 };
 
 #endif // SYSTEMWIDGET_H

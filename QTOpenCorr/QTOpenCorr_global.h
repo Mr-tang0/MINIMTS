@@ -1,0 +1,12 @@
+#ifndef QTOPENCORR_GLOBAL_H
+#define QTOPENCORR_GLOBAL_H
+
+#include <QtCore/qglobal.h>
+
+#if defined(QTOPENCORR_LIBRARY)
+#define QTOPENCORR_EXPORT Q_DECL_EXPORT
+#else
+#define QTOPENCORR_EXPORT Q_DECL_IMPORT
+#endif
+
+#endif // QTOPENCORR_GLOBAL_H
