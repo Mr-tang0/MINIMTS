@@ -51,6 +51,12 @@ public:
     HIKCamera(QWidget *parent = nullptr);
     ~HIKCamera();
 
+    static void drawRectangle(cv::Mat& image, const cv::Rect rect, const cv::Scalar& color, int thickness =1);
+    static void drawRectangleAndCenter(cv::Mat& image, const cv::Rect rect, cv::Point center, const cv::Scalar& color, int thickness = 1);
+
+    static void drawDashedLine(cv::Mat& img, cv::Point start, cv::Point end, const cv::Scalar& color,
+                        int dashLength, int gapLength, int thinless);
+
     // 列举设备
     int EnumDevices(QMap<QString, MV_CC_DEVICE_INFO*> &ds);
     // 开启设备
@@ -128,6 +134,9 @@ public:
     // 自动选择标记点
     void autoAddTracker(std::string windowtitle);
 
+
+    // 绘制标距段端点
+
     // 棋盘格畸变校正
 
 public slots:
@@ -172,6 +181,9 @@ private:
     //方向和标距段保存
     QPair<cv::Point2f, cv::Point2f> boxPosition;
     QList<cv::Point2f> boxRect;
+    // 绘制的标距段相对于中心点的偏移
+    cv::Point2f PositionA;
+    cv::Point2f PositionB;
 
 
 private slots:

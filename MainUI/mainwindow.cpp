@@ -326,9 +326,11 @@ void MainWindow::buttonClick()
             "确认",
             "确定退出？",
             QMessageBox::Yes | QMessageBox::No
-            );
+        );
 
         if (reply == QMessageBox::Yes) {
+            if(mainwd->hikCamera.isOpened())
+                mainwd->hikCamera.closeDevice();
             exit(0);
         }
 
@@ -370,6 +372,8 @@ void MainWindow::on_btnMenu_Close_clicked()
     );
 
     if (reply == QMessageBox::Yes) {
+        if(mainwd->hikCamera.isOpened())
+            mainwd->hikCamera.closeDevice();
         exit(0);
     }
 }

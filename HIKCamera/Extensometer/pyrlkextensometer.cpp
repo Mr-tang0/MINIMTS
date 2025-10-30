@@ -108,9 +108,10 @@ void PyrLKExtensometer::caculateImg(Mat img) {
         ROIF.x+=disp.x;
         ROIF.y+=disp.y;
 
-        ROI = ROIF;
         double coarse_center_x = ROIF.x + ROIF.width / 2.0;
         double coarse_center_y = ROIF.y + ROIF.height / 2.0;
+
+        ROI = ROIF;
 
         emit resultEmit(coarse_center_x, coarse_center_y);
     } else {

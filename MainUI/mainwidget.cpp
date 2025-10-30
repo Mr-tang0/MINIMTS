@@ -11,6 +11,8 @@ mainWidget::mainWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
+
+
     initWidget();
 
     initChart();
@@ -79,8 +81,8 @@ void mainWidget::keyReleaseEvent(QKeyEvent *event){
             addState("停止运动");
             keyControlMoving = false;
         } else if (event->key() == Qt::Key_F5) {
-            hikCamera.show();
-            hikCamera.raise();
+            hikCamera.show();  // 必须在 setWindowFlags 后调用 show()
+            hikCamera.raise(); // 确保当前置顶
             hikCamera.activateWindow();
         }
     }
@@ -91,6 +93,9 @@ void mainWidget::keyReleaseEvent(QKeyEvent *event){
 
 
 void mainWidget::initWidget(){
+
+    hikCamera.setWindowFlags(hikCamera.windowFlags() | Qt::WindowStaysOnTopHint);
+
     QList<int> iconsMain;
 
     iconsMain << 0xf0c1 << 0xf016 <<0xf16a<<0xf0c7<<0xf114;
@@ -128,7 +133,6 @@ void mainWidget::initChart(){
     ui->graphics->addSeries("BX-时间", "BX", "Time");
     ui->graphics->addSeries("BY-时间", "BY", "Time");
     ui->graphics->addSeries("视频引伸-时间", "视频引伸", "Time");
-    ui->graphics->addSeries("测试曲线-时间", "测试曲线", "Time");
 
 
     ui->graphics->longShow();
@@ -581,11 +585,11 @@ void mainWidget::initConnect(){
     });
 
     connect(ui->autoSelectPositionLine,&QPushButton::clicked,this,[=](){
-        hikCamera.autoSelectPositionLine("绘制标距段所在区域");
+        hikCamera.autoSelectPositionLine("Draw the area where the gauge segment is located");
     });
 
     connect(ui->selectPositionLine,&QPushButton::clicked,this,[=](){
-        hikCamera.selectPositionLine("绘制标距段方向");
+        hikCamera.selectPositionLine("Draw the direction of the gauge segment");
     });
 
 
@@ -602,7 +606,7 @@ void mainWidget::initConnect(){
     });
 
     connect(ui->drawPix,&QPushButton::clicked,this,[=](){
-        hikCamera.selectLine("LINE");
+        hikCamera.selectLine("Draw a line you can measure");
     });
 
     connect(&hikCamera,&HIKCamera::LineSeclected,this,[=](float len){
@@ -818,13 +822,14 @@ bool mainWidget::readCsv(QString path){
 bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
     if(data.first()->count()<=0)return false;
 
-    QList<QList<float>> datalist;
+
+    QMap<QString, QList<float>> dataMap;
 
     for (auto it = data.begin(); it != data.end(); ++it) {
         QString seriesName = it.key();
         QLineSeries *series = it.value();
 
-        qDebug()<<seriesName;
+        QStringList titles=seriesName.split("-");
 
         const auto points = series->points();
 
@@ -833,29 +838,37 @@ bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
             xData.append(point.x());
             yData.append(point.y());
         }
-        datalist.append(xData);
-        datalist.append(yData);
+
+        if(!dataMap.contains(titles[0])){
+            dataMap[titles[0]] = yData;
+        }
+        if(!dataMap.contains(titles[1])){
+            dataMap[titles[1]] = xData;
+        }
+
     }
+
+    QStringList header = {"force","length","strain","stress", "speed", "AX", "AY", "BX", "BY", "extensometer", "time"};
 
     QList<QList<float>> newdatalist;
 
-    newdatalist.append(datalist[15]); //force
-    newdatalist.append(datalist[11]); //length
-    newdatalist.append(datalist[14]); //strain
-    newdatalist.append(datalist[13]); //stress
-    newdatalist.append(datalist[11]); //speed
+    newdatalist.append(dataMap["载荷"]); //force
+    newdatalist.append(dataMap["位移"]);//length
+    newdatalist.append(dataMap["应变"]); //strain
+    newdatalist.append(dataMap["应力"]); //stress
+    newdatalist.append(dataMap["速度"]); //speed
 
-    newdatalist.append(datalist[1]); //AX
-    newdatalist.append(datalist[3]); //AY
+    newdatalist.append(dataMap["AX"]); //AX
+    newdatalist.append(dataMap["AY"]); //AY
 
-    newdatalist.append(datalist[5]); //BX
-    newdatalist.append(datalist[7]); //BY
+    newdatalist.append(dataMap["BX"]); //BX
+    newdatalist.append(dataMap["BY"]); //BY
 
-    newdatalist.append(datalist[9]); //DIC
+    newdatalist.append(dataMap["视频引伸"]); //DIC
 
-    newdatalist.append(datalist[2]); //time
+    newdatalist.append(dataMap["时间"]); //time
 
-    QStringList header = {"force","length","strain","stress", "speed", "AX", "AY", "BX", "BY", "DIC", "time"};
+
     return saveCsv(newdatalist,header);
 }
 
@@ -901,14 +914,11 @@ bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     fileDetails["userFilePath"] = testDetails.userFilePath;
     fileDetails["userFileName"] = testDetails.userFileName;
 
-
     fileDetails["DICFilePath"] = testDetails.DICFilePath;
     fileDetails["DICFileName"] = testDetails.DICFileName;
     fileDetails["DICTriggr"] = testDetails.DICTriggr;
     fileDetails["DICDuration"] = QString::number(testDetails.DICDuration);
     fileDetails["DICDetectEnable"] = testDetails.DICDetectEnable?"true":"false";
-
-
 
     bool flag = Tool::saveCsvData(data,header,fileDetails,filePath+"/"+fileName);
     return flag;
@@ -1043,8 +1053,6 @@ void mainWidget::freshData(){
 
     ui->graphics->addPoint("BX-时间", QPointF(time, estimatedBx));
     ui->graphics->addPoint("BY-时间", QPointF(time, estimatedBy));
-
-
 
 }
 

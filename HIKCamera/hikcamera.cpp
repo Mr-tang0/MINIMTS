@@ -99,7 +99,7 @@ HIKCamera::HIKCamera(QWidget *parent)
 
 HIKCamera::~HIKCamera()
 {
-    qDebug()<<"widget close";
+
     if(camera!=MV_NULL)
     {
         camera->StopGrabbing();
@@ -210,16 +210,55 @@ void HIKCamera::startDetect(bool detect) {
     }
 }
 
-void drawRectangle(cv::Mat& image, const cv::Rect& rect, const cv::Scalar& color, int thickness = 1) {
-    // 检查图像是否为空
+void HIKCamera::drawRectangle(cv::Mat& image, const cv::Rect rect, const cv::Scalar& color, int thickness){
     if(image.empty()) {
         std::cerr << "Image is empty!" << std::endl;
         return;
     }
 
-    // 绘制矩形框
     cv::rectangle(image, rect, color, thickness);
+
 }
+
+void HIKCamera::drawRectangleAndCenter(cv::Mat& image, const cv::Rect rect, cv::Point center, const cv::Scalar& color, int thickness){
+    if(image.empty()) {
+        std::cerr << "Image is empty!" << std::endl;
+        return;
+    }
+
+    cv::rectangle(image, rect, color, thickness);
+
+    cv::circle(image, center, 10, color, -1);
+}
+
+void HIKCamera::drawDashedLine(cv::Mat& img, cv::Point start, cv::Point end, const cv::Scalar& color,
+                    int dashLength = 50, int gapLength = 25, int thinless = 3) {
+
+    cv::Point2f dir = end - start;
+    float length = norm(dir);
+    if (length < 1e-6) return;
+
+    dir = dir / length;  // 单位方向向量
+
+    float t = 0.0f;
+    bool drawDash = true;
+
+    while (t < length) {
+        float next_t = t + (drawDash ? dashLength : gapLength);
+        if (next_t > length) next_t = length;
+
+        cv::Point2f p1 = cv::Point2f(start) + t * dir;
+        cv::Point2f p2 = cv::Point2f(start) + next_t * dir;
+
+        if (drawDash) {
+            cv::line(img, p1, p2, color, thinless);  // 画一段实线
+        }
+
+        t = next_t;
+        drawDash = !drawDash;
+    }
+}
+
 
 void HIKCamera::catchOneFrameAndShow() {
 
@@ -237,11 +276,11 @@ void HIKCamera::catchOneFrameAndShow() {
     cv::Mat cloneFrame = currentFrame.clone();
     if (trackerWorkFlagA){
         extensometerA->caculateImgAsync(currentFrame);
-        drawRectangle(cloneFrame,extensometerA->ROI, cv::Scalar(0, 0, 255),5);
+        drawRectangleAndCenter(cloneFrame,extensometerA->ROI, A, cv::Scalar(0, 0, 255),5);
     }
     if(trackerWorkFlagB) {
         extensometerB->caculateImgAsync(currentFrame);
-        drawRectangle(cloneFrame,extensometerB->ROI, cv::Scalar(0, 255, 0),5);
+        drawRectangleAndCenter(cloneFrame,extensometerB->ROI, B, cv::Scalar(0, 255, 0),5);
     }
 
 
@@ -259,13 +298,13 @@ void HIKCamera::catchOneFrameAndShow() {
             for (const auto& pt : boxRect) {
                 points.push_back(cv::Point(static_cast<int>(pt.x), static_cast<int>(pt.y)));
             }
-            cv::polylines(rgbImg, points, true, cv::Scalar(0, 255, 255), 3);
+            cv::polylines(rgbImg, points, true, cv::Scalar(0, 255, 255),3);
         }
 
         if(boxPosition.first!=boxPosition.second){
             cv::Point startPoint(static_cast<int>(boxPosition.first.x), static_cast<int>(boxPosition.first.y));
             cv::Point endPoint(static_cast<int>(boxPosition.second.x), static_cast<int>(boxPosition.second.y));
-            cv::line(rgbImg, startPoint, endPoint, cv::Scalar(0, 255, 0), 3);
+            drawDashedLine(rgbImg, startPoint, endPoint, cv::Scalar(255, 255, 0));
         }
     }
 
@@ -471,6 +510,36 @@ void HIKCamera::setParamsClicked() {
     camera->StartGrabbing();
 }
 
+
+Point2f PointToLine(QPair<Point2f, Point2f> position, Point2f point) {
+    Point2f p1 = position.first;
+    Point2f p2 = position.second;
+
+    Point2f v = p2 - p1;            // 直线方向向量
+    Point2f w = point - p1;         // 从 p1 到 point 的向量
+
+    double dot_v_w = v.dot(w);      // 向量点积 v · w
+    double dot_v_v = v.dot(v);      // v · v (即 |v|²)
+
+    Point2f diff;
+    // 防止除以零（两点重合）
+    if (dot_v_v == 0.0) {
+        qDebug() << "Warning: Line points are identical.";
+        diff = Point2f(0, 0);  // 无方向
+        return p1;
+    }
+
+    double t = dot_v_w / dot_v_v;   // 参数 t
+
+    // 垂足坐标
+    Point2f projection = p1 + t * v;
+
+    // 计算差值向量：从 输入点 → 垂足
+    diff = projection - point;
+
+    return diff;
+}
+
 Point2f nearestPointOnLine(QPair<Point2f, Point2f> position, Point2f point) {
     Point2f p1 = position.first;
     Point2f p2 = position.second;
@@ -492,18 +561,19 @@ Point2f nearestPointOnLine(QPair<Point2f, Point2f> position, Point2f point) {
     // 垂足坐标
     Point2f projection = p1 + t * v;
 
-    // 计算点到直线的距离
-    double distance = norm(point - projection);
-
-    // 使用 qDebug 打印距离
-    // qDebug() << "Distance from point to line:" << distance;
-
     return projection;
 }
 
 void HIKCamera::refreshPointA(float x, float y){
+    //添加偏移
+    x+=PositionA.x;
+    y+=PositionA.y;
 
-    A=nearestPointOnLine(boxPosition,Point2f(x,y));
+    //计算A:到标距段边界的交点
+    if(boxPosition.first!=boxPosition.second)
+        A=nearestPointOnLine(boxPosition,Point2f(x,y));
+    else
+        A=Point2f(x,y);
 
     current_A_to_B = (current_A_to_B+norm(A-B))/DistenceRate;
 
@@ -511,91 +581,21 @@ void HIKCamera::refreshPointA(float x, float y){
 }
 
 void HIKCamera::refreshPointB(float x, float y){
-    B=nearestPointOnLine(boxPosition,Point2f(x,y));
+    //添加偏移
+    x+=PositionB.x;
+    y+=PositionB.y;
+
+    //计算B:到标距段边界的交点
+    if(boxPosition.first!=boxPosition.second)
+        B=nearestPointOnLine(boxPosition,Point2f(x,y));
+    else
+        B=Point2f(x,y);
+
 
     current_A_to_B = (current_A_to_B+norm(A-B))/DistenceRate;
 
     A_to_B_Distense = current_A_to_B - A_to_B_Zreo;
 }
-
-void HIKCamera::addTracker(QString ID) {
-    if(camera==MV_NULL)return;
-
-    cv::Mat img;
-    int ret = camera->getOneImgMat(&img, 500);
-    if (ret == MV_OK) {
-        QPoint windowPosition = this->geometry().topLeft();
-        QScreen* screen = QGuiApplication::screenAt(windowPosition);
-        int screenWidth = 1920;
-        int screenHeight = 1080;
-        if (screen) {
-            QRect screenGeometry = screen->geometry();
-            screenWidth = screenGeometry.width();
-            screenHeight = screenGeometry.height();
-        }
-
-        cv::Mat* resizedImage = new cv::Mat;
-        Size originalSize = img.size();
-
-        if (originalSize.width > originalSize.height) {
-            cv::resize(img, *resizedImage, Size(screenWidth/2, screenWidth / 2 * originalSize.height / originalSize.width));
-        }
-        else {
-            cv::resize(img, *resizedImage, Size(screenHeight / 2 * originalSize.width / originalSize.height, screenHeight / 2));
-        }
-        Size resizedSize = resizedImage->size();
-
-        namedWindow("Select ROI", cv::WINDOW_AUTOSIZE);
-        Rect roi_box = cv::selectROI("Select ROI", *resizedImage, false);
-        if (roi_box.width == 0 || roi_box.height == 0) {
-            emit throwError("No Roi Area Selected");
-            return;
-        }
-        else {
-            float scaleX = (float)originalSize.width / resizedSize.width;
-            float scaleY = (float)originalSize.height / resizedSize.height;
-
-            int originalX = static_cast<int>(roi_box.x * scaleX);
-            int originalY = static_cast<int>(roi_box.y * scaleY);
-            int originalWidth = static_cast<int>(roi_box.width * scaleX);
-            int originalHeight = static_cast<int>(roi_box.height * scaleY);
-
-            roi_box = { originalX, originalY, originalWidth, originalHeight };
-        }
-
-        destroyWindow("Select ROI");
-
-        img = img.clone();
-
-        if(ID=="A"){
-            startTracker(false,trackerWorkFlagB);
-
-            extensometerA->setOrignalImg(img);
-            extensometerA->setROI(roi_box);
-
-            extensometerA->uninit();
-            extensometerA->init();
-
-            extensometerA->debug(true);
-
-            emit HIKEAROI(roi_box);
-        }else if(ID=="B"){
-            startTracker(trackerWorkFlagB,false);
-
-            extensometerB->setOrignalImg(img);
-            extensometerB->setROI(roi_box);
-
-            extensometerB->uninit();
-            extensometerB->init();
-
-            extensometerB->debug(false);
-
-            emit HIKEBROI(roi_box);
-        }else return;
-    }
-}
-
-
 
 double onMouse_length = 0;
 bool onMouse_drawing = false;
@@ -622,6 +622,132 @@ void onMouseAction(int event, int x, int y, int flags, void*) {
 
     }
 }
+
+void HIKCamera::addTracker(QString ID) {
+    if(camera==MV_NULL)return;
+
+    cv::Mat img;
+    int ret = camera->getOneImgMat(&img, 500);
+    if (ret == MV_OK) {
+        QPoint windowPosition = this->geometry().topLeft();
+        QScreen* screen = QGuiApplication::screenAt(windowPosition);
+        int screenWidth = 1920;
+        int screenHeight = 1080;
+        if (screen) {
+            QRect screenGeometry = screen->geometry();
+            screenWidth = screenGeometry.width();
+            screenHeight = screenGeometry.height();
+        }
+
+        cv::Mat* resizedImage = new cv::Mat;
+        Size originalSize = img.size();
+
+
+        if (originalSize.width > originalSize.height) {
+            cv::resize(img, *resizedImage, Size(screenWidth/2, screenWidth / 2 * originalSize.height / originalSize.width));
+        }
+        else {
+            cv::resize(img, *resizedImage, Size(screenHeight / 2 * originalSize.width / originalSize.height, screenHeight / 2));
+        }
+        Size resizedSize = resizedImage->size();
+        float scaleX = (float)originalSize.width / resizedSize.width;
+        float scaleY = (float)originalSize.height / resizedSize.height;
+
+        namedWindow("Select ROI And Press Enter To Check", cv::WINDOW_AUTOSIZE);
+        Rect roi_box = cv::selectROI("Select ROI And Press Enter To Check", *resizedImage, false);
+        Rect real_roi_box;
+        if (roi_box.width == 0 || roi_box.height == 0) {
+            emit throwError("No Roi Area Selected");
+            return;
+        }
+        else {
+            int originalX = static_cast<int>(roi_box.x * scaleX);
+            int originalY = static_cast<int>(roi_box.y * scaleY);
+            int originalWidth = static_cast<int>(roi_box.width * scaleX);
+            int originalHeight = static_cast<int>(roi_box.height * scaleY);
+
+            real_roi_box = { originalX, originalY, originalWidth, originalHeight };
+        }
+
+        destroyWindow("Select ROI And Press Enter To Check");
+
+        //绘制标距段
+        namedWindow("Plot the gauge length segment border", cv::WINDOW_AUTOSIZE);
+        cv::setMouseCallback("Plot the gauge length segment border", onMouseAction, 0);
+        drawRectangle(*resizedImage,roi_box, cv::Scalar(0, 255, 0),2);
+
+        Point2f TEMPBOX;
+        while (true) {
+            cv::Mat imgCopy = resizedImage->clone();
+
+            if (ptStart.x >= 0 && ptStart.y >= 0 && ptEnd.x >= 0 && ptEnd.y >= 0) {
+                cv::line(imgCopy, ptStart, ptEnd, cv::Scalar(0, 0, 255), 2); // 绘制红色线条
+            }
+
+            cv::imshow("Plot the gauge length segment border", imgCopy);
+
+            int key = cv::waitKey(10);
+            if (key == 27) {
+                destroyWindow("Plot the gauge length segment border");
+                break;
+            }
+            else if (key == 13) {
+                destroyWindow("Plot the gauge length segment border");
+
+                Point2f scaleNewMid1 = Point2f(ptStart.x*scaleX, ptStart.y*scaleY);
+                Point2f scaleNewMid2 = Point2f(ptEnd.x*scaleX, ptEnd.y*scaleY);
+
+                //相对于ROI中心点的偏移：做垂线交点
+                TEMPBOX = PointToLine(qMakePair(scaleNewMid1,scaleNewMid2),
+                                                  Point2f(
+                                                      real_roi_box.x+real_roi_box.width/2,
+                                                      real_roi_box.y+real_roi_box.height/2)
+                                                  );
+
+
+
+
+                break;
+            }
+        }
+
+        //添加追踪点
+
+        img = img.clone();
+
+        if(ID=="A"){
+            PositionA = TEMPBOX;
+
+            startTracker(false,trackerWorkFlagB);
+
+            extensometerA->setOrignalImg(img);
+            extensometerA->setROI(real_roi_box);
+
+            extensometerA->uninit();
+            extensometerA->init();
+
+            extensometerA->debug(true);
+
+            emit HIKEAROI(real_roi_box);
+        }else if(ID=="B"){
+            PositionB = TEMPBOX;
+
+            startTracker(trackerWorkFlagB,false);
+
+            extensometerB->setOrignalImg(img);
+            extensometerB->setROI(real_roi_box);
+
+            extensometerB->uninit();
+            extensometerB->init();
+
+            extensometerB->debug(false);
+
+            emit HIKEBROI(real_roi_box);
+        }else return;
+    }
+}
+
+
 
 void HIKCamera::selectLine(std::string windowtitle, Mat img) {
 
@@ -787,12 +913,22 @@ void HIKCamera::selectPositionLine(std::string windowtitle){
             waitKey(0);
             destroyAllWindows();
 
-            Point2f scaleNewMid1 = Point2f(ptStart.x*scaleX, ptStart.y*scaleY);
-            Point2f scaleNewMid2 = Point2f(ptEnd.x*scaleX, ptEnd.y*scaleY);
+            // 计算中线的方向向量
+            Point2f direction = ptEnd - ptStart;
+            float L = norm(direction);         // 原始长度
+            direction = direction / L;         // 归一化
+
+            // 延长中线至两倍长度
+            Point2f newMid1 = Point2f(ptStart) - direction * L*1.2f;
+            Point2f newMid2 = Point2f(ptEnd) + direction * L*1.2f;
+
+
+            Point2f scaleNewMid1 = Point2f(newMid1.x*scaleX, newMid1.y*scaleY);
+            Point2f scaleNewMid2 = Point2f(newMid2.x*scaleX, newMid2.y*scaleY);
+
+            boxPosition = qMakePair(scaleNewMid1,scaleNewMid2);
 
             boxRect.clear();
-            boxPosition = qMakePair(scaleNewMid1,scaleNewMid2);
-            emit PositionSelected(scaleNewMid1, scaleNewMid2);
 
             break;
         }
@@ -917,14 +1053,16 @@ void HIKCamera::autoSelectPositionLine(std::string windowtitle){
 
     // 计算中线的方向向量
     Point2f direction = mid2 - mid1;
-    direction = direction / norm(direction);// 归一化
+    float L = norm(direction);         // 原始长度
+    direction = direction / L;         // 归一化
 
     // 延长中线至两倍长度
-    Point2f newMid1 = mid1 - direction * norm(mid2 - mid1);
-    Point2f newMid2 = mid2 + direction * norm(mid2 - mid1);
+    Point2f newMid1 = mid1 - direction * L*1.2f;
+    Point2f newMid2 = mid2 + direction * L*1.2f;
 
     Point2f scaleNewMid1 = Point2f(newMid1.x*scaleX, newMid1.y*scaleY);
     Point2f scaleNewMid2 = Point2f(newMid2.x*scaleX, newMid2.y*scaleY);
+
     boxPosition = qMakePair(scaleNewMid1,scaleNewMid2);
 
     emit PositionSelected(scaleNewMid1, scaleNewMid2);
