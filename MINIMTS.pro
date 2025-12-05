@@ -1,10 +1,10 @@
 TEMPLATE = subdirs
 
 SUBDIRS += \
-    ../qtTools \
-    HIKCamera \
     MainUI \
-    MiniMTSLogic \
+    ../Share/qtTools \
+    ../Share/HIKCamera \
+    ../Share/MiniMTSLogic \
+    ../Share/components
     QTOpenCorr \
-    components \
-    untitled
+

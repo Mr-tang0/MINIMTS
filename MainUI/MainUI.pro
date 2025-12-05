@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
 
-DEFINES += VersionID=7
+DEFINES += VersionID=8  # 改这里会自动更新版本号
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -70,31 +70,31 @@ RC_ICONS = res\icon\icon.ico
 msvc:QMAKE_CXXFLAGS += -execution-charset:utf-8
 msvc:QMAKE_CXXFLAGS += -source-charset:utf-8
 
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../components/release/ -lcomponents
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../components/debug/ -lcomponents
-else:unix: LIBS += -L$$OUT_PWD/../components/ -lcomponents
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../Share/components/release/ -lcomponents
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../Share/components/debug/ -lcomponents
+else:unix: LIBS += -L$$OUT_PWD/../../Share/components/ -lcomponents
 
-INCLUDEPATH += $$PWD/../components
-DEPENDPATH += $$PWD/../components
+INCLUDEPATH += $$PWD/../../Share/components
+DEPENDPATH += $$PWD/../../Share/components
 
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/release/libcomponents.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/debug/libcomponents.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/release/components.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../components/debug/components.lib
-else:unix: PRE_TARGETDEPS += $$OUT_PWD/../components/libcomponents.a
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/components/release/libcomponents.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/components/debug/libcomponents.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/components/release/components.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/components/debug/components.lib
+else:unix: PRE_TARGETDEPS += $$OUT_PWD/../../Share/components/libcomponents.a
 
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../MiniMTSLogic/release/ -lMiniMTSLogic
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../MiniMTSLogic/debug/ -lMiniMTSLogic
-else:unix: LIBS += -L$$OUT_PWD/../MiniMTSLogic/ -lMiniMTSLogic
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../Share/MiniMTSLogic/release/ -lMiniMTSLogic
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../Share/MiniMTSLogic/debug/ -lMiniMTSLogic
+else:unix: LIBS += -L$$OUT_PWD/../../Share/MiniMTSLogic/ -lMiniMTSLogic
 
-INCLUDEPATH += $$PWD/../MiniMTSLogic
-DEPENDPATH += $$PWD/../MiniMTSLogic
+INCLUDEPATH += $$PWD/../../Share/MiniMTSLogic
+DEPENDPATH += $$PWD/../../Share/MiniMTSLogic
 
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/release/libMiniMTSLogic.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/debug/libMiniMTSLogic.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/release/MiniMTSLogic.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/debug/MiniMTSLogic.lib
-else:unix: PRE_TARGETDEPS += $$OUT_PWD/../MiniMTSLogic/libMiniMTSLogic.a
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/MiniMTSLogic/release/libMiniMTSLogic.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/MiniMTSLogic/debug/libMiniMTSLogic.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/MiniMTSLogic/release/MiniMTSLogic.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/MiniMTSLogic/debug/MiniMTSLogic.lib
+else:unix: PRE_TARGETDEPS += $$OUT_PWD/../../Share/MiniMTSLogic/libMiniMTSLogic.a
 
 
 INCLUDEPATH += $$PWD/../../Qt-Advanced-Docking-System/src
@@ -104,41 +104,6 @@ DEPENDPATH += $$PWD/../../Qt-Advanced-Docking-System/src
 win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/lib/ -lqtadvanceddocking
 else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/lib/ -lqtadvanceddocking
 else:unix: LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/ -lqtadvanceddocking
-
-
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../build/qtTools/release/ -lqtTools
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../build/qtTools/debug/ -lqtTools
-else:unix: LIBS += -L$$PWD/../build/qtTools/ -lqtTools
-
-INCLUDEPATH += $$PWD/../../qtTools
-DEPENDPATH += $$PWD/../../qtTools
-
-INCLUDEPATH += $$PWD/../../qtTools/tool/
-DEPENDPATH += $$PWD/../../qtTools/tool/
-include($$PWD/../../qtTools/tool/tool.pri)
-
-INCLUDEPATH += $$PWD/../../qtTools/mycore/
-DEPENDPATH += $$PWD/../../qtTools/mycore/
-include ($$PWD/../../qtTools/mycore/mycore.pri)
-
-INCLUDEPATH += $$PWD/../../qtTools/PDF/
-DEPENDPATH += $$PWD/../../qtTools/PDF/
-include ($$PWD/../../qtTools/PDF/PDF.pri)
-
-INCLUDEPATH += $$PWD/../HIKCamera/Extensometer
-# include ($$PWD/../HIKCamera/Extensometer/Extensometer.pri)
-
-
-win32: LIBS += -L$$OUT_PWD/../HIKCamera/release/ -lHIKCamera
-
-INCLUDEPATH += $$PWD/../HIKCamera
-DEPENDPATH += $$PWD/../HIKCamera
-
-INCLUDEPATH += $$PWD/../HIKCamera/HIKlib/includes
-DEPENDPATH += $$PWD/../HIKCamera/HIKlib/includes
-
-INCLUDEPATH += $$PWD/../HIKCamera/external/release64/include
-
 
 
 
@@ -162,3 +127,45 @@ INCLUDEPATH += $$PWD/../Eigen3
 INCLUDEPATH += $$PWD/../Eigen3/Eigen
 
 INCLUDEPATH += $$PWD/../nanoflann
+
+
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../Share/qtTools/release/ -lqtTools
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../Share/qtTools/debug/ -lqtTools
+
+INCLUDEPATH += $$PWD/../../Share/qtTools
+DEPENDPATH += $$PWD/../../Share/qtTools
+
+INCLUDEPATH += $$PWD/../../Share/qtTools/tool/
+DEPENDPATH += $$PWD/../../Share/qtTools/tool/
+include($$PWD/../../Share/qtTools/tool/tool.pri)
+
+INCLUDEPATH += $$PWD/../../Share/qtTools/mycore/
+DEPENDPATH += $$PWD/../../Share/qtTools/mycore/
+include ($$PWD/../../Share/qtTools/mycore/mycore.pri)
+
+INCLUDEPATH += $$PWD/../../Share/qtTools/PDF/
+DEPENDPATH += $$PWD/../../Share/qtTools/PDF/
+include ($$PWD/../../Share/qtTools/PDF/PDF.pri)
+
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/qtTools/release/libqtTools.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/qtTools/debug/libqtTools.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/qtTools/release/qtTools.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$OUT_PWD/../../Share/qtTools/debug/qtTools.lib
+
+
+
+win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../../Share/HIKCamera/release/ -lHIKCamera
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../../Share/HIKCamera/debug/ -lHIKCamera
+else:unix: LIBS += -L$$OUT_PWD/../../Share/HIKCamera/ -lHIKCamera
+
+INCLUDEPATH += $$PWD/../../Share/HIKCamera
+DEPENDPATH += $$PWD/../../Share/HIKCamera
+
+INCLUDEPATH += $$PWD/../../Share/HIKCamera/HIKlib/includes
+DEPENDPATH += $$PWD/../../Share/HIKCamera/HIKlib/includes
+INCLUDEPATH += $$PWD/../../Share/HIKCamera/external/release64/include
+
+INCLUDEPATH += $$PWD/../../Share/HIKCamera/Extensometer
+
+win32: LIBS += -L$$OUT_PWD/../../Share/HIKCamera/release/ -lHIKCamera

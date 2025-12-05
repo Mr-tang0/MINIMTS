@@ -72,18 +72,18 @@ win32-msvc {
     QMAKE_LFLAGS += -fopenmp
 }
 
-win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../HIKCamera/external/release/lib -lopencv_world4120
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../HIKCamera/external/release/lib -lopencv_world4120
-else:unix: LIBS += -L$$PWD/../HIKCamera/external/release/ -lopencv_world4120
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Share/HIKCamera/external/release/lib -lopencv_world4120
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Share/HIKCamera/external/release/lib -lopencv_world4120
+else:unix: LIBS += -L$$PWD/../../Share/HIKCamera/external/release/ -lopencv_world4120
 
-INCLUDEPATH += $$PWD/../HIKCamera/external/release/include
-DEPENDPATH += $$PWD/../HIKCamera/external/release/include
+INCLUDEPATH += $$PWD/../../Share/HIKCamera/external/release/include
+DEPENDPATH += $$PWD/../../Share/HIKCamera/external/release/include
 
-win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../HIKCamera/external/release/lib/libopencv_world4120.a
-else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../HIKCamera/external/release/lib/libopencv_world4120.a
-else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../HIKCamera/external/release/lib/opencv_world4120.lib
-else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../HIKCamera/external/release/lib/opencv_world4120.lib
-else:unix: PRE_TARGETDEPS += $$PWD/../HIKCamera/external/release/libopencv_world4120.a
+win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../Share/HIKCamera/external/release/lib/libopencv_world4120.a
+else:win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../Share/HIKCamera/external/release/lib/libopencv_world4120.a
+else:win32:!win32-g++:CONFIG(release, debug|release): PRE_TARGETDEPS += $$PWD/../../Share/HIKCamera/external/release/lib/opencv_world4120.lib
+else:win32:!win32-g++:CONFIG(debug, debug|release): PRE_TARGETDEPS += $$PWD/../../Share/HIKCamera/external/release/lib/opencv_world4120.lib
+else:unix: PRE_TARGETDEPS += $$PWD/../../Share/HIKCamera/external/release/libopencv_world4120.a
 
 INCLUDEPATH += $$PWD/../fftw3/include
 DEPENDPATH += $$PWD/../fftw3/include

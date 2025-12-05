@@ -29,6 +29,7 @@ int main(int argc, char *argv[])
     }
 
 
+
     MainWindow w;
 
     w.resize(1200, 800);

@@ -11,8 +11,6 @@ mainWidget::mainWidget(QWidget *parent) :
 {
     ui->setupUi(this);
 
-
-
     initWidget();
 
     initChart();
@@ -126,14 +124,14 @@ void mainWidget::initWidget(){
 void mainWidget::initChart(){
     ui->graphics->addSeries("载荷-时间", "Force", "Time");
     ui->graphics->addSeries("位移-时间", "Length", "Time");
+    ui->graphics->addSeries("视频引伸-时间", "视频引伸", "Time");
     ui->graphics->addSeries("应力-应变", "Stress", "Strian");
+    ui->graphics->addSeries("应力-视频应变", "Stress", "E-Strian");
     ui->graphics->addSeries("速度-时间", "Speed", "Time");
     ui->graphics->addSeries("AX-时间", "AX", "Time");
     ui->graphics->addSeries("AY-时间", "AY", "Time");
     ui->graphics->addSeries("BX-时间", "BX", "Time");
     ui->graphics->addSeries("BY-时间", "BY", "Time");
-    ui->graphics->addSeries("视频引伸-时间", "视频引伸", "Time");
-
 
     ui->graphics->longShow();
     ui->graphics->showSeries("载荷-时间");
@@ -150,11 +148,15 @@ void mainWidget::initChart(){
     ui->strainLCD->setKey("应变");
     ui->strainLCD->setDecimals(3);
 
-    ui->speedLCD->setKey("速度 mm/s");
-    ui->speedLCD->setDecimals(3);
+
+    // ui->speedLCD->setKey("速度 mm/s");
+    // ui->speedLCD->setDecimals(3);
 
     ui->DICLCD->setKey("视频引伸 mm");
     ui->DICLCD->setDecimals(3);
+
+    ui->speedLCD->setKey("视频应变");
+    ui->speedLCD->setDecimals(3);
 
     ui->timeLCD->setKey("时长 Secs");
     ui->timeLCD->setDecimals(1);
@@ -164,8 +166,10 @@ void mainWidget::initChart(){
     ui->graphics->hideSeries("BX-时间");
     ui->graphics->hideSeries("BY-时间");
     ui->graphics->hideSeries("视频引伸-时间");
+    ui->graphics->hideSeries("应力-视频应变");
 
     ui->DICLCD->hide();
+    ui->speedLCD->hide();
 
 }
 
@@ -437,18 +441,42 @@ void mainWidget::initConnect(){
             emit message("样品尺寸不能为零");return;
         }else if(ui->length->value()<=0){
             emit message("样品标距段不能为零");return;
-        }else if(ui->DICEnable->isChecked()&&ui->DICFilePath->text() =="")
-        {emit message("DIC图片保存位置不能为空");return;}
-        else if(ui->DICEnable->isChecked()&&ui->DICFileName->text()=="")
-        {emit message("DIC图片文件名不能为空");return;}
-        else if(ui->DICEnable->isChecked()&&ui->DICDuration->value()<=200)
-        {emit message("DIC采集时间不得小于200ms");return;}
+        }else if(ui->DICEnable->isChecked()){
+            if(!hikCamera.isOpened()){
+                emit message("相机未连接,不可进行DIC记录");
+                return;
+            }
+            if(ui->DICFilePath->text() ==""){
+                emit message("DIC图片保存位置不能为空");
+                return;
+            }
+            if(ui->DICFileName->text()==""){
+                emit message("DIC图片文件名不能为空");
+                return;
+            }
+            if(ui->DICDuration->value()<=200){
+                emit message("DIC采集时间不得小于200ms");
+                return;
+            }
+        }
         else if(ui->DICLENEnable->isChecked()){
+            if(!hikCamera.isOpened()){
+                emit message("相机未连接,不可进行视频引申计算");
+                return;
+            }
+
+            if(ui->NOCalibration->isChecked()){
+                ui->pix->setText("1000");
+                ui->trueLength->setText("8");
+            }
+
             if (ui->pix->text()==""||ui->trueLength->text()=="")
             {
                 emit message("还未进行标定");
                 return;
-            }else if(ui->pointA->text()==""||ui->pointB->text()==""){
+            }
+
+            if(ui->pointA->text()==""||ui->pointB->text()==""){
                 emit message("必须选择两个标识点");
                 return;
             }
@@ -478,6 +506,7 @@ void mainWidget::initConnect(){
         testDetails.DICTriggr = ui->DICTriggr->currentText();
         testDetails.DICDuration = ui->DICDuration->value();
         testDetails.DICDetectEnable = ui->DICEnable->isChecked();
+        testDetails.DICTriggrEnable = ui->DICTriggrEnable->isChecked();
 
         //diclength
         testDetails.pix = ui->pix->text().toFloat();
@@ -519,8 +548,10 @@ void mainWidget::initConnect(){
             ui->graphics->showSeries("BX-时间");
             ui->graphics->showSeries("BY-时间");
             ui->graphics->showSeries("视频引伸-时间");
+            ui->graphics->showSeries("应力-视频应变");
 
             ui->DICLCD->show();
+            ui->speedLCD->show();
         }else {
             hikCamera.startTracker(false, false);
 
@@ -529,8 +560,10 @@ void mainWidget::initConnect(){
             ui->graphics->hideSeries("BX-时间");
             ui->graphics->hideSeries("BY-时间");
             ui->graphics->hideSeries("视频引伸-时间");
+            ui->graphics->hideSeries("应力-视频应变");
 
             ui->DICLCD->hide();
+            ui->speedLCD->hide();
         }
 
         XMLReader::Save_XML_File(historyMap,userHistroyPath);
@@ -593,13 +626,13 @@ void mainWidget::initConnect(){
     });
 
 
-    connect(&hikCamera, &HIKCamera::HIKEAROI, this, [=](Rect rect){
+    connect(&hikCamera, &HIKCamera::HIKEAROI, this, [=](cv::Rect rect){
         QString rectText = QString("X:%1 Y:%2 W:%3 H:%4")
         .arg(rect.x).arg(rect.y).arg(rect.width).arg(rect.height);
         ui->pointA->setText(rectText);
     });
 
-    connect(&hikCamera, &HIKCamera::HIKEBROI, this, [=](Rect rect){
+    connect(&hikCamera, &HIKCamera::HIKEBROI, this, [=](cv::Rect rect){
         QString rectText = QString("X:%1 Y:%2 W:%3 H:%4")
         .arg(rect.x).arg(rect.y).arg(rect.width).arg(rect.height);
         ui->pointB->setText(rectText);
@@ -678,6 +711,11 @@ void mainWidget::initSystem(){
     ui->DICTriggr->setCurrentText(historyMap[MainWindow::user.name]["DICTriggr"]);
     ui->DICDuration->setValue(historyMap[MainWindow::user.name]["DICDuration"].toInt());
     historyMap[MainWindow::user.name]["DICDetectEnable"]=="true" ? ui->DICEnable->setChecked(true) : ui->DICEnable->setChecked(false);
+
+    ui->pix->setText(historyMap[MainWindow::user.name]["pix"]);
+    ui->trueLength->setText(historyMap[MainWindow::user.name]["trueLength"]);
+    historyMap[MainWindow::user.name]["DICLENEnable"]=="true" ? ui->DICLENEnable->setChecked(true) : ui->DICLENEnable->setChecked(false);
+
 
     //更新采样率
     dataFreshTimer->stop();
@@ -848,23 +886,26 @@ bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
 
     }
 
-    QStringList header = {"force","length","strain","stress", "speed", "AX", "AY", "BX", "BY", "extensometer", "time"};
+    QStringList header = {"force","strain(motor)","strain(video)","stress", "length(motor)","length(video)","speed", "AX", "AY", "BX", "BY", "time"};
 
     QList<QList<float>> newdatalist;
 
     newdatalist.append(dataMap["载荷"]); //force
-    newdatalist.append(dataMap["位移"]);//length
+
     newdatalist.append(dataMap["应变"]); //strain
+    newdatalist.append(dataMap["视频应变"]); //e-strian
+
     newdatalist.append(dataMap["应力"]); //stress
+
+    newdatalist.append(dataMap["位移"]);//length
+    newdatalist.append(dataMap["视频引伸"]); //DIC
+
     newdatalist.append(dataMap["速度"]); //speed
 
     newdatalist.append(dataMap["AX"]); //AX
     newdatalist.append(dataMap["AY"]); //AY
-
     newdatalist.append(dataMap["BX"]); //BX
     newdatalist.append(dataMap["BY"]); //BY
-
-    newdatalist.append(dataMap["视频引伸"]); //DIC
 
     newdatalist.append(dataMap["时间"]); //time
 
@@ -873,8 +914,6 @@ bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
 }
 
 bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
-    //考虑进子线程计算
-
     if(data.empty()||data[0].empty())return false;
 
     QString fileName = MainWindow::user.userDefaultName+systemWidget::systemMap["advance"]["format"];
@@ -987,13 +1026,15 @@ void mainWidget::freshData(){
     }
     ui->lengthLCD->display(length);
 
-    ui->stressLCD->display(force/testDetails.sampleSquare);
-    ui->strainLCD->display(length/testDetails.sampleLength);
+    float stress = force/testDetails.sampleSquare;
+    float strain = length/testDetails.sampleLength;
+    ui->stressLCD->display(stress);
+    ui->strainLCD->display(strain);
     ui->timeLCD->display(time);
 
     ui->graphics->addPoint("载荷-时间",QPointF(time,force));
     ui->graphics->addPoint("位移-时间",QPointF(time,length));
-    ui->graphics->addPoint("应力-应变",QPointF(length/testDetails.sampleLength,force/testDetails.sampleSquare));
+    ui->graphics->addPoint("应力-应变",QPointF(strain,stress));
     ui->graphics->addPoint("速度-时间",QPointF(time,speed));
 
 
@@ -1022,6 +1063,17 @@ void mainWidget::freshData(){
     float distance = hikCamera.A_to_B_Distense * displayDir;
     ui->DICLCD->display(distance);
     ui->graphics->addPoint("视频引伸-时间", QPointF(time, distance));
+
+
+    if(hikCamera.A_to_B_Zreo!=0)
+        strain = distance/hikCamera.A_to_B_Zreo;
+    else
+    {
+        float start = ui->graphics->getPointByIndex("视频引伸-时间", 0).y();
+        strain = start==0?0:(distance-start)/start;
+    }
+
+    ui->graphics->addPoint("应力-视频应变", QPointF(strain,stress));
 
     historyBufferA.push_back({time, ax, ay});
 
@@ -1058,15 +1110,6 @@ void mainWidget::freshData(){
 
 void mainWidget::on_btn_start_clicked()
 {
-    if(testDetails.DICDetectEnable&&hikCamera.isOpened())
-    {
-        QString fullPath = testDetails.DICFilePath + "/" + testDetails.DICFileName;
-        if(testDetails.DICFilePath.right(1)=="/")fullPath = testDetails.DICFilePath + testDetails.DICFileName;
-
-        hikCamera.startDIC(testDetails.DICFileName, fullPath, testDetails.DICDuration);
-        emit message("开始DIC采集");
-    }
-
     if(!motorConnectFlag){
         emit message("串口未连接");
         return;
@@ -1129,6 +1172,28 @@ void mainWidget::on_btn_start_clicked()
             minilogic->motorLengthMove(-testDetails.length,testDetails.speed);
             displayDir=-1;
         }
+    }
+
+    if(testDetails.DICDetectEnable&&hikCamera.isOpened()&&testDetails.DICDuration>0)
+    {
+        QString fullPath = testDetails.DICFilePath + "/" + testDetails.DICFileName;
+        if(testDetails.DICFilePath.right(1)=="/")fullPath = testDetails.DICFilePath + testDetails.DICFileName;
+
+        hikCamera.startDIC(testDetails.DICFileName, fullPath, testDetails.DICDuration);
+        emit message("开始DIC采集");
+    }
+
+    if(testDetails.DICTriggrEnable)
+    {
+        //单次触发
+        if(testDetails.DICDuration==0){
+            minilogic->triggr();
+            emit message("触发信号已发送");
+        }else{
+            //循环触发
+            minilogic->TriggrOn(0,testDetails.DICDuration);
+            emit message("开始触发信号");
+        }
 
 
     }
@@ -1141,8 +1206,6 @@ void mainWidget::on_btn_start_clicked()
 void mainWidget::on_btn_stop_clicked()
 {
     if(testDetails.autoStopType=="Force Hold"){
-
-
         if(ui->btn_stop->text()=="停止"){
             if(!motorConnectFlag){
                 emit message("串口未连接");
@@ -1171,8 +1234,6 @@ void mainWidget::on_btn_stop_clicked()
             emit message("测试停止");
             addState("测试停止");
         }
-
-
     }else{
         if(hikCamera.isOpened())
             hikCamera.stopDIC();
@@ -1183,8 +1244,10 @@ void mainWidget::on_btn_stop_clicked()
         }
 
         minilogic->motorStop();
+
         moveFlag = false;
         minilogic->run(false);
+
         emit message("测试停止");
         addState("测试停止");
     }

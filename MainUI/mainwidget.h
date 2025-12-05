@@ -36,6 +36,7 @@ struct TestDetails{
     QString userFileName = "";
 
     bool DICDetectEnable = false;
+    bool DICTriggrEnable = false;
     QString DICFileName = "DIC";
     QString DICFilePath = "";
     int DICDuration = 1000;

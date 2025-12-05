@@ -63,6 +63,12 @@ systemWidget::~systemWidget()
 void systemWidget::initSystem(){
     systemMap = XMLReader::Read_XML_File(rootPath);
 
+    if(systemMap.isEmpty()){
+        QString sourceDir = QCoreApplication::applicationDirPath()+ "/MiniMTS/system.xml";
+        systemMap = XMLReader::Read_XML_File(sourceDir);
+        QFile::copy(sourceDir, rootPath);
+    }
+
     QWidget *widget = ui->stackedWidget->widget(0);
     QList<QLineEdit*> lineEdits = widget->findChildren<QLineEdit*>();
 

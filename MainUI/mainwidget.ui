@@ -893,6 +893,12 @@ border-radius:5px;</string>
              <layout class="QHBoxLayout" name="horizontalLayout_12">
               <item>
                <widget class="QGroupBox" name="projectDIC">
+                <property name="minimumSize">
+                 <size>
+                  <width>250</width>
+                  <height>0</height>
+                 </size>
+                </property>
                 <property name="title">
                  <string>DIC</string>
                 </property>
@@ -900,11 +906,28 @@ border-radius:5px;</string>
                  <item row="0" column="0">
                   <layout class="QVBoxLayout" name="verticalLayout_3">
                    <item>
-                    <widget class="QCheckBox" name="DICEnable">
-                     <property name="text">
-                      <string>使能相机拍摄DIC图片</string>
-                     </property>
-                    </widget>
+                    <layout class="QHBoxLayout" name="horizontalLayout_18">
+                     <item>
+                      <widget class="QCheckBox" name="DICEnable">
+                       <property name="text">
+                        <string>使能相机拍摄DIC图片</string>
+                       </property>
+                       <attribute name="buttonGroup">
+                        <string notr="true">DICTriggrBtns</string>
+                       </attribute>
+                      </widget>
+                     </item>
+                     <item>
+                      <widget class="QCheckBox" name="DICTriggrEnable">
+                       <property name="text">
+                        <string>外触发信号</string>
+                       </property>
+                       <attribute name="buttonGroup">
+                        <string notr="true">DICTriggrBtns</string>
+                       </attribute>
+                      </widget>
+                     </item>
+                    </layout>
                    </item>
                    <item>
                     <widget class="Line" name="line_2">
@@ -945,8 +968,14 @@ border-radius:5px;</string>
                      </item>
                      <item row="1" column="1">
                       <widget class="QSpinBox" name="DICDuration">
+                       <property name="minimum">
+                        <number>0</number>
+                       </property>
                        <property name="maximum">
                         <number>999999999</number>
+                       </property>
+                       <property name="singleStep">
+                        <number>100</number>
                        </property>
                       </widget>
                      </item>
@@ -1298,15 +1327,15 @@ border-radius:5px;</string>
                         <item>
                          <layout class="QVBoxLayout" name="verticalLayout_13">
                           <item>
-                           <widget class="QRadioButton" name="radioButton">
+                           <widget class="QRadioButton" name="NOCalibration">
                             <property name="enabled">
-                             <bool>false</bool>
+                             <bool>true</bool>
                             </property>
                             <property name="text">
                              <string>不标定</string>
                             </property>
                             <property name="checked">
-                             <bool>false</bool>
+                             <bool>true</bool>
                             </property>
                             <attribute name="buttonGroup">
                              <string notr="true">lengthOkBtns</string>
@@ -1314,12 +1343,12 @@ border-radius:5px;</string>
                            </widget>
                           </item>
                           <item>
-                           <widget class="QRadioButton" name="radioButton_2">
+                           <widget class="QRadioButton" name="Calibration">
                             <property name="text">
                              <string>使用右侧参数标定</string>
                             </property>
                             <property name="checked">
-                             <bool>true</bool>
+                             <bool>false</bool>
                             </property>
                             <attribute name="buttonGroup">
                              <string notr="true">lengthOkBtns</string>
@@ -1930,5 +1959,10 @@ font: 20pt &quot;黑体&quot;;
  <connections/>
  <buttongroups>
   <buttongroup name="lengthOkBtns"/>
+  <buttongroup name="DICTriggrBtns">
+   <property name="exclusive">
+    <bool>false</bool>
+   </property>
+  </buttongroup>
  </buttongroups>
 </ui>
