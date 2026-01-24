@@ -30,6 +30,8 @@ loginWin::loginWin(QWidget *parent) :
 {
     ui->setupUi(this);
 
+    this->setWindowTitle("登录");
+
     m_snackbar->setParent(this);
     m_snackbar->setBoxWidth(200);
     m_snackbar->setAutoHideDuration(500);
@@ -101,12 +103,12 @@ loginWin::loginWin(QWidget *parent) :
     ui->login_userName->setFocus();
 
 
-#ifdef DEBUG
-    ui->login_userName->setText("tang");
-    ui->login_password->setText("123456");
-#endif
-    ui->login_userName->setText("tang");
-    ui->login_password->setText("123456");
+// #ifdef DEBUG
+//     ui->login_userName->setText("tang");
+//     ui->login_password->setText("123456");
+// #endif
+//     ui->login_userName->setText("tang");
+//     ui->login_password->setText("123456");
 
 
     //从文件提取所有用户信息

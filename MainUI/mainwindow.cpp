@@ -329,15 +329,37 @@ void MainWindow::buttonClick()
         );
 
         if (reply == QMessageBox::Yes) {
-            if(mainwd->hikCamera.isOpened())
-                mainwd->hikCamera.closeDevice();
+            if(mainwd->hikWin.camera->isOpened())
+                mainwd->hikWin.camera->Close();
             exit(0);
         }
 
     }else if (name == "用户") {
         ui->stackedWidget->setCurrentIndex(3);
     }else if (name == "DIC分析") {
-        m_snackbar->addMessage("暂不可用！");
+        QString dicExePath = QCoreApplication::applicationDirPath() + "/dic.exe";
+
+        QFileInfo fileInfo(dicExePath);
+        if (fileInfo.exists() && fileInfo.isFile() && fileInfo.isExecutable()) {
+            QProcess *process = new QProcess(this);
+            process->start(dicExePath);
+
+            m_snackbar->addMessage("DIC分析程序初始化中，请稍后！");
+            if (!process->waitForStarted(3000)) {
+                qDebug()<<"dic.exe 文件启动失败";
+                m_snackbar->addMessage("DIC分析程序启动失败！");
+                process->deleteLater();
+            } else {
+
+                connect(process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
+                        this, [process]() {
+                            process->deleteLater();
+                        });
+            }
+        } else {
+            qDebug()<<dicExePath<<":文件不存在";
+            m_snackbar->addMessage("暂不可用！");
+        }
     }
 
 }
@@ -372,8 +394,8 @@ void MainWindow::on_btnMenu_Close_clicked()
     );
 
     if (reply == QMessageBox::Yes) {
-        if(mainwd->hikCamera.isOpened())
-            mainwd->hikCamera.closeDevice();
+        if(mainwd->hikWin.camera->isOpened())
+            mainwd->hikWin.camera->Close();
         exit(0);
     }
 }

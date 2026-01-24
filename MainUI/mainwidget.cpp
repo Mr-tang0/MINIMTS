@@ -79,9 +79,9 @@ void mainWidget::keyReleaseEvent(QKeyEvent *event){
             addState("停止运动");
             keyControlMoving = false;
         } else if (event->key() == Qt::Key_F5) {
-            hikCamera.show();  // 必须在 setWindowFlags 后调用 show()
-            hikCamera.raise(); // 确保当前置顶
-            hikCamera.activateWindow();
+            hikWin.show();
+            hikWin.raise(); // 确保当前置顶
+            // hikWin.activateWindow();
         }
     }
 
@@ -92,7 +92,7 @@ void mainWidget::keyReleaseEvent(QKeyEvent *event){
 
 void mainWidget::initWidget(){
 
-    hikCamera.setWindowFlags(hikCamera.windowFlags() | Qt::WindowStaysOnTopHint);
+    // hikWin.setWindowFlags(hikWin.windowFlags() | Qt::WindowStaysOnTopHint);
 
     QList<int> iconsMain;
 
@@ -148,15 +148,11 @@ void mainWidget::initChart(){
     ui->strainLCD->setKey("应变");
     ui->strainLCD->setDecimals(3);
 
-
-    // ui->speedLCD->setKey("速度 mm/s");
-    // ui->speedLCD->setDecimals(3);
-
     ui->DICLCD->setKey("视频引伸 mm");
     ui->DICLCD->setDecimals(3);
 
-    ui->speedLCD->setKey("视频应变");
-    ui->speedLCD->setDecimals(3);
+    ui->eStrainLCD->setKey("视频应变");
+    ui->eStrainLCD->setDecimals(3);
 
     ui->timeLCD->setKey("时长 Secs");
     ui->timeLCD->setDecimals(1);
@@ -169,7 +165,7 @@ void mainWidget::initChart(){
     ui->graphics->hideSeries("应力-视频应变");
 
     ui->DICLCD->hide();
-    ui->speedLCD->hide();
+    ui->eStrainLCD->hide();
 
 }
 
@@ -202,7 +198,7 @@ void mainWidget::initConnect(){
         if(ui->connect->text()=="连接"){
             QString portName = ui->portName->currentText();
             int buandRate = ui->buandRate->currentText().toInt();
-            motorConnectFlag = minilogic->connectDevice(portName,buandRate, 50);
+            motorConnectFlag = minilogic->connectDevice(portName,buandRate, systemWidget::systemMap["normal"]["sampleRate"].toInt());
             if(motorConnectFlag){
 
                 ui->connect->setText("断开");
@@ -253,7 +249,7 @@ void mainWidget::initConnect(){
     connect(ui->refresh_hik,&QPushButton::clicked,this,[=](){
         devices.clear();
         ui->cameraList->clear();
-        hikCamera.EnumDevices(devices);
+        hikWin.camera->EnumDevices(devices, hikWin.camera);
         ui->cameraList->addItems(devices.keys());
     });
 
@@ -261,17 +257,25 @@ void mainWidget::initConnect(){
         if(ui->connect_hik->text()=="连接")
         {
             QString device = ui->cameraList->currentText();
-            int ret = hikCamera.openDevice(device);
+            int ret = hikWin.camera->Open(device);
             if(ret ==MV_OK){
-                hikCamera.resize(600,400);
-                hikCamera.show();
+                hikWin.camera->RegisterImageCallback();
+
+                hikWin.camera->SetTriggerMode(MV_TRIGGER_MODE_OFF);
+                hikWin.camera->StartGrabbing();
+
                 ui->connect_hik->setText("断开");
+
+                hikWin.resize(800,600);
+                hikWin.show();
             }
 
         }else{
-            hikCamera.closeDevice();
+            hikWin.camera->StopGrabbing();
+            hikWin.camera->Close();
+
             ui->connect_hik->setText("连接");
-            hikCamera.close();
+            hikWin.close();
         }
     });
 
@@ -368,7 +372,7 @@ void mainWidget::initConnect(){
             );
 
         if (reply == QMessageBox::Yes) {
-            hikCamera.setCurrentZreo();
+            hikWin.camera->setCurrentZreo();
             emit message("光学引伸距离归零");
             addState("光学引伸距离归零");
         }else { // 如果用户点击了“否”
@@ -420,7 +424,7 @@ void mainWidget::initConnect(){
             );
         if(reply==QMessageBox::Yes){
             minilogic->setChannalZero("motor");
-            hikCamera.setCurrentZreo();
+            hikWin.camera->setCurrentZreo();
         }else{
             emit message("用户取消");
         }
@@ -442,7 +446,7 @@ void mainWidget::initConnect(){
         }else if(ui->length->value()<=0){
             emit message("样品标距段不能为零");return;
         }else if(ui->DICEnable->isChecked()){
-            if(!hikCamera.isOpened()){
+            if(!hikWin.camera->isOpened()){
                 emit message("相机未连接,不可进行DIC记录");
                 return;
             }
@@ -460,7 +464,7 @@ void mainWidget::initConnect(){
             }
         }
         else if(ui->DICLENEnable->isChecked()){
-            if(!hikCamera.isOpened()){
+            if(!hikWin.camera->isOpened()){
                 emit message("相机未连接,不可进行视频引申计算");
                 return;
             }
@@ -541,29 +545,23 @@ void mainWidget::initConnect(){
 
         if(ui->DICLENEnable->isChecked())
         {
-            hikCamera.startTracker(true, true);
-            hikCamera.setDistenceRate(testDetails.pix/testDetails.trueLength);
-            ui->graphics->showSeries("AX-时间");
-            ui->graphics->showSeries("AY-时间");
-            ui->graphics->showSeries("BX-时间");
-            ui->graphics->showSeries("BY-时间");
+            hikWin.camera->startTrack("A");
+            hikWin.camera->startTrack("B");
+            hikWin.camera->setDistenceRate(testDetails.pix/testDetails.trueLength);
+
             ui->graphics->showSeries("视频引伸-时间");
             ui->graphics->showSeries("应力-视频应变");
 
             ui->DICLCD->show();
-            ui->speedLCD->show();
+            ui->eStrainLCD->show();
         }else {
-            hikCamera.startTracker(false, false);
+            hikWin.camera->stopTrack("A");
+            hikWin.camera->stopTrack("B");
 
-            ui->graphics->hideSeries("AX-时间");
-            ui->graphics->hideSeries("AY-时间");
-            ui->graphics->hideSeries("BX-时间");
-            ui->graphics->hideSeries("BY-时间");
-            ui->graphics->hideSeries("视频引伸-时间");
             ui->graphics->hideSeries("应力-视频应变");
 
             ui->DICLCD->hide();
-            ui->speedLCD->hide();
+            ui->eStrainLCD->hide();
         }
 
         XMLReader::Save_XML_File(historyMap,userHistroyPath);
@@ -572,7 +570,7 @@ void mainWidget::initConnect(){
         emit message("项目保存成功");
     });
 
-    connect(ui->cancel,&QPushButton::clicked,[=](){
+    connect(ui->cancel,&QPushButton::clicked, this, [=](){
         QMessageBox::StandardButton reply = QMessageBox::question(
             nullptr,
             "确认",
@@ -611,38 +609,38 @@ void mainWidget::initConnect(){
     });
 
     connect(ui->selectPointA,&QPushButton::clicked,this,[=](){
-        hikCamera.addTracker("A");
+        hikWin.camera->addTracker("A");
     });
     connect(ui->selectPointB,&QPushButton::clicked,this,[=](){
-        hikCamera.addTracker("B");
+        hikWin.camera->addTracker("B");
     });
 
     connect(ui->autoSelectPositionLine,&QPushButton::clicked,this,[=](){
-        hikCamera.autoSelectPositionLine("Draw the area where the gauge segment is located");
+        hikWin.camera->autoSelectPositionLine("Draw the area where the gauge segment is located");
     });
 
     connect(ui->selectPositionLine,&QPushButton::clicked,this,[=](){
-        hikCamera.selectPositionLine("Draw the direction of the gauge segment");
+        hikWin.camera->selectPositionLine("Draw the direction of the gauge segment");
     });
 
 
-    connect(&hikCamera, &HIKCamera::HIKEAROI, this, [=](cv::Rect rect){
-        QString rectText = QString("X:%1 Y:%2 W:%3 H:%4")
-        .arg(rect.x).arg(rect.y).arg(rect.width).arg(rect.height);
-        ui->pointA->setText(rectText);
+    connect(hikWin.camera, &IndustryCamara::ROI, this, [=](QString ID, cv::Rect rect){
+        QString rectText = QString("X:%1 Y:%2 W:%3 H:%4").arg(rect.x).arg(rect.y).arg(rect.width).arg(rect.height);
+        if(ID=="A"){
+            ui->pointA->setText(rectText);
+        }else if(ID=="B"){
+
+            ui->pointB->setText(rectText);
+        }
+
     });
 
-    connect(&hikCamera, &HIKCamera::HIKEBROI, this, [=](cv::Rect rect){
-        QString rectText = QString("X:%1 Y:%2 W:%3 H:%4")
-        .arg(rect.x).arg(rect.y).arg(rect.width).arg(rect.height);
-        ui->pointB->setText(rectText);
-    });
 
     connect(ui->drawPix,&QPushButton::clicked,this,[=](){
-        hikCamera.selectLine("Draw a line you can measure");
+        hikWin.camera->selectLine("Draw a line you can measure");
     });
 
-    connect(&hikCamera,&HIKCamera::LineSeclected,this,[=](float len){
+    connect(hikWin.camera,&IndustryCamara::LINE,this,[=](float len){
         qDebug()<<"length";
         ui->pix->setText(QString::number(len));
     });
@@ -1012,30 +1010,45 @@ void mainWidget::freshData(){
 
     float force = minilogic->currentWeighValue*systemWidget::systemMap["normal"]["forceDir"].toFloat() * displayDir;
     float length = minilogic->currentMotorValue*systemWidget::systemMap["normal"]["motorDir"].toFloat() * displayDir;
+    float CameraDistance = hikWin.camera->getTrackDisplayment("A","B") * displayDir;
+    float stress = force/testDetails.sampleSquare;
+    float strain = length/testDetails.sampleLength;
     float speed = minilogic->currentSpeedValue;
-
     long currentTime = QDateTime::currentMSecsSinceEpoch();
     float time = float(currentTime-zreoTime)/1000;
 
+    float CameraStrain = 0;
+    if(hikWin.camera->DistenceZreo!=0)
+        CameraStrain = CameraDistance/hikWin.camera->DistenceZreo;
+    else
+    {
+        float start = ui->graphics->getPointByIndex("视频引伸-时间", 0).y();
+        CameraStrain = start==0?0:(CameraDistance-start)/start;
+    }
+
     ui->ForceLCD->display(force);
+    ui->lengthLCD->display(length);
+    ui->DICLCD->display(CameraDistance);
+    ui->eStrainLCD->display(CameraStrain);
+    ui->stressLCD->display(stress);
+    ui->strainLCD->display(strain);
+    ui->timeLCD->display(time);
+
+
+
+    ui->graphics->addPoint("载荷-时间",QPointF(time,force));
+    ui->graphics->addPoint("位移-时间",QPointF(time,length));
+    ui->graphics->addPoint("视频引伸-时间", QPointF(time, CameraDistance));
+    ui->graphics->addPoint("应力-应变",QPointF(strain,stress));
+    ui->graphics->addPoint("速度-时间",QPointF(time,speed));
+    ui->graphics->addPoint("应力-视频应变", QPointF(CameraStrain,stress));
 
     //此处为判断是否存在有释放按钮但电机未能响应停止而采取的补救措施
     if(!moveFlag&&abs(length-ui->lengthLCD->currentValue())>0.005){
         minilogic->motorStop();
         // qDebug()<<"补救停止";
     }
-    ui->lengthLCD->display(length);
 
-    float stress = force/testDetails.sampleSquare;
-    float strain = length/testDetails.sampleLength;
-    ui->stressLCD->display(stress);
-    ui->strainLCD->display(strain);
-    ui->timeLCD->display(time);
-
-    ui->graphics->addPoint("载荷-时间",QPointF(time,force));
-    ui->graphics->addPoint("位移-时间",QPointF(time,length));
-    ui->graphics->addPoint("应力-应变",QPointF(strain,stress));
-    ui->graphics->addPoint("速度-时间",QPointF(time,speed));
 
 
     //最值限制
@@ -1050,30 +1063,14 @@ void mainWidget::freshData(){
         emit message("电机超限，已自动停止");
     }
 
-    float resultCorr = hikCamera.resultCorr;
-    ui->graphics->addPoint("测试曲线-时间", QPointF(time,resultCorr));
+    cv::Point2f A = hikWin.camera->getTrackerCenter("A");
+    cv::Point2f B = hikWin.camera->getTrackerCenter("B");
 
+    float ax = A.x;
+    float ay = A.y;
 
-    float ax = hikCamera.A.x;
-    float ay = hikCamera.A.y;
-
-    float bx = hikCamera.B.x;
-    float by = hikCamera.B.y;
-
-    float distance = hikCamera.A_to_B_Distense * displayDir;
-    ui->DICLCD->display(distance);
-    ui->graphics->addPoint("视频引伸-时间", QPointF(time, distance));
-
-
-    if(hikCamera.A_to_B_Zreo!=0)
-        strain = distance/hikCamera.A_to_B_Zreo;
-    else
-    {
-        float start = ui->graphics->getPointByIndex("视频引伸-时间", 0).y();
-        strain = start==0?0:(distance-start)/start;
-    }
-
-    ui->graphics->addPoint("应力-视频应变", QPointF(strain,stress));
+    float bx = B.x;
+    float by = B.y;
 
     historyBufferA.push_back({time, ax, ay});
 
@@ -1174,12 +1171,12 @@ void mainWidget::on_btn_start_clicked()
         }
     }
 
-    if(testDetails.DICDetectEnable&&hikCamera.isOpened()&&testDetails.DICDuration>0)
+    if(testDetails.DICDetectEnable&&hikWin.camera->isOpened()&&testDetails.DICDuration>0)
     {
         QString fullPath = testDetails.DICFilePath + "/" + testDetails.DICFileName;
         if(testDetails.DICFilePath.right(1)=="/")fullPath = testDetails.DICFilePath + testDetails.DICFileName;
 
-        hikCamera.startDIC(testDetails.DICFileName, fullPath, testDetails.DICDuration);
+        hikWin.camera->startDIC(testDetails.DICFileName, fullPath, testDetails.DICDuration);
         emit message("开始DIC采集");
     }
 
@@ -1235,8 +1232,8 @@ void mainWidget::on_btn_stop_clicked()
             addState("测试停止");
         }
     }else{
-        if(hikCamera.isOpened())
-            hikCamera.stopDIC();
+        if(hikWin.camera->isOpened())
+            hikWin.camera->stopDIC();
 
         if(!motorConnectFlag){
             emit message("串口未连接");

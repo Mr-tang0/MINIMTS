@@ -15,7 +15,7 @@ QT_CHARTS_USE_NAMESPACE
 
 #include "minimts_ex.h"
 
-#include "hikcamera.h"
+#include "hikcamerawin.h"
 
 struct TestDetails{
     QString userName = "default";
@@ -75,7 +75,7 @@ public:
     void clearStateBox();
 
     MiniMTS_EX *minilogic = new MiniMTS_EX;
-    HIKCamera hikCamera;
+    HIKCameraWin hikWin;
     QMap<QString, MV_CC_DEVICE_INFO*> devices;
 
 protected:

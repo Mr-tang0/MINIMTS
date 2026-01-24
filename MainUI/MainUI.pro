@@ -11,7 +11,7 @@ greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
 
-DEFINES += VersionID=8  # 改这里会自动更新版本号
+DEFINES += VersionID=8  # 改这里会自动更新版本号 8 = 1.0.9
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -107,14 +107,6 @@ else:unix: LIBS += -L$$PWD/../build/Qt-Advanced-Docking-System/ -lqtadvanceddock
 
 
 
-
-win32:CONFIG(release, debug|release): LIBS += -L$$OUT_PWD/../QTOpenCorr/release/ -lQTOpenCorr
-else:win32:CONFIG(debug, debug|release): LIBS += -L$$OUT_PWD/../QTOpenCorr/debug/ -lQTOpenCorr
-else:unix: LIBS += -L$$OUT_PWD/../QTOpenCorr/ -lQTOpenCorr
-
-INCLUDEPATH += $$PWD/../QTOpenCorr
-DEPENDPATH += $$PWD/../QTOpenCorr
-
 INCLUDEPATH += $$PWD/../fftw3/include
 DEPENDPATH += $$PWD/../fftw3/include
 
@@ -127,6 +119,8 @@ INCLUDEPATH += $$PWD/../Eigen3
 INCLUDEPATH += $$PWD/../Eigen3/Eigen
 
 INCLUDEPATH += $$PWD/../nanoflann
+
+
 
 
 
@@ -165,7 +159,19 @@ DEPENDPATH += $$PWD/../../Share/HIKCamera
 INCLUDEPATH += $$PWD/../../Share/HIKCamera/HIKlib/includes
 DEPENDPATH += $$PWD/../../Share/HIKCamera/HIKlib/includes
 INCLUDEPATH += $$PWD/../../Share/HIKCamera/external/release64/include
+DEPENDPATH += $$PWD/../../Share/HIKCamera/external/release64/include
+
+LIB_DIR = $$PWD/../../Share/HIKCamera/external/release/lib/
+LIB_FILES = $$files($$LIB_DIR/*.lib, true)
+LIBS += -L$$LIB_FILES
 
 INCLUDEPATH += $$PWD/../../Share/HIKCamera/Extensometer
 
 win32: LIBS += -L$$OUT_PWD/../../Share/HIKCamera/release/ -lHIKCamera
+
+win32:CONFIG(release, debug|release): LIBS += -L$$PWD/../../Share/HIKCamera/HIKlib/x64/ -lMvCameraControl
+else:win32:CONFIG(debug, debug|release): LIBS += -L$$PWD/../../Share/HIKCamera/HIKlib/x64/ -lMvCameraControl
+else:unix: LIBS += -L$$PWD/../../Share/HIKCamera/HIKlib/x64/ -lMvCameraControl
+
+INCLUDEPATH += $$PWD/../../Share/HIKCamera/HIKlib/includes
+DEPENDPATH += $$PWD/../../Share/HIKCamera/HIKlib/includes

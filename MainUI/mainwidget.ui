@@ -117,7 +117,7 @@
    <item row="0" column="1">
     <widget class="QStackedWidget" name="stackedWidget">
      <property name="currentIndex">
-      <number>1</number>
+      <number>2</number>
      </property>
      <widget class="QWidget" name="connectPage">
       <layout class="QGridLayout" name="gridLayout_4">
@@ -1637,7 +1637,7 @@ border-radius:10px;</string>
              </widget>
             </item>
             <item row="5" column="0">
-             <widget class="MyLCD" name="speedLCD" native="true">
+             <widget class="MyLCD" name="eStrainLCD" native="true">
               <property name="minimumSize">
                <size>
                 <width>130</width>
@@ -1958,11 +1958,11 @@ font: 20pt &quot;黑体&quot;;
  <resources/>
  <connections/>
  <buttongroups>
-  <buttongroup name="lengthOkBtns"/>
   <buttongroup name="DICTriggrBtns">
    <property name="exclusive">
     <bool>false</bool>
    </property>
   </buttongroup>
+  <buttongroup name="lengthOkBtns"/>
  </buttongroups>
 </ui>
