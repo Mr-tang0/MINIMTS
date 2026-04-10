@@ -5,6 +5,8 @@
 #include <QtConcurrent>
 #include <QDir>
 
+QMap<QString, QString> mainWidget::historyMap;
+
 mainWidget::mainWidget(QWidget *parent) :
     QWidget(parent),
     ui(new Ui::mainWidget)
@@ -19,81 +21,21 @@ mainWidget::mainWidget(QWidget *parent) :
 
     initPort();
 
+    // initConnect();
+
     initSystem();
 
-    ui->btn_emergence->setFixedSize(QSize(120,80));
-    ui->btn_start->setFixedSize(QSize(120,80));
-    ui->btn_stop->setFixedSize(QSize(120,80));
 
-    ui->speedCW->setFixedSize(QSize(120,60));
-    ui->speedCCW->setFixedSize(QSize(120,60));
-    ui->speedStop->setFixedSize(QSize(120,60));
 
 }
 
 mainWidget::~mainWidget()
 {
-    minilogic->motorStop();
-    minilogic->motorStop();
-    minilogic->motorOff();
-    minilogic->motorOff();
     delete ui;
 }
 
 
-void mainWidget::keyPressEvent(QKeyEvent *event)
-{
-    if (!event->isAutoRepeat()) {
-        if (event->key() == Qt::Key_W&&(event->modifiers() & Qt::ControlModifier)) {
-            if(!motorConnectFlag){
-                emit message("串口未连接");
-                return;
-            }
-
-            float speed = ui->speed->value();
-            minilogic->motorSpeedMove(speed);
-            moveFlag = true;
-            addState("正向运动中");
-            keyControlMoving = true;
-        }else if(event->key() == Qt::Key_S&&(event->modifiers() & Qt::ControlModifier)){
-            if(!motorConnectFlag){
-                emit message("串口未连接");
-                return;
-            }
-
-            float speed = ui->speed->value();
-            minilogic->motorSpeedMove(-speed);
-            moveFlag = true;
-            addState("负向运动中");
-            keyControlMoving = true;
-        }
-    }
-    QWidget::keyPressEvent(event);
-}
-
-void mainWidget::keyReleaseEvent(QKeyEvent *event){
-    if (!event->isAutoRepeat()) {
-        if ((event->key() == Qt::Key_W || event->key() == Qt::Key_S)&&keyControlMoving) {
-            minilogic->motorStop();
-            minilogic->motorStop();
-            addState("停止运动");
-            keyControlMoving = false;
-        } else if (event->key() == Qt::Key_F5) {
-            hikWin.show();
-            hikWin.raise(); // 确保当前置顶
-            // hikWin.activateWindow();
-        }
-    }
-
-    QWidget::keyReleaseEvent(event);
-}
-
-
-
 void mainWidget::initWidget(){
-
-    // hikWin.setWindowFlags(hikWin.windowFlags() | Qt::WindowStaysOnTopHint);
-
     QList<int> iconsMain;
 
     iconsMain << 0xf0c1 << 0xf016 <<0xf16a<<0xf0c7<<0xf114;
@@ -116,9 +58,14 @@ void mainWidget::initWidget(){
 
     styleColor.setColor("#484848", "#DCDCDC", "#444444", "#DCDCDC");
     IconHelper::setStyle(ui->widget_menu, btnsMain, iconsMain, styleColor);
-    ui->btn_connect->click();
 
+    ui->btn_emergence->setFixedSize(QSize(120,80));
+    ui->btn_start->setFixedSize(QSize(120,80));
+    ui->btn_stop->setFixedSize(QSize(120,80));
 
+    ui->speedCW->setFixedSize(QSize(120,60));
+    ui->speedCCW->setFixedSize(QSize(120,60));
+    ui->speedStop->setFixedSize(QSize(120,60));
 }
 
 void mainWidget::initChart(){
@@ -174,24 +121,19 @@ void mainWidget::initPort(){
     ui->portName->addItems(minilogic->findPort());
 
     ui->buandRate->clear();
-    QStringList buandRateList = {"9600","19200","115200"};
+    QStringList buandRateList = {"115200"};
     ui->buandRate->addItems(buandRateList);
 
     ui->refresh_hik->click();
-
 }
 
 void mainWidget::initConnect(){
 
     //*****************************************连接窗口****************************************************
-
     connect(dataFreshTimer,&QTimer::timeout,this,&mainWidget::freshData);
 
     // 串口刷新按钮
-    connect(ui->refresh,&QPushButton::clicked,this,[=](){
-        initPort();
-        emit refresh();
-    });
+    connect(ui->refresh,&QPushButton::clicked,this,[=](){initPort();});
 
     //  串口连接按钮
     connect(ui->connect,&QPushButton::clicked,this,[=](){
@@ -233,9 +175,7 @@ void mainWidget::initConnect(){
     });
 
     // 快捷打开设置按钮
-    connect(ui->toSet,&QPushButton::clicked,[=](){
-        emit btnClicked("toSet");
-    });
+    connect(ui->toSet,&QPushButton::clicked,[=](){emit btnClicked("toSet");});
 
     // 清空状态框按钮
     connect(ui->clearWin,&QPushButton::clicked,[=](){
@@ -435,141 +375,6 @@ void mainWidget::initConnect(){
 
     //************************************项目设置窗口**********************************************
 
-
-    connect(ui->Checked,&QPushButton::clicked,[=](){
-        if(ui->targetLength->value()<=0){
-            emit message("目标运动距离不能为零");return;
-        }else if(ui->targetSpeed->value()<=0){
-            emit message("目标运动速度不能为零");return;
-        }else if(ui->size->value()<=0){
-            emit message("样品尺寸不能为零");return;
-        }else if(ui->length->value()<=0){
-            emit message("样品标距段不能为零");return;
-        }else if(ui->DICEnable->isChecked()){
-            if(!hikWin.camera->isOpened()){
-                emit message("相机未连接,不可进行DIC记录");
-                return;
-            }
-            if(ui->DICFilePath->text() ==""){
-                emit message("DIC图片保存位置不能为空");
-                return;
-            }
-            if(ui->DICFileName->text()==""){
-                emit message("DIC图片文件名不能为空");
-                return;
-            }
-            if(ui->DICDuration->value()<=200){
-                emit message("DIC采集时间不得小于200ms");
-                return;
-            }
-        }
-        else if(ui->DICLENEnable->isChecked()){
-            if(!hikWin.camera->isOpened()){
-                emit message("相机未连接,不可进行视频引申计算");
-                return;
-            }
-
-            if(ui->NOCalibration->isChecked()){
-                ui->pix->setText("1000");
-                ui->trueLength->setText("8");
-            }
-
-            if (ui->pix->text()==""||ui->trueLength->text()=="")
-            {
-                emit message("还未进行标定");
-                return;
-            }
-
-            if(ui->pointA->text()==""||ui->pointB->text()==""){
-                emit message("必须选择两个标识点");
-                return;
-            }
-        }
-
-
-        testDetails.userName = ui->userName_lineEidt->text();
-        testDetails.testNumber = ui->number_lineEidt->text();
-        testDetails.testTime = ui->time_lineEidt->text();
-
-        if(ui->pull_radioButton->isChecked())testDetails.testType = "strech";
-        else if(ui->push_radioButton->isChecked())testDetails.testType = "compress";
-        testDetails.length = ui->targetLength->value();
-        testDetails.speed = ui->targetSpeed->value();
-
-        testDetails.sampleSquare = ui->size->value();
-        testDetails.sampleLength = ui->length->value();
-        testDetails.autoStopType = ui->stopAction->currentText();
-        testDetails.autoStopValue = ui->stopActionValue->value();
-
-        testDetails.userFilePath = ui->filePath->text();
-        testDetails.userFileName = ui->fileName->text();
-
-        //dic
-        testDetails.DICFileName = ui->DICFileName->text();
-        testDetails.DICFilePath = ui->DICFilePath->text();
-        testDetails.DICTriggr = ui->DICTriggr->currentText();
-        testDetails.DICDuration = ui->DICDuration->value();
-        testDetails.DICDetectEnable = ui->DICEnable->isChecked();
-        testDetails.DICTriggrEnable = ui->DICTriggrEnable->isChecked();
-
-        //diclength
-        testDetails.pix = ui->pix->text().toFloat();
-        testDetails.trueLength = ui->trueLength->text().toFloat();
-        testDetails.DICLENEnable = ui->DICLENEnable->isChecked();
-
-
-        MainWindow::user.userfilePath = testDetails.userFilePath;
-        MainWindow::user.userDefaultName = testDetails.userFileName;
-
-        historyMap[MainWindow::user.name]["type"] = ui->pull_radioButton->isChecked()?"pull_radioButton":"push_radioButton";
-
-        historyMap[MainWindow::user.name]["targetLength"] = QString::number(ui->targetLength->value());
-        historyMap[MainWindow::user.name]["targetSpeed"] = QString::number(ui->targetSpeed->value());
-        historyMap[MainWindow::user.name]["size"] = QString::number(ui->size->value());
-        historyMap[MainWindow::user.name]["length"] = QString::number(ui->length->value());
-
-        historyMap[MainWindow::user.name]["stopAction"] = ui->stopAction->currentText();
-        historyMap[MainWindow::user.name]["stopActionValue"] = QString::number(ui->stopActionValue->value());
-
-        historyMap[MainWindow::user.name]["index"] = ui->number_lineEidt->text();
-
-        historyMap[MainWindow::user.name]["DICDetectEnable"] = ui->DICEnable->isChecked() ? "true" : "false";
-        historyMap[MainWindow::user.name]["DICFileName"] = testDetails.DICFileName;
-        historyMap[MainWindow::user.name]["DICFilePath"] = testDetails.DICFilePath;
-        historyMap[MainWindow::user.name]["DICTriggr"] = testDetails.DICTriggr;
-        historyMap[MainWindow::user.name]["DICDuration"] = QString::number(testDetails.DICDuration);
-
-        historyMap[MainWindow::user.name]["DICLENEnable"] = ui->DICLENEnable->isChecked() ? "true" : "false";
-        historyMap[MainWindow::user.name]["trueLength"] = QString::number(testDetails.trueLength);
-        historyMap[MainWindow::user.name]["pix"] = QString::number(testDetails.pix);
-
-        if(ui->DICLENEnable->isChecked())
-        {
-            hikWin.camera->startTrack("A");
-            hikWin.camera->startTrack("B");
-            hikWin.camera->setDistenceRate(testDetails.pix/testDetails.trueLength);
-
-            ui->graphics->showSeries("视频引伸-时间");
-            ui->graphics->showSeries("应力-视频应变");
-
-            ui->DICLCD->show();
-            ui->eStrainLCD->show();
-        }else {
-            hikWin.camera->stopTrack("A");
-            hikWin.camera->stopTrack("B");
-
-            ui->graphics->hideSeries("应力-视频应变");
-
-            ui->DICLCD->hide();
-            ui->eStrainLCD->hide();
-        }
-
-        XMLReader::Save_XML_File(historyMap,userHistroyPath);
-
-        ui->btn_test->click();
-        emit message("项目保存成功");
-    });
-
     connect(ui->cancel,&QPushButton::clicked, this, [=](){
         QMessageBox::StandardButton reply = QMessageBox::question(
             nullptr,
@@ -593,7 +398,7 @@ void mainWidget::initConnect(){
 
 
     connect(ui->chooseFilePath_pushButton, &QPushButton::clicked, this, [=](){
-        QString home = MainWindow::user.userfilePath;
+        QString home = MainWindow::user->localPath;
         QString filePath = QFileDialog::getExistingDirectory(this, tr("Select Directory"), home);
         if (!filePath.isEmpty()) {
             ui->filePath->setText(filePath);
@@ -601,7 +406,7 @@ void mainWidget::initConnect(){
     });
 
     connect(ui->chooseDICFilePath, &QPushButton::clicked, this, [=](){
-        QString home = MainWindow::user.userfilePath;
+        QString home = MainWindow::user->localPath;
         QString filePath = QFileDialog::getExistingDirectory(this, tr("Select DIC Directory"), home);
         if (!filePath.isEmpty()) {
             ui->DICFilePath->setText(filePath);
@@ -635,111 +440,20 @@ void mainWidget::initConnect(){
 
     });
 
+    //保存项目
+    connect(ui->Checked,&QPushButton::clicked,[=](){saveProject();});
 
-    connect(ui->drawPix,&QPushButton::clicked,this,[=](){
-        hikWin.camera->selectLine("Draw a line you can measure");
-    });
+    connect(ui->drawPix,&QPushButton::clicked,this,[=](){hikWin.camera->selectLine("Draw a line you can measure");});
 
-    connect(hikWin.camera,&IndustryCamara::LINE,this,[=](float len){
-        qDebug()<<"length";
-        ui->pix->setText(QString::number(len));
-    });
+    connect(hikWin.camera,&IndustryCamara::LINE,this,[=](float len){ui->pix->setText(QString::number(len));});
 
-
-    //**********************************其他（（**********************************
 
 
 }
 
 
-void mainWidget::initSystem(){
-    //初始化连接界面
-    ui->portName->setCurrentText(systemWidget::systemMap["normal"]["defaultPort"]);
-    ui->buandRate->setCurrentText(systemWidget::systemMap["normal"]["defaultBuandRate"]);
-
-    // 初始化运动系统
-    MINI_MotorDetails md;
-    md.ID = systemWidget::systemMap["normal"]["motorID"];
-    md.dirFlag = systemWidget::systemMap["normal"]["motorDir"].toInt();
-    md.resolution = systemWidget::systemMap["normal"]["motorResulution"].toFloat();
-
-    MINI_WeighDetails wd;
-    wd.ID = systemWidget::systemMap["normal"]["forceID"];
-    wd.forceRate = systemWidget::systemMap["normal"]["forceResulution"].toFloat();
-    wd.forceFlag = systemWidget::systemMap["normal"]["forceDir"].toFloat();
-
-    MINI_LimitDetails ld;
-    ld.ID = systemWidget::systemMap["normal"]["hardLimitID"];
-    ld.cwLimit = systemWidget::systemMap["normal"]["cwLimit"].toInt();
-    ld.ccwLimit = systemWidget::systemMap["normal"]["ccwLimit"].toInt();
-
-    minilogic->setDevicesParams(md,wd,ld);
-
-    //初始化表单界面
-    userHistroyPath = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) +"/Tang/MiniMTS/Users/" +MainWindow::user.name;
-    userHistroyPath = userHistroyPath +"/histroy.xml";
-
-    //获取特定用户历史文件
-    historyMap = XMLReader::Read_XML_File(userHistroyPath);
-    // qDebug()<<userHistroyPath;
-
-    //将历史添加到表格
-    ui->userName_lineEidt->setText(MainWindow::user.name);
-    ui->time_lineEidt->setText(QDateTime::currentDateTime().toString("yy-MM-dd-hh:mm:ss"));
-
-    if(historyMap[MainWindow::user.name]["type"]=="pull_radioButton")
-        ui->pull_radioButton->setChecked(true);
-    else
-        ui->push_radioButton->setChecked(true);
-
-    ui->targetLength->setValue(historyMap[MainWindow::user.name]["targetLength"].toFloat());
-    ui->targetSpeed->setValue(historyMap[MainWindow::user.name]["targetSpeed"].toFloat());
-    ui->size->setValue(historyMap[MainWindow::user.name]["size"].toFloat());
-    ui->length->setValue(historyMap[MainWindow::user.name]["length"].toFloat());
-    ui->stopAction->setCurrentText(historyMap[MainWindow::user.name]["stopAction"]);
-    ui->stopActionValue->setValue(historyMap[MainWindow::user.name]["stopActionValue"].toFloat());
-
-    ui->number_lineEidt->setText(QString::number(historyMap[MainWindow::user.name]["index"].toInt()+1));
-
-    ui->filePath->setText(MainWindow::user.userfilePath);
-    ui->fileName->setText(MainWindow::user.userDefaultName);
-
-    ui->DICFilePath->setText(historyMap[MainWindow::user.name]["DICFilePath"]);
-    ui->DICFileName->setText(historyMap[MainWindow::user.name]["DICFileName"]);
-    ui->DICTriggr->setCurrentText(historyMap[MainWindow::user.name]["DICTriggr"]);
-    ui->DICDuration->setValue(historyMap[MainWindow::user.name]["DICDuration"].toInt());
-    historyMap[MainWindow::user.name]["DICDetectEnable"]=="true" ? ui->DICEnable->setChecked(true) : ui->DICEnable->setChecked(false);
-
-    ui->pix->setText(historyMap[MainWindow::user.name]["pix"]);
-    ui->trueLength->setText(historyMap[MainWindow::user.name]["trueLength"]);
-    historyMap[MainWindow::user.name]["DICLENEnable"]=="true" ? ui->DICLENEnable->setChecked(true) : ui->DICLENEnable->setChecked(false);
 
 
-    //更新采样率
-    dataFreshTimer->stop();
-    dataFreshTimer->start(1000/systemWidget::systemMap["normal"]["sampleRate"].toInt());
-
-    //根据设置更改表格显示
-
-    //曲线缩放
-    if(systemWidget::systemMap["advance"]["enableZoom"]=="是")
-    {
-        ui->graphics->axisZoom("x", 0.1, 1);
-        ui->graphics->axisZoom("y", 0.1, 1);
-    }else{
-        ui->graphics->axisZoom("x", 0, 0);
-        ui->graphics->axisZoom("y", 0, 0);
-    }
-
-    //曲线平滑
-    if(systemWidget::systemMap["advance"]["enableFilter_timely"]=="yes")
-        ui->graphics->setSmooth(systemWidget::systemMap["advance"]["filterMethod_timely"],systemWidget::systemMap["advance"]["filterWindow_timely"].toInt());
-    else
-        ui->graphics->setSmooth("",1);
-
-    //设置minimts PID
-    minilogic->init_MINIMTSPID(systemWidget::systemMap["normal"]);
-}
 
 void mainWidget::limitStopOption(bool flag, int dir){
 
@@ -806,7 +520,7 @@ void mainWidget::leftMainClick()
             emit message("连接未断开");
             return;
         }else{
-            QString filePath = QFileDialog::getOpenFileName(this, "选择文件", MainWindow::user.userfilePath, "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)");
+            QString filePath = QFileDialog::getOpenFileName(this, "选择文件", historyMap["userfilePath"], "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)");
 
             if(filePath=="")
                 return;
@@ -914,9 +628,9 @@ bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
 bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     if(data.empty()||data[0].empty())return false;
 
-    QString fileName = MainWindow::user.userDefaultName+systemWidget::systemMap["advance"]["format"];
+    QString fileName = historyMap["userDefaultName"]+systemWidget::systemMap["advance"]["format"];
 
-    QString filePath = MainWindow::user.userfilePath+"/"+QDateTime::currentDateTime().toString("yy-MM-dd");
+    QString filePath = historyMap["userfilePath"]+"/"+QDateTime::currentDateTime().toString("yy-MM-dd");
 
     if(systemWidget::systemMap["advance"]["enableFilter"]=="yes"){
         //滤波开启
@@ -970,8 +684,8 @@ void mainWidget::getQssColor(const QString &qss, const QString &flag, QString &c
 }
 
 void mainWidget::getQssColor(const QString &qss, QString &textColor, QString &panelColor,
-                          QString &borderColor, QString &normalColorStart, QString &normalColorEnd,
-                          QString &darkColorStart, QString &darkColorEnd, QString &highColor)
+                             QString &borderColor, QString &normalColorStart, QString &normalColorEnd,
+                             QString &darkColorStart, QString &darkColorEnd, QString &highColor)
 {
     getQssColor(qss, "TextColor:", textColor);
     getQssColor(qss, "PanelColor:", panelColor);
@@ -983,127 +697,8 @@ void mainWidget::getQssColor(const QString &qss, QString &textColor, QString &pa
     getQssColor(qss, "HighColor:", highColor);
 }
 
-template<typename Func>
-float estimateValue(const std::deque<DataPoint>& buffer, double targetTime, Func getVal) {
-    if (buffer.size() == 1) {
-        return getVal(buffer.front());
-    }
-
-    for (size_t i = 1; i < buffer.size(); ++i) {
-        const auto& p1 = buffer[i - 1];
-        const auto& p2 = buffer[i];
-
-        if (targetTime >= p1.timestamp && targetTime <= p2.timestamp) {
-            double t = (targetTime - p1.timestamp) / (p2.timestamp - p1.timestamp);
-            return static_cast<float>((1 - t) * getVal(p1) + t * getVal(p2));
-        }
-    }
-
-    // 如果目标时间在所有历史时间之后，返回最后一个值（保持不变）
-    return getVal(buffer.back());
-}
-
-void mainWidget::freshData(){
-    if(!motorConnectFlag)return;
-
-    minilogic->refresh();
-
-    float force = minilogic->currentWeighValue*systemWidget::systemMap["normal"]["forceDir"].toFloat() * displayDir;
-    float length = minilogic->currentMotorValue*systemWidget::systemMap["normal"]["motorDir"].toFloat() * displayDir;
-    float CameraDistance = hikWin.camera->getTrackDisplayment("A","B") * displayDir;
-    float stress = force/testDetails.sampleSquare;
-    float strain = length/testDetails.sampleLength;
-    float speed = minilogic->currentSpeedValue;
-    long currentTime = QDateTime::currentMSecsSinceEpoch();
-    float time = float(currentTime-zreoTime)/1000;
-
-    float CameraStrain = 0;
-    if(hikWin.camera->DistenceZreo!=0)
-        CameraStrain = CameraDistance/hikWin.camera->DistenceZreo;
-    else
-    {
-        float start = ui->graphics->getPointByIndex("视频引伸-时间", 0).y();
-        CameraStrain = start==0?0:(CameraDistance-start)/start;
-    }
-
-    ui->ForceLCD->display(force);
-    ui->lengthLCD->display(length);
-    ui->DICLCD->display(CameraDistance);
-    ui->eStrainLCD->display(CameraStrain);
-    ui->stressLCD->display(stress);
-    ui->strainLCD->display(strain);
-    ui->timeLCD->display(time);
 
 
-
-    ui->graphics->addPoint("载荷-时间",QPointF(time,force));
-    ui->graphics->addPoint("位移-时间",QPointF(time,length));
-    ui->graphics->addPoint("视频引伸-时间", QPointF(time, CameraDistance));
-    ui->graphics->addPoint("应力-应变",QPointF(strain,stress));
-    ui->graphics->addPoint("速度-时间",QPointF(time,speed));
-    ui->graphics->addPoint("应力-视频应变", QPointF(CameraStrain,stress));
-
-    //此处为判断是否存在有释放按钮但电机未能响应停止而采取的补救措施
-    if(!moveFlag&&abs(length-ui->lengthLCD->currentValue())>0.005){
-        minilogic->motorStop();
-        // qDebug()<<"补救停止";
-    }
-
-
-
-    //最值限制
-    if(abs(force)>systemWidget::systemMap["normal"]["maxForce"].toFloat()&&moveFlag){
-        minilogic->motorStop();
-        moveFlag = false;
-        emit message("载荷超限，已自动停止");
-    }
-    if(abs(length)>systemWidget::systemMap["normal"]["maxMotorLength"].toFloat()&&moveFlag){
-        minilogic->motorStop();
-        moveFlag = false;
-        emit message("电机超限，已自动停止");
-    }
-
-    cv::Point2f A = hikWin.camera->getTrackerCenter("A");
-    cv::Point2f B = hikWin.camera->getTrackerCenter("B");
-
-    float ax = A.x;
-    float ay = A.y;
-
-    float bx = B.x;
-    float by = B.y;
-
-    historyBufferA.push_back({time, ax, ay});
-
-    const int maxBufferSize = 20;
-    if (historyBufferA.size() > maxBufferSize) {
-        historyBufferA.pop_front();
-    }
-
-    if (historyBufferA.empty()) return;
-
-    float estimatedAx = estimateValue(historyBufferA, time, [](const DataPoint& p){ return p.x; });
-    float estimatedAy = estimateValue(historyBufferA, time, [](const DataPoint& p){ return p.y; });
-
-    ui->graphics->addPoint("AX-时间", QPointF(time, estimatedAx));
-    ui->graphics->addPoint("AY-时间", QPointF(time, estimatedAy));
-
-
-    historyBufferB.push_back({time, bx, by});
-
-
-    if (historyBufferB.size() > maxBufferSize) {
-        historyBufferB.pop_front();
-    }
-
-    if (historyBufferB.empty()) return;
-
-    float estimatedBx = estimateValue(historyBufferB, time, [](const DataPoint& p){ return p.x; });
-    float estimatedBy = estimateValue(historyBufferB, time, [](const DataPoint& p){ return p.y; });
-
-    ui->graphics->addPoint("BX-时间", QPointF(time, estimatedBx));
-    ui->graphics->addPoint("BY-时间", QPointF(time, estimatedBy));
-
-}
 
 void mainWidget::on_btn_start_clicked()
 {
@@ -1274,4 +869,3 @@ void mainWidget::on_btn_emergence_clicked()
     emit message("急停被按下！");
     emit errOccured("emergence");
 }
-

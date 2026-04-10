@@ -4,14 +4,15 @@ QT      += serialport
 QT += xml
 QT += network
 QT += concurrent
-
 QT += webenginewidgets
+
 
 greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
 CONFIG += c++11
 
-DEFINES += VersionID=8  # 改这里会自动更新版本号 8 = 1.0.9
+DEFINES += VersionID=9  # 改这里会自动更新版本号 8 = 1.0.9
+DEFINES += APPNAME="\\\"MINIMTS\\\""
 
 # The following define makes your compiler emit warnings if you use
 # any Qt feature that has been marked deprecated (the exact warnings
@@ -26,29 +27,35 @@ DEFINES += QT_DEPRECATED_WARNINGS
 
 SOURCES += \
     aboutwidget.cpp \
-    loginwin.cpp \
+    # loginwin.cpp \
     main.cpp \
     mainwidget.cpp \
+    mainwidget_ex.cpp \
     mainwindow.cpp \
+    minimtsuser.cpp \
     mylcd.cpp \
+    onlinelogin.cpp \
     systemwidget.cpp \
     userwidget.cpp
 
 HEADERS += \
     aboutwidget.h \
-    loginwin.h \
+    # loginwin.h \
     mainwidget.h \
     mainwindow.h \
+    minimtsuser.h \
     mylcd.h \
+    onlinelogin.h \
     systemwidget.h \
     userwidget.h
 
 FORMS += \
     aboutwidget.ui \
-    loginwin.ui \
+    # loginwin.ui \
     mainwidget.ui \
     mainwindow.ui \
     mylcd.ui \
+    onlinelogin.ui \
     systemwidget.ui \
     userwidget.ui
 

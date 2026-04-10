@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>关于 MINIMTS</title>
+    <style>
+        body {
+            margin: 0; padding: 0;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: #f8fafc;
+            font-family: 'Segoe UI', sans-serif;
+            display: flex; align-items: center; justify-content: center;
+            height: 100vh; text-align: center;
+        }
+        .about-box {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(10px);
+            padding: 40px;
+            border-radius: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 500px;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        }
+        .logo {
+            font-size: 3rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #3b82f6, #2dd4bf);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 10px;
+        }
+        .version {
+            background: #3b82f6;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+        p { color: #94a3b8; font-size: 1.1rem; line-height: 1.8; }
+        .tech-stack {
+            margin-top: 30px;
+            display: flex; justify-content: center; gap: 15px;
+        }
+        .tag {
+            border: 1px solid #334155;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #64748b;
+        }
+    </style>
+</head>
+<body>
+    <div class="about-box">
+        <div class="logo">MINIMTS</div>
+        <div class="version">Version 1.0.9 (Build 2026.04)</div>
+        <p>
+            MINIMTS 是一款专为材料科学研究设计的微型机械力学测试平台。
+            集成高精度电机控制、实时数据采集与 DIC 视觉分析，
+            致力于为科研人员提供最精准、最易用的力学测试方案。
+        </p>
+        
+        <div class="tech-stack">
+            <span class="tag">Qt 5.15+</span>
+            <span class="tag">C++ 17</span>
+            <span class="tag">OpenCV</span>
+            <span class="tag">Flask Backend</span>
+        </div>
+
+        <div style="margin-top: 40px; font-size: 0.8rem; color: #475569;">
+            Developed by Materials Science Lab Team<br>
+            2024-2026 All Rights Reserved.
+        </div>
+    </div>
+</body>
+</html>

@@ -2,10 +2,9 @@
 #define USERWIDGET_H
 
 #include <QWidget>
-#include "tool.h"
 #include <QTreeView>
 #include <QFileSystemModel>
-
+#include "minimtsuser.h"
 
 class QtMaterialAvatar;
 class QtMaterialBadge;
@@ -24,17 +23,11 @@ public:
     explicit userWidget(QWidget *parent = nullptr);
     ~userWidget();
 
-    void freshUserDetails(User user);
+    void freshUserDetails(MINIMTSUser *user);
     void chooseHeader();
     void setupContextMenu();
 
 private slots:
-    void on_pushButton_clicked();
-
-    void on_headerChoose_clicked();
-
-    void on_pushButton_2_clicked();
-
     void on_exitUser_clicked();
 
 private:

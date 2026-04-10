@@ -5,19 +5,21 @@
 #include <QtCore>
 #include <QtGui>
 
-#include "iconhelper.h"
-#include "quihelper.h"
-#include "qtmaterialsnackbar.h"
+// 辅助类与组件
+// #include "iconhelper.h"
+// #include "quihelper.h"
+// #include "qtmaterialsnackbar.h"
+// #include "tool.h"
 
-#include "loginwin.h"
+// 业务窗口
+// #include "loginwin.h"
+#include "onlinelogin.h"
 #include "mainwidget.h"
 #include "systemwidget.h"
 #include "aboutwidget.h"
 #include "userwidget.h"
 
-
-#include "tool.h"
-
+#include "minimtsuser.h"
 
 class QtMaterialAvatar;
 class QtMaterialBadge;
@@ -31,58 +33,52 @@ class MainWindow : public QMainWindow
     Q_OBJECT
 
 public:
-    MainWindow(QWidget *parent = nullptr);
+    explicit MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
 
-    // static QMap<QString, QMap<QString, QString>> rootMap;
-    // static QMap<QString, QMap<QString, QString>> systemMap;
-    // static QMap<QString, QMap<QString, QString>> cmdMap;
-    // static QMap<QString, QMap<QString, QString>> usersMap;
-
-    static User user;
-
+    static MINIMTSUser *user;
     void runUpdateCommand();
 
-private:
-    Ui::MainWindow *ui;
-    QtMaterialSnackbar  *const m_snackbar;
-    QtMaterialAvatar      *const m_avatar;
-    QtMaterialBadge       *const m_badge;
-    int oldAxis = 0;
-
-    void initThis();
-    systemWidget *system;
-    loginWin *login;
-    mainWidget *mainwd;
-
-    aboutWidget *about;
-    userWidget *userWin;
-
-    void addErrMessage(QString);
-    void deleteErrMessage(QString);
-
-
-protected:
-    bool filteropen = true;
-    bool eventFilter(QObject *watched, QEvent *event);
-
 private slots:
+    // 菜单按钮事件
     void on_btnMenu_Min_clicked();
     void on_btnMenu_Max_clicked();
     void on_btnMenu_Close_clicked();
     void buttonClick();
 
+private:
+    // 初始化方法
+    void initThis();
+    void initConnections();
+    void initStyle();
+
+    // 错误信息管理
+    void addErrMessage(QString msg);
+    void deleteErrMessage(QString msg);
+
+    // 成员变量
+    Ui::MainWindow      *ui;
+    QtMaterialSnackbar  *const m_snackbar;
+    QtMaterialAvatar    *const m_avatar;
+    QtMaterialBadge     *const m_badge;
+
+    int oldAxis = 0;
+    QPoint lastPos;
+    bool filteropen = true;
+
+    // 子界面组件
+    systemWidget *system;
+    OnlineLogin  *onlinelogin;
+    mainWidget   *mainwd;
+    aboutWidget  *about;
+    userWidget   *userWin;
+
 protected:
+    bool eventFilter(QObject *watched, QEvent *event) override;
     void mousePressEvent(QMouseEvent *event) override {
-        // 记录鼠标按下位置
         lastPos = event->globalPos();
         QMainWindow::mousePressEvent(event);
     }
-
-
-private:
-    QPoint lastPos;
-
-
 };
+
 #endif // MAINWINDOW_H

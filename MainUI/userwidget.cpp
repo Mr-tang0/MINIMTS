@@ -5,8 +5,10 @@
 #include "mainwindow.h"
 #include <QStandardItemModel>
 #include <QStandardItem>
-#include "loginwin.h"
+#include <QMenu>
 #include <QEvent>
+#include <QInputDialog>
+#include <QMessageBox>
 
 userWidget::userWidget(QWidget *parent) :
     QWidget(parent),
@@ -29,45 +31,10 @@ userWidget::userWidget(QWidget *parent) :
 
     setupContextMenu();
 
-    ui->allUserforAdmin->hide();
-
-    QList<User> Users = Tool::getAllUser(loginWin::usersMap);
-
-
-    QStandardItemModel *model = new QStandardItemModel(this);
-    model->setHorizontalHeaderLabels({"用户列表 "});
-
-    foreach (const User user, Users) {
-        QStandardItem *item = new QStandardItem(user.name);
-
-        model->appendRow(item);
-    }
-
-    ui->userList->setModel(model);
-
-    // foreach (const User user, Users) {
-    //     QListWidgetItem *item = new QListWidgetItem(QString("%1 (%2)").arg(user.name).arg(user.password));
-    //     // 存储用户对象指针以便后续使用
-    //     item->setData(Qt::UserRole, QVariant::fromValue(user));
-    //     ui->userList->addItem(item);
-    // }
-
-    // // 为QListWidget设置点击事件监听器以处理修改和删除
-    // connect(ui->userList, &QListWidget::itemDoubleClicked, this, [&](QListWidgetItem* item){
-    //     User user = item->data(Qt::UserRole).value<User>();
-    //     // 显示修改对话框
-    //     bool ok;
-    //     QString newName = QInputDialog::getText(this, tr("修改用户名"),tr("新用户名:"), QLineEdit::Normal,user.name, &ok);
-    //     if(ok && !newName.isEmpty()){
-    //         // 更新用户数据
-    //         user.name = newName;
-    //         item->setText(QString("%1 (%2)").arg(user.name).arg(user.password));
-    //         item->setData(Qt::UserRole, QVariant::fromValue(user));
-    //     }
-    // });
-
-
-
+    connect(ui->copyPath,&QPushButton::clicked,this, [=](){
+        QApplication::clipboard()->setText(ui->lab_filePath->text());
+        emit message("复制成功");
+    });
 }
 
 userWidget::~userWidget()
@@ -153,9 +120,9 @@ void userWidget::setupContextMenu() {
 
             if (fileInfo.exists()) {  // 检查路径是否有效
                 if (fileInfo.isFile()) {  // 如果是文件
-                    Tool::copyPathToClipboard(path);
+                    // Tool::copyPathToClipboard(path);
                 } else if (fileInfo.isDir()) {  // 如果是目录
-                    Tool::copyPathToClipboard(path);
+                    // Tool::copyPathToClipboard(path);
                 }
             } else {
                 qDebug() << "无效的路径：" << path;
@@ -195,8 +162,8 @@ void userWidget::setupContextMenu() {
                                                                           QMessageBox::Yes | QMessageBox::No);
 
                 if (reply == QMessageBox::Yes) {
-                    bool removed = Tool::removeDirectoryRecursively(path);
-                    if(!removed)qDebug() << "失败" << path;
+                    // bool removed = Tool::removeDirectoryRecursively(path);
+                    // if(!removed)qDebug() << "失败" << path;
                 }
             } else {
                 bool removed = QFile::remove(path);
@@ -205,32 +172,17 @@ void userWidget::setupContextMenu() {
             emit message("删除成功");
         }
     });
-
-    connect(ui->copyPath,&QPushButton::clicked,[=](){
-        QApplication::clipboard()->setText(ui->lab_filePath->text());
-        emit message("复制成功");
-    });
 }
 
-void userWidget::freshUserDetails(User user){
+void userWidget::freshUserDetails(MINIMTSUser *user){
+    m_avatar->setImage(QImage(user->header));
 
-    // qDebug()<<user;
+    ui->userName->setText(user->Name);
+    ui->userID->setText(user->id());
+    ui->userForce->setText(user->role);
+    ui->lastLogin->setText(user->created_at);
 
-    QString header = user.headerPic;
-    if(!header.contains(":"))header = rootPath+header;
-
-    m_avatar->setImage(QImage(header));
-
-    ui->userName->setText(user.name);
-    ui->userID->setText(user.userid);
-    ui->defaultFileName->setText(user.userDefaultName);
-    ui->defaultSavePath->setText(user.userfilePath);
-    ui->password->setText(user.password);
-    ui->userForce->setText(user.role);
-    ui->lastLogin->setText(user.lastTestTime);
-    tempHeaderPath = user.headerPic;
-
-    QString Directory = user.userfilePath;
+    QString Directory = user->localPath;
     if(!Directory.contains(":"))Directory = rootPath+Directory;
     ui->lab_filePath->setText(Directory);
 
@@ -242,62 +194,6 @@ void userWidget::freshUserDetails(User user){
 
 }
 
-void userWidget::chooseHeader(){
-    QString filePath = QFileDialog::getOpenFileName(this, tr("Open Image"), MainWindow::user.userfilePath, tr("Image Files (*.png *.jpg *.bmp)"));
-
-    if (!filePath.isEmpty()) {
-        tempHeaderPath = filePath;
-        m_avatar->setImage(QImage(tempHeaderPath));
-    }
-
-}
-
-void userWidget::on_pushButton_clicked()
-{
-    MainWindow::user.name=ui->userName->text();
-    MainWindow::user.password = ui->password->text();
-    MainWindow::user.userfilePath = ui->defaultSavePath->text();
-    MainWindow::user.userDefaultName = ui->defaultFileName->text();
-    MainWindow::user.userid = ui->userID->text();
-
-    if(tempHeaderPath!=""&&tempHeaderPath!=MainWindow::user.headerPic)
-    {
-        QString targetPath = rootPath +"/"+MainWindow::user.name;
-        QString fileSuffix = QFileInfo(tempHeaderPath).suffix();
-        QString targetFilePath = targetPath +"/header."+fileSuffix;
-
-        QDir ndir(targetPath);
-        if (!ndir.exists()) {
-            if (!ndir.mkpath(targetPath)) {
-                return;
-            }
-        }
-        // 如果目标文件存在，先删除它
-        if (QFile::exists(targetFilePath)&&tempHeaderPath!=targetFilePath) {
-            QFile::remove(targetFilePath);
-        }
-        qDebug()<<QFile::copy(tempHeaderPath, targetFilePath);
-        MainWindow::user.headerPic = targetFilePath;
-    }
-
-    Tool::freshUser(MainWindow::user,&(loginWin::usersMap));
-
-    emit message("保存成功");
-}
-
-void userWidget::on_headerChoose_clicked()
-{
-    chooseHeader();
-
-}
-
-void userWidget::on_pushButton_2_clicked()
-{
-    QString filePath = QFileDialog::getExistingDirectory(this, tr("Select Directory"), MainWindow::user.userfilePath);
-    if (!filePath.isEmpty()) {
-        ui->defaultSavePath->setText(filePath);
-    }
-}
 
 void userWidget::on_exitUser_clicked()
 {

@@ -25,7 +25,7 @@
       </attribute>
       <layout class="QGridLayout" name="gridLayout_2">
        <item row="0" column="0">
-        <widget class="PDFView" name="helpView" native="true"/>
+        <widget class="QWidget" name="helpView" native="true"/>
        </item>
       </layout>
      </widget>
@@ -35,7 +35,7 @@
       </attribute>
       <layout class="QGridLayout" name="gridLayout_3">
        <item row="0" column="0">
-        <widget class="PDFView" name="adoutView" native="true"/>
+        <widget class="QWidget" name="adoutView" native="true"/>
        </item>
       </layout>
      </widget>
@@ -43,14 +43,6 @@
    </item>
   </layout>
  </widget>
- <customwidgets>
-  <customwidget>
-   <class>PDFView</class>
-   <extends>QWidget</extends>
-   <header>pdfview.h</header>
-   <container>1</container>
-  </customwidget>
- </customwidgets>
  <resources/>
  <connections/>
 </ui>

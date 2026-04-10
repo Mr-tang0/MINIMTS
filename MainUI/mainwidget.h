@@ -11,13 +11,15 @@
 QT_CHARTS_USE_NAMESPACE
 #include "iconhelper.h"
 #include "quihelper.h"
+#include "tool.h"
+
 #include <QAbstractButton>
 
 #include "minimts_ex.h"
 
 #include "hikcamerawin.h"
 
-struct TestDetails{
+    struct TestDetails{
     QString userName = "default";
     QString testNumber = "0000";
     QString testTime = "1970-1-1";
@@ -78,6 +80,9 @@ public:
     HIKCameraWin hikWin;
     QMap<QString, MV_CC_DEVICE_INFO*> devices;
 
+    QString userHistroyPath;
+    static QMap<QString, QString> historyMap;
+
 protected:
     void keyPressEvent(QKeyEvent *event) override;
     void keyReleaseEvent(QKeyEvent *event) override;
@@ -109,8 +114,7 @@ private:
     bool moveFlag = false;
     bool sampleProtectFlag = false;
 
-    QString userHistroyPath;
-    QMap<QString, QMap<QString, QString>> historyMap;
+
 
 
     std::deque<DataPoint> historyBufferA; // 历史光学引申数据缓存
@@ -129,15 +133,17 @@ private:
 
     static void getQssColor(const QString &qss, const QString &flag, QString &color);
     static void getQssColor(const QString &qss, QString &textColor,
-                     QString &panelColor, QString &borderColor,
-                     QString &normalColorStart, QString &normalColorEnd,
-                     QString &darkColorStart, QString &darkColorEnd,
-                     QString &highColor);
+                            QString &panelColor, QString &borderColor,
+                            QString &normalColorStart, QString &normalColorEnd,
+                            QString &darkColorStart, QString &darkColorEnd,
+                            QString &highColor);
 
 
 
 private slots:
     void leftMainClick();
+
+    void saveProject();
 
     void on_btn_start_clicked();
 
@@ -146,7 +152,6 @@ private slots:
     void on_btn_emergence_clicked();
 
 signals:
-    void refresh();
     void connected(bool);
     void disconnected();
     void btnClicked(QString);

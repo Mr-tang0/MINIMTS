@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MINIMTS 帮助中心</title>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --bg: #f8fafc;
+            --text: #1e293b;
+            --card-bg: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', "Microsoft YaHei", sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0; padding: 20px;
+            line-height: 1.6;
+        }
+        .container { max-width: 1000px; margin: 0 auto; }
+        header { border-bottom: 2px solid var(--primary); margin-bottom: 30px; }
+        h1 { color: var(--primary); font-size: 2rem; margin-bottom: 10px; }
+        
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { 
+            background: var(--card-bg); 
+            padding: 20px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            transition: transform 0.2s;
+        }
+        .card:hover { transform: translateY(-5px); }
+        .card h3 { color: var(--primary); margin-top: 0; display: flex; align-items: center; }
+        .card h3::before { content: '●'; margin-right: 10px; font-size: 0.8rem; }
+        
+        .step-list { padding-left: 20px; }
+        .step-list li { margin-bottom: 8px; }
+        code { background: #e2e8f0; padding: 2px 6px; border-radius: 4px; font-family: monospace; }
+        .footer { text-align: center; margin-top: 50px; color: #64748b; font-size: 0.9rem; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>帮助中心 <small style="color: #64748b; font-size: 1rem;">用户操作手册</small></h1>
+        </header>
+
+        <div class="grid">
+            <div class="card">
+                <h3>硬件连接</h3>
+                <ul class="step-list">
+                    <li>确保控制器 USB 接口已接入电脑。</li>
+                    <li>在<b>连接</b>页面点击“刷新”，选择正确的串口号。</li>
+                    <li>波特率默认推荐 <code>115200</code>。</li>
+                    <li>若使用视觉系统，请确认海康工业相机已上电。</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3>项目配置</h3>
+                <ul class="step-list">
+                    <li>输入样品截面积与标距，这对计算<b>应力应变</b>至关重要。</li>
+                    <li>设置目标位移与运行速度。</li>
+                    <li>若需同步云端，请确保右侧登录状态为“已连接”。</li>
+                </ul>
+            </div>
+
+            <div class="card">
+                <h3>实验安全</h3>
+                <ul class="step-list">
+                    <li>实验前请务必检查限位传感器是否生效。</li>
+                    <li>紧急情况下可点击界面上的红色“急停”按钮。</li>
+                    <li>系统检测到载荷超过保护值时会自动停止运动。</li>
+                </ul>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 MINIMTS Materials Testing System. 所有权利保留。
+        </div>
+    </div>
+</body>
+</html>

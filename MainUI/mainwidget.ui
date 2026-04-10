@@ -769,11 +769,16 @@ border-radius:5px;</string>
                           <string notr="true"/>
                          </property>
                          <property name="currentText">
-                          <string>Fixed time(s)</string>
+                          <string>Stop manually</string>
                          </property>
                          <property name="currentIndex">
                           <number>0</number>
                          </property>
+                         <item>
+                          <property name="text">
+                           <string>Stop manually</string>
+                          </property>
+                         </item>
                          <item>
                           <property name="text">
                            <string>Fixed time(s)</string>
@@ -782,11 +787,6 @@ border-radius:5px;</string>
                          <item>
                           <property name="text">
                            <string>Maximum load (N)</string>
-                          </property>
-                         </item>
-                         <item>
-                          <property name="text">
-                           <string>Stop manually</string>
                           </property>
                          </item>
                          <item>
@@ -1958,11 +1958,11 @@ font: 20pt &quot;黑体&quot;;
  <resources/>
  <connections/>
  <buttongroups>
+  <buttongroup name="lengthOkBtns"/>
   <buttongroup name="DICTriggrBtns">
    <property name="exclusive">
     <bool>false</bool>
    </property>
   </buttongroup>
-  <buttongroup name="lengthOkBtns"/>
  </buttongroups>
 </ui>
