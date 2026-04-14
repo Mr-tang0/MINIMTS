@@ -144,9 +144,9 @@ void mainWidget::initConnect(){
             if(motorConnectFlag){
 
                 ui->connect->setText("断开");
+                zreoTime = QDateTime::currentMSecsSinceEpoch();
                 addStateBox("连接到串口:"+portName);
                 addStateBox("波特率:"+QString::number(buandRate));
-                zreoTime = QDateTime::currentMSecsSinceEpoch();
 
             }else addStateBox("连接失败:"+portName);
             emit connected(motorConnectFlag);

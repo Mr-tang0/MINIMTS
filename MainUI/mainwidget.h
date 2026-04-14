@@ -109,7 +109,7 @@ private:
 
     TestDetails testDetails;
 
-    long zreoTime = 0;
+    qint64 zreoTime = 0;
 
     bool moveFlag = false;
     bool sampleProtectFlag = false;

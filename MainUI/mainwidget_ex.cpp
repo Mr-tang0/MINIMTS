@@ -92,6 +92,7 @@ void mainWidget::freshData() {
     float cameraDistance = hikWin.camera->getTrackDisplayment("A", "B") * displayDir;
     float speed          = minilogic->currentSpeedValue;
     float time           = float(QDateTime::currentMSecsSinceEpoch() - zreoTime) / 1000.0f;
+    // qDebug()<<QDateTime::currentMSecsSinceEpoch()<<zreoTime<<time;
 
     // 应力应变计算
     float stress = force / testDetails.sampleSquare;
