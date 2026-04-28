@@ -256,8 +256,8 @@ void mainWidget::saveProject() {
     historyMap["length"]          = QString::number(testDetails.sampleLength);
     historyMap["stopAction"]      = testDetails.autoStopType;
     historyMap["stopActionValue"] = QString::number(testDetails.autoStopValue);
-    historyMap["userfilePath"] = testDetails.userFilePath;
-    historyMap["userfileName"] = testDetails.userFileName;
+    historyMap["userFilePath"] = testDetails.userFilePath;
+    historyMap["userFileName"] = testDetails.userFileName;
     qDebug()<<historyMap["userFileName"];
 
 
@@ -364,8 +364,8 @@ void mainWidget::initSystem(){
     ui->length->setValue(historyMap["length"].toFloat());
     ui->stopAction->setCurrentText(historyMap["stopAction"]);
     ui->stopActionValue->setValue(historyMap["stopActionValue"].toFloat());
-    ui->filePath->setText(historyMap["userfilePath"]);
-    ui->fileName->setText(historyMap["userfileName"]);
+    ui->filePath->setText(historyMap["userFilePath"]);
+    ui->fileName->setText(historyMap["userFileName"]);
 
 
     //DIC信息

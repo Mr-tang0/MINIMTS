@@ -44,10 +44,12 @@ OnlineLogin::OnlineLogin(QWidget *parent) :
 
             //tab顺序
             ui->registerName->setFocusPolicy(Qt::StrongFocus);
+            ui->registerEmail->setFocusPolicy(Qt::StrongFocus);
             ui->registerPassword->setFocusPolicy(Qt::StrongFocus);
             ui->registerPasswordCheck->setFocusPolicy(Qt::StrongFocus);
 
-            setTabOrder(ui->registerName, ui->registerPassword);
+            setTabOrder(ui->registerName, ui->registerEmail);
+            setTabOrder(ui->registerEmail, ui->registerPassword);
             setTabOrder(ui->registerPassword, ui->registerPasswordCheck);
             setTabOrder(ui->registerPasswordCheck, ui->registerName);
 
@@ -66,6 +68,7 @@ OnlineLogin::OnlineLogin(QWidget *parent) :
             setTabOrder(ui->loginName, ui->loginPassword);
 
             ui->registerName->setFocusPolicy(Qt::NoFocus);
+            ui->registerEmail->setFocusPolicy(Qt::NoFocus);
             ui->registerPassword->setFocusPolicy(Qt::NoFocus);
             ui->registerPasswordCheck->setFocusPolicy(Qt::NoFocus);
 
@@ -74,10 +77,12 @@ OnlineLogin::OnlineLogin(QWidget *parent) :
     });
 
     //tab顺序
-    setTabOrder(ui->registerPassword, ui->loginName);
-    setTabOrder(ui->loginName, ui->registerPassword);
+    setTabOrder(ui->loginPassword, ui->loginName);
+    setTabOrder(ui->loginName, ui->loginPassword);
+    // setTabOrder(ui->registerPassword, ui->registerPassword);
 
     ui->registerName->setFocusPolicy(Qt::NoFocus);
+    ui->registerEmail->setFocusPolicy(Qt::NoFocus);
     ui->registerPassword->setFocusPolicy(Qt::NoFocus);
     ui->registerPasswordCheck->setFocusPolicy(Qt::NoFocus);
 

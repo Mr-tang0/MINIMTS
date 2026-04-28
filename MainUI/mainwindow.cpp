@@ -123,6 +123,23 @@ void MainWindow::initConnections()
         }
     });
 
+    // 温度传感器逻辑处理
+    // 在类成员变量中声明指针，防止函数结束后被销毁
+    // QLabel *tempDisplay = nullptr;
+
+    connect(mainwd->minilogic, &MiniMTSLogic::tempreture, this, [=](float temp){
+        static QLabel* label = nullptr;
+        if (!label) {
+            label = new QLabel();
+            label->setWindowTitle("实时温度");
+            label->resize(200, 100);
+            label->setAlignment(Qt::AlignCenter);
+            label->setStyleSheet("font-size: 40px; color: #00FF00; background-color: black; font-weight: bold;");
+        }
+        label->setText(QString::number(temp, 'f', 1) + " ℃");
+        label->show();
+    });
+
     // 核心业务信号
     connect(mainwd, &mainWidget::errOccured, this, [=](QString err){ addErrMessage(err); });
     connect(mainwd, &mainWidget::connected, this, [=](bool flag){

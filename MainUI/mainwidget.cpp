@@ -520,7 +520,7 @@ void mainWidget::leftMainClick()
             emit message("连接未断开");
             return;
         }else{
-            QString filePath = QFileDialog::getOpenFileName(this, "选择文件", historyMap["userfilePath"], "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)");
+            QString filePath = QFileDialog::getOpenFileName(this, "选择文件", historyMap["userFilePath"], "CSV Files (*.csv);;Text Files (*.txt);;All Files (*)");
 
             if(filePath=="")
                 return;
@@ -628,9 +628,11 @@ bool mainWidget::saveCsv(QMap<QString, QLineSeries*> data){
 bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     if(data.empty()||data[0].empty())return false;
 
-    QString fileName = historyMap["userDefaultName"]+systemWidget::systemMap["advance"]["format"];
+    QString fileName = historyMap["userFileName"]+systemWidget::systemMap["advance"]["format"];
 
-    QString filePath = historyMap["userfilePath"]+"/"+QDateTime::currentDateTime().toString("yy-MM-dd");
+    qDebug()<<historyMap["userFileName"]<<historyMap;
+
+    QString filePath = historyMap["userFilePath"]+"/"+QDateTime::currentDateTime().toString("yy-MM-dd");
 
     if(systemWidget::systemMap["advance"]["enableFilter"]=="yes"){
         //滤波开启
@@ -670,6 +672,8 @@ bool mainWidget::saveCsv(QList<QList<float>> data,QList<QString> header){
     fileDetails["DICTriggr"] = testDetails.DICTriggr;
     fileDetails["DICDuration"] = QString::number(testDetails.DICDuration);
     fileDetails["DICDetectEnable"] = testDetails.DICDetectEnable?"true":"false";
+
+
 
     bool flag = Tool::saveCsvData(data,header,fileDetails,filePath+"/"+fileName);
     return flag;
