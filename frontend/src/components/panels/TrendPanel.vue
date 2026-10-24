@@ -42,7 +42,7 @@ function appendPoint(target, value) {
 function appendHeartbeat(data) {
   if (!data) return;
 
-  appendPoint(timeData, data.time);
+  appendPoint(timeData, data.duration);
   appendPoint(loadData, data.load);
   appendPoint(motorDispData, data.disp);
   appendPoint(videoPosData, data.ePos);
@@ -65,7 +65,7 @@ function getAxisRange(series) {
 }
 
 function formatAxisLabel(value) {
-  const rounded = Math.round((Number(value) + Number.EPSILON) * 10000) / 10000;
+  const rounded = Math.round((Number(value) + Number.EPSILON) * 1000) / 1000;
   return Object.is(rounded, -0) ? '0' : String(rounded);
 }
 

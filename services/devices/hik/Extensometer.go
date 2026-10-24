@@ -5,54 +5,67 @@ import (
 	"image"
 	"math"
 	"sort"
+	"strings"
 	"sync"
+	"time"
 
 	"gocv.io/x/gocv"
 )
 
-// ---------- DIC 参数配置 ----------
-
-// DICParam DIC 计算参数
-type DICParam struct {
-	PreprocessEnabled    bool
-	DenoiseKernel        int
-	SharpenAmount        float64
-	TrackingSearchRadius int
-	SubsetSize           int     // 子集大小（奇数，如 21）
-	StepSize             int     // 网格步长
-	SearchRadius         int     // 整像素搜索半径
-	ZNCCThreshold        float64 // ZNCC 置信度阈值
-	MaxIter              int     // IC-GN 最大迭代次数
-	ConvergeEps          float64 // IC-GN 收敛阈值（像素）
-	PointsCount          int     // 多点阵列的点数
-	Spacing              int     // 点间距
-	ResX                 int     // 分辨率 X
-	ResY                 int     // 分辨率 Y
-	Poisson              float64 // 泊松比
-	YoungMod             float64 // 杨氏模量
+// DebugAverager 调试输出降频器：累计 every 次输出一次各项平均值（毫秒）
+type DebugAverager struct {
+	every int
+	count int
+	names []string
+	items map[string]float64
+	mu    sync.Mutex
 }
 
-// DefaultDICParam 返回默认 DIC 参数,未来可能交给用户配置
-func DefaultDICParam() *DICParam {
-	return &DICParam{
-		PreprocessEnabled:    true,
-		DenoiseKernel:        3,
-		SharpenAmount:        0.8,
-		SubsetSize:           25,
-		StepSize:             5,
-		SearchRadius:         15,
-		TrackingSearchRadius: 3,
-		ZNCCThreshold:        0.6,
-		MaxIter:              25,
-		ConvergeEps:          5e-3,
-		PointsCount:          7,
-		Spacing:              1,
-		Poisson:              0.3,
-		YoungMod:             200e3,
+// NewDebugAverager 创建降频调试器
+func NewDebugAverager(every int) *DebugAverager {
+	return &DebugAverager{every: every, items: make(map[string]float64)}
+}
+
+func (d *DebugAverager) add(name string, ms float64) {
+	if _, ok := d.items[name]; !ok {
+		d.names = append(d.names, name)
 	}
+	d.items[name] += ms
 }
 
-// ---------- 数据结构 ----------
+// Add 累计一项耗时
+func (d *DebugAverager) Add(name string, v time.Duration) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.add(name, float64(v.Microseconds())/1000.0)
+}
+
+// AddMS 累计一项非时长数值（如有效点数）
+func (d *DebugAverager) AddMS(name string, ms float64) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.add(name, ms)
+}
+
+// Report 累计满 every 次时返回平均值串并清零，否则返回空串
+func (d *DebugAverager) Report() string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.count++
+	if d.count < d.every {
+		return ""
+	}
+	n := float64(d.every)
+	parts := make([]string, 0, len(d.names))
+	for _, name := range d.names {
+		parts = append(parts, fmt.Sprintf("%s=%.1f", name, d.items[name]/n))
+	}
+	// 整体重置，避免 names 重复累积导致旧条目以 0.0 重复输出
+	d.names = d.names[:0]
+	d.items = make(map[string]float64)
+	d.count = 0
+	return strings.Join(parts, " ")
+}
 
 // Rect2f 浮点矩形
 type Rect2f struct {
@@ -62,7 +75,11 @@ type Rect2f struct {
 	Height float64
 }
 
+// TrackingAxis 追踪轴类型
 type TrackingAxis int
+
+// dicDebug DIC 计时降频输出（每 30 帧平均值）
+var dicDebug = NewDebugAverager(30)
 
 const (
 	TrackingAxisVertical TrackingAxis = iota
@@ -1110,6 +1127,11 @@ func (e *ExtensometerService) calculateDisplacement(defBytes []uint8, defW, defH
 }
 
 func (e *ExtensometerService) calculateDisplacementMat(defMat gocv.Mat) *DICFrameResult {
+	return e.calculateDisplacementMatShared(defMat, defMat.ToBytes())
+}
+
+// calculateDisplacementMatShared 多点 DIC 追踪核心，defBytes 为 defMat 的灰度字节缓冲
+func (e *ExtensometerService) calculateDisplacementMatShared(defMat gocv.Mat, defBytes []uint8) *DICFrameResult {
 	if !e.mIsInitialized {
 		if !e.initMultiPoints() {
 			return nil
@@ -1124,7 +1146,6 @@ func (e *ExtensometerService) calculateDisplacementMat(defMat gocv.Mat) *DICFram
 		ok     bool
 	}
 	results := make([]subsetResult, len(e.mSubsets))
-	defBytes := defMat.ToBytes()
 	defW := defMat.Cols()
 	defH := defMat.Rows()
 
@@ -1252,8 +1273,34 @@ func (e *ExtensometerService) RunDICPreparedGrayMat(defMat gocv.Mat) (*DICResult
 	if defMat.Empty() {
 		return nil, fmt.Errorf("target image is empty")
 	}
+	return e.RunDICPreparedGrayMatShared(defMat, defMat.ToBytes())
+}
 
-	frameResult := e.calculateDisplacementMat(defMat)
+// RunDICPreparedGrayMatShared 与 RunDICPreparedGrayMat 相同，但允许调用方传入
+// 已提取的字节缓冲（多 ROI 共享同一帧时省去重复 ToBytes 全图拷贝）。
+func (e *ExtensometerService) RunDICPreparedGrayMatShared(defMat gocv.Mat, defBytes []uint8) (*DICResult, error) {
+	if e.originalImg == nil {
+		return nil, fmt.Errorf("original image is not set")
+	}
+	if defMat.Empty() {
+		return nil, fmt.Errorf("target image is empty")
+	}
+
+	startTime := time.Now()
+	firstFrame := !e.mIsInitialized
+	frameResult := e.calculateDisplacementMatShared(defMat, defBytes)
+	elapsed := time.Since(startTime)
+	if firstFrame {
+		fmt.Printf("[DIC计时] 首帧(含初始化): %v, 点数=%d\n", elapsed, len(e.mSubsets))
+	} else {
+		dicDebug.Add("耗时", elapsed)
+		if frameResult != nil {
+			dicDebug.AddMS("有效点", float64(frameResult.SubsetCount))
+		}
+		if avg := dicDebug.Report(); avg != "" {
+			fmt.Println("[DIC计时]", avg)
+		}
+	}
 	if frameResult == nil {
 		return nil, fmt.Errorf("DIC tracking failed")
 	}

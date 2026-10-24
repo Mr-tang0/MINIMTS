@@ -44,7 +44,9 @@
 import { computed, nextTick, onMounted, onUnmounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { Events, Window } from '@wailsio/runtime'
-import * as HIKCameraService from '../../bindings/MINIMTS/services/hikcameraservice.js'
+import * as HIKCameraService from '../../bindings/MINIMTS/services/devices/hikcameraservice.js'
+import * as HIKCalibrationService from '../../bindings/MINIMTS/services/devices/hikcalibrationservice.js'
+import * as HIKExtensometerService from '../../bindings/MINIMTS/services/devices/hikextensometerservice.js'
 
 const route = useRoute()
 const mode = computed(() => route.query.mode || 'roi')
@@ -236,17 +238,17 @@ const close = () => Window.Close()
 const confirm = async () => {
   try {
     if (mode.value === 'pose_calibration') {
-      await HIKCameraService.AddPoseCalibration(corners.value, rows.value, cols.value, squareSize.value)
+      await HIKCalibrationService.AddPoseCalibration(corners.value, rows.value, cols.value, squareSize.value)
     } else if (mode.value === 'calibration_corners') {
-      const result = await HIKCameraService.AddCalibrationCorners(corners.value, rows.value, cols.value, squareSize.value)
+      const result = await HIKCalibrationService.AddCalibrationCorners(corners.value, rows.value, cols.value, squareSize.value)
       if (!result?.success) throw new Error(result?.error || '相机标定失败')
       Events.Emit('calibration_added', { data: { count: result.count } })
     } else if (mode.value === 'calibration') {
-      await HIKCameraService.SetResolutionRatio(lineLength.value, realLength.value)
+      await HIKExtensometerService.SetResolutionRatio(lineLength.value, realLength.value)
     } else if (mode.value === 'line') {
-      await HIKCameraService.SetDirectionLine(line.value)
+      await HIKExtensometerService.SetDirectionLine(line.value)
     } else {
-      await HIKCameraService.SetROI(label.value, roi.value)
+      await HIKExtensometerService.SetROI(label.value, roi.value)
     }
     await close()
   } catch (error) {
@@ -272,7 +274,7 @@ onMounted(async () => {
   window.addEventListener('resize', resize)
   try {
     if (isCorners.value) {
-      const result = await HIKCameraService.FindChessboardCorners(rows.value, cols.value)
+      const result = await HIKCalibrationService.FindChessboardCorners(rows.value, cols.value)
       if (!result?.success) throw new Error(result?.error || '棋盘格识别失败')
       loadImage(result.image, result.corners || [])
     } else {

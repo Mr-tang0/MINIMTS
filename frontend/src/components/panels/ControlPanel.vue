@@ -50,7 +50,7 @@ import {
   MotorStop,
   StartMeasurement,
   StopMeasurement,
-} from '../../bindings/MINIMTS/services/minimtsservice.js';
+} from '../../../bindings/MINIMTS/services/devices/MINIMTSService.js';
 
 const toast = inject('toast', () => {});
 

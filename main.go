@@ -1,8 +1,8 @@
 package main
 
 import (
-	"MINIMTS/services"
-	UI "MINIMTS/services/UI"
+	Config "MINIMTS/services/config"
+	Devices "MINIMTS/services/devices"
 	"embed"
 	"log"
 
@@ -13,24 +13,29 @@ import (
 var assets embed.FS
 
 func init() {
-	application.RegisterEvent[services.MINIMTSHeartbeat]("mts-heartbeat")
-	application.RegisterEvent[services.PCService]("pc-heartbeat")
+	application.RegisterEvent[Devices.MINIMTSHeartbeat]("mts-heartbeat")
+	application.RegisterEvent[Devices.PCService]("pc-heartbeat")
+	application.RegisterEvent[Devices.ExtensometerResult]("hik_extensometer_result")
 }
 
 func main() {
-	pc := services.NewPCService()
-	pc.FreshPCInfo()
+	PC := Devices.NewPCService()
+	PC.FreshPCInfo()
 
-	systemConfig := UI.NewSystemConfig()
-	projectConfig := UI.NewProjectConfig()
+	systemConfig := Config.NewSystemConfig()
+	projectConfig := Config.NewProjectConfig()
 	if _, err := projectConfig.GetFromLocalPath(""); err != nil {
 		log.Fatal(err)
 	}
-	minimts := services.NewMINIMTSService()
+
+	camera := Devices.NewHIKCamera()
+	calibration := Devices.NewHIKCalibration(camera)
+	extensometer := Devices.NewHIKExtensometer(camera)
+
+	minimts := Devices.NewMINIMTSService(extensometer)
 	if err := minimts.Startup(systemConfig, projectConfig); err != nil {
 		log.Fatal(err)
 	}
-	camera := services.NewHIKCamera()
 
 	app := application.New(application.Options{
 		Name:        "MINIMTS",
@@ -38,6 +43,8 @@ func main() {
 		Services: []application.Service{
 			application.NewService(minimts),
 			application.NewService(camera),
+			application.NewService(calibration),
+			application.NewService(extensometer),
 			application.NewService(systemConfig),
 			application.NewService(projectConfig),
 		},
@@ -48,6 +55,9 @@ func main() {
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
 		},
 	})
+
+	// MINIMTS 订阅引伸计结果，根据 ROI 距离计算视频位移与应变
+	minimts.ListenExtensometer()
 
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "MINIMTS PRO",
@@ -69,7 +79,7 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pc.CallExit()
+	PC.CallExit()
 	minimts.CallExit()
 	camera.CallExit()
 }

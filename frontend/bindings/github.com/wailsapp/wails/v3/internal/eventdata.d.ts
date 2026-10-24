@@ -7,13 +7,14 @@ import type { Events } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import type * as services$0 from "../../../../../MINIMTS/services/models.js";
+import type * as devices$0 from "../../../../../MINIMTS/services/devices/models.js";
 
 declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
-            "mts-heartbeat": services$0.MINIMTSHeartbeat;
-            "pc-heartbeat": services$0.PCService;
+            "hik_extensometer_result": devices$0.ExtensometerResult;
+            "mts-heartbeat": devices$0.MINIMTSHeartbeat;
+            "pc-heartbeat": devices$0.PCService;
         }
     }
 }

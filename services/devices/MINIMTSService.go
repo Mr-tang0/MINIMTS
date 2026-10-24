@@ -1,10 +1,10 @@
-package services
+package devices
 
 import (
-	ui "MINIMTS/services/UI"
+	"MINIMTS/services/config"
+	"MINIMTS/services/devices/hik"
 	"encoding/binary"
 	"fmt"
-	"math"
 	"sync"
 	"time"
 
@@ -25,24 +25,28 @@ type MINIMTSHeartbeat struct {
 	EZeroPos float32 `json:"eZeroPos"` // 归零后的视频位置值
 	EStrain  float32 `json:"eStrain"`  // 当前视频应变值
 
-	Limit string  `json:"limit"` // 禁止运动方向（idle-无，forward-正向，reverse-反向）
-	Temp  float32 `json:"temp"`  // 当前温度值
+	LimitDIR    string  `json:"limitDIR"`    // 限位被触发方向（idle-无限位，cw-正向限位，ccw-反向限位）
+	Temperature float32 `json:"temperature"` // 当前温度值
 
-	Time      float32   `json:"time"`      // 实验时间，单位秒
-	StartTime time.Time `json:"startTime"` // 开始时间，用于计算实验时间
-
-	Connected bool `json:"connected"` // MINIMTS 设备是否已连接
+	Duration  float32   `json:"duration"`  // 实验时间，单位秒
+	StartTime time.Time `json:"startTime"` // 实验开始时间
 }
 
 type MINIMTSService struct {
-	Device *protocol.SerialCommunicator
-
 	heartbeat   MINIMTSHeartbeat
 	heartbeatMu sync.RWMutex       // 保护 heartbeat 的读写锁
 	dataList    []MINIMTSHeartbeat // 数据列表，用于存储心跳数据
 
-	systemConfig  *ui.SystemConfig  // 系统配置
-	projectConfig *ui.ProjectConfig // 项目配置
+	Device *protocol.SerialCommunicator //连接句柄
+
+	systemConfig  *config.SystemConfig  // 系统配置
+	projectConfig *config.ProjectConfig // 项目配置
+
+	extensometer *HIKExtensometerService // 引伸计服务，用于读取比例标定系数
+
+	videoMu           sync.Mutex
+	videoBaseDistance float64 // ROI A/B 的初始欧几里得距离（像素）
+	videoBaseReady    bool    // 初始距离是否已记录
 
 	triggerStopCh chan struct{}
 
@@ -50,106 +54,119 @@ type MINIMTSService struct {
 	testStopCh chan struct{}
 }
 
-func NewMINIMTSService() *MINIMTSService {
+func NewMINIMTSService(extensometer *HIKExtensometerService) *MINIMTSService {
 	svc := &MINIMTSService{
 		heartbeat: MINIMTSHeartbeat{
-			Load:      0,
-			Stress:    0,
-			ZeroLoad:  0,
-			Disp:      0,
-			Strain:    0,
-			ZeroDisp:  0,
-			EPos:      0,
-			EZeroPos:  0,
-			EStrain:   0,
-			Limit:     "idle",
-			Time:      0,
-			StartTime: time.Now(),
-			Connected: false,
+			Load:     0,
+			Stress:   0,
+			ZeroLoad: 0,
+
+			Disp:     0,
+			Strain:   0,
+			ZeroDisp: 0,
+
+			EPos:     0,
+			EZeroPos: 0,
+			EStrain:  0,
+
+			LimitDIR:    "idle",
+			Temperature: 25,
+			Duration:    0,
 		},
-		Device: &protocol.SerialCommunicator{},
+		Device:       &protocol.SerialCommunicator{},
+		extensometer: extensometer,
 	}
 	return svc
 }
 
-func (m *MINIMTSService) Startup(systemConfig *ui.SystemConfig, projectConfig *ui.ProjectConfig) error {
+func (m *MINIMTSService) Startup(systemConfig *config.SystemConfig, projectConfig *config.ProjectConfig) error {
+	fmt.Println("MTS Startup")
+
 	m.systemConfig = systemConfig
 	m.projectConfig = projectConfig
-	// m.StartHeartbeatTest()
 	return nil
 }
 
-func (m *MINIMTSService) CallExit() {
-	fmt.Println("MTS CallExit")
-	m.StopHeartbeatTest()
-	if err := m.CloseMINIMTS(); err != nil {
-		fmt.Println("关闭MINIMTS失败:", err)
-	}
-}
-
-// StartHeartbeatTest 以 25ms 周期向前端发送模拟心跳数据，用于测试实时图表性能。
-func (m *MINIMTSService) StartHeartbeatTest() {
-	m.testMu.Lock()
-	if m.testStopCh != nil {
-		m.testMu.Unlock()
+// ListenExtensometer 订阅引伸计结果事件，根据 ROI 距离计算视频位移与应变并写入 heartbeat。
+// 需在 application 初始化之后调用。
+func (m *MINIMTSService) ListenExtensometer() {
+	app := application.Get()
+	if app == nil {
 		return
 	}
-	stopCh := make(chan struct{})
-	m.testStopCh = stopCh
-	m.testMu.Unlock()
 
-	go func() {
-		ticker := time.NewTicker(150 * time.Millisecond)
-		defer ticker.Stop()
-
-		startTime := time.Now()
-		for {
-			select {
-			case <-stopCh:
-				return
-			case now := <-ticker.C:
-				elapsed := float32(now.Sub(startTime).Seconds())
-				phase := float64(elapsed) * 0.35
-				motorStrain := float32(math.Mod(float64(elapsed)*0.02, 1.0))
-				videoStrain := float32(math.Mod(float64(elapsed)*0.016, 0.8))
-				stress := 25 + motorStrain*225 + float32(math.Sin(phase*8))*1.5
-
-				heartbeat := MINIMTSHeartbeat{
-					Load:      stress * 10,
-					Stress:    stress,
-					Disp:      motorStrain * 50,
-					Strain:    motorStrain,
-					EPos:      videoStrain * 10000,
-					EStrain:   videoStrain,
-					Limit:     "idle",
-					Temp:      25 + float32(math.Sin(phase))*2,
-					Time:      elapsed,
-					StartTime: startTime,
-					Connected: true,
-				}
-				application.Get().Event.Emit("mts-heartbeat", heartbeat)
-			}
+	// 引伸计每帧推送两个 ROI 中心坐标与欧几里得距离
+	app.Event.On("hik_extensometer_result", func(event *application.CustomEvent) {
+		result, ok := event.Data.(ExtensometerResult)
+		if !ok {
+			return
 		}
-	}()
+		m.updateVideoMetrics(result.Distance)
+	})
+
+	// ROI 重新绘制后，距离基准需要重新采集
+	app.Event.On("hik_roi_selected", func(event *application.CustomEvent) {
+		m.resetExtensometerBaseline()
+	})
 }
 
-// StopHeartbeatTest 停止模拟心跳数据发送。
-func (m *MINIMTSService) StopHeartbeatTest() {
-	m.testMu.Lock()
-	defer m.testMu.Unlock()
-	if m.testStopCh != nil {
-		close(m.testStopCh)
-		m.testStopCh = nil
+// updateVideoMetrics 根据两个 ROI 的欧几里得距离计算视频位移与应变。
+//
+// EPos = 当前距离（已比例标定时换算为 mm，否则为像素）
+// EStrain = (当前距离 - 初始距离) / 初始距离
+var lastTime time.Time
+var videoMetricsDebug = hik.NewDebugAverager(30) // 调试：视频指标降频输出
+
+func (m *MINIMTSService) updateVideoMetrics(distance float64) {
+	if gap := time.Since(lastTime); gap < time.Second {
+		videoMetricsDebug.Add("事件间隔", gap)
 	}
+	lastTime = time.Now()
+	if avg := videoMetricsDebug.Report(); avg != "" {
+		fmt.Println("[视频指标]", avg)
+	}
+
+	if distance <= 0 {
+		return
+	}
+
+	m.videoMu.Lock()
+	if !m.videoBaseReady {
+		m.videoBaseDistance = distance
+		m.videoBaseReady = true
+	}
+	baseDistance := m.videoBaseDistance
+	m.videoMu.Unlock()
+
+	epos := distance
+	if m.extensometer != nil {
+		if ratio := m.extensometer.GetResolutionRatio(); ratio > 0 {
+			epos = distance / ratio
+		}
+	}
+
+	var estrain float64
+	if baseDistance > 0 {
+		estrain = (distance - baseDistance) / baseDistance
+	}
+
+	m.heartbeatMu.Lock()
+	m.heartbeat.EPos = float32(epos)
+	m.heartbeat.EStrain = float32(estrain)
+	m.heartbeatMu.Unlock()
 }
 
-func (m *MINIMTSService) GetMINIMTSDevices() ([]string, error) {
-	fmt.Println("GetMINIMTSDevices")
-	return m.Device.ListAvailablePorts()
-}
+// resetExtensometerBaseline 清除视频距离基准（ROI 变更时调用）
+func (m *MINIMTSService) resetExtensometerBaseline() {
+	m.videoMu.Lock()
+	m.videoBaseDistance = 0
+	m.videoBaseReady = false
+	m.videoMu.Unlock()
 
-func (m *MINIMTSService) IsMINIMTSConnected() bool {
-	return m.Device.IsConnected()
+	m.heartbeatMu.Lock()
+	m.heartbeat.EPos = 0
+	m.heartbeat.EStrain = 0
+	m.heartbeatMu.Unlock()
 }
 
 func (m *MINIMTSService) OpenMINIMTS(name string) error {
@@ -162,12 +179,10 @@ func (m *MINIMTSService) OpenMINIMTS(name string) error {
 	if err := m.Device.Connect(name, 115200); err != nil {
 		return fmt.Errorf("无法打开端口 %s: %v", name, err)
 	}
-	fmt.Printf("串口 %s 打开成功\n", name)
-	m.heartbeat.Connected = true
-
+	m.heartbeat.StartTime = time.Now()
 	go m.go_heartbeat()
 
-	fmt.Println("心跳协程已启动")
+	fmt.Println("连接成功，心跳协程已启动")
 	return nil
 }
 
@@ -175,71 +190,106 @@ func (m *MINIMTSService) CloseMINIMTS() error {
 	m.heartbeatMu.Lock()
 	defer m.heartbeatMu.Unlock()
 
-	m.heartbeat.Connected = false
 	return m.Device.Disconnect()
 }
 
+func (m *MINIMTSService) IsOpened() bool {
+	return m.Device.IsConnected()
+}
+
 func (m *MINIMTSService) go_heartbeat() {
-	scanTicker := time.NewTicker(25 * time.Millisecond)
-	emitTicker := time.NewTicker(200 * time.Millisecond)
-	cacheTicker := time.NewTicker(60 * time.Second)
+	scanTicker := time.NewTicker(20 * time.Millisecond) // 扫描数据周期
+	emitTicker := time.NewTicker(50 * time.Millisecond) // 发送心跳周期
+	cacheTicker := time.NewTicker(60 * time.Second)     // 缓存数据自动保存周期，单位秒
+
 	defer scanTicker.Stop()
 	defer emitTicker.Stop()
+	defer cacheTicker.Stop()
 
 	for {
 		select {
 		case <-scanTicker.C:
-			if err := m.scan(); err != nil {
-				fmt.Println("扫描数据失败:", err)
-				return
-			}
+			//更新时间
+			m.heartbeatMu.RLock()
+			m.heartbeat.Duration = float32(time.Now().Sub(m.heartbeat.StartTime).Seconds())
+			m.heartbeatMu.RUnlock()
+
+			// // 扫描数据
+			// if err := m.go_scan(); err != nil {
+			// 	return
+			// }
 		case <-emitTicker.C:
+			// 发送心跳数据
 			m.heartbeatMu.RLock()
 			heartbeat := m.heartbeat
 			m.heartbeatMu.RUnlock()
+
 			application.Get().Event.Emit("mts-heartbeat", heartbeat)
 		case <-cacheTicker.C:
-			m.save_cache() //每分钟存储缓存数据
+			// 缓存数据自动保存
+			go m.go_save_cache() //每分钟存储缓存数据
 		}
 	}
 }
 
-func (m *MINIMTSService) scan() error {
+func (m *MINIMTSService) go_scan() error {
 	m.heartbeatMu.Lock()
 	defer m.heartbeatMu.Unlock()
 
-	if !m.heartbeat.Connected {
+	if !m.IsOpened() {
 		return fmt.Errorf("设备未连接")
 	}
 
-	//与硬件通讯，更新状态
+	// 更新电机位置
 	if pos, err := m.updateMotorPosition(); err == nil {
 		m.heartbeat.Disp = pos
 		m.heartbeat.Strain = pos / m.projectConfig.SectionLength
 	}
+
+	// 更新载荷数据
 	if load, err := m.updateLoadData(); err == nil {
 		m.heartbeat.Load = load
 		m.heartbeat.Stress = load / m.projectConfig.SectionArea
 	}
-	if m.systemConfig.LimitEnabled {
+
+	// 更新限位状态(如果已启用)
+	if m.systemConfig.Limit_Enabled {
 		m.updateLimitStatus()
 	}
-	if m.systemConfig.TempEnabled {
+
+	// 更新温度数据(如果已启用)
+	if m.systemConfig.Temp_Enabled {
 		m.updateTempData()
 	}
 
-	// 保存数据到列表
+	// 缓存保存数据到列表
 	m.dataList = append(m.dataList, m.heartbeat)
-
 	return nil
 }
 
-func (m *MINIMTSService) save_cache() {
-	m.heartbeatMu.RLock()
-	cache := m.dataList
-	m.heartbeatMu.RUnlock()
+func (m *MINIMTSService) CallExit() {
+	fmt.Println("MTS CallExit")
 
-	cache = cache[len(cache)-100:]
+	if err := m.CloseMINIMTS(); err != nil {
+		fmt.Println("关闭MINIMTS失败:", err)
+	}
+}
+
+func (m *MINIMTSService) GetMINIMTSDevices() ([]string, error) {
+	fmt.Println("GetMINIMTSDevices")
+	return m.Device.ListAvailablePorts()
+}
+
+func (m *MINIMTSService) IsMINIMTSConnected() bool {
+	return m.Device.IsConnected()
+}
+
+func (m *MINIMTSService) go_save_cache() {
+	// m.heartbeatMu.RLock()
+	// cache := m.dataList
+	// m.heartbeatMu.RUnlock()
+
+	// cache = cache[len(cache)-100:]
 }
 
 // CallDataToZero 数据归零函数
@@ -249,9 +299,11 @@ func (m *MINIMTSService) CallDataToZero(dataType string) error {
 
 	switch dataType {
 	case "load", "stress":
-		m.heartbeat.ZeroLoad += m.heartbeat.Load * float32(m.systemConfig.WeighDirection)
+		m.heartbeat.ZeroLoad += m.heartbeat.Load * float32(m.systemConfig.Weigh_Direction)
 	case "disp", "strain":
-		m.heartbeat.ZeroDisp += m.heartbeat.Disp * float32(m.systemConfig.MotorDirection)
+		m.heartbeat.ZeroDisp += m.heartbeat.Disp * float32(m.systemConfig.Motor_Direction)
+	case "espos":
+		m.heartbeat.EZeroPos = m.heartbeat.EPos
 	case "time":
 		m.heartbeat.StartTime = time.Now()
 	default:
@@ -262,7 +314,7 @@ func (m *MINIMTSService) CallDataToZero(dataType string) error {
 
 // MotorOn 电机使能
 func (m *MINIMTSService) MotorOn() error {
-	cmd := []byte{0x3e, 0x88, m.systemConfig.MotorID, 0x00}
+	cmd := []byte{0x3e, 0x88, m.systemConfig.Motor_ID, 0x00}
 	resp, err := m.Device.Send3EBus(cmd, 5, 0x3e)
 	if err != nil {
 		return err
@@ -277,7 +329,7 @@ func (m *MINIMTSService) MotorOn() error {
 
 // MotorOff 电机禁止使能
 func (m *MINIMTSService) MotorOff() error {
-	cmd := []byte{0x3e, 0x80, m.systemConfig.MotorID, 0x00}
+	cmd := []byte{0x3e, 0x80, m.systemConfig.Motor_ID, 0x00}
 	resp, err := m.Device.Send3EBus(cmd, 5, 0x3e)
 	if err != nil {
 		return err
@@ -293,7 +345,7 @@ func (m *MINIMTSService) MotorOff() error {
 
 // MotorStop 电机停止
 func (m *MINIMTSService) MotorStop() error {
-	cmd := []byte{0x3e, 0x81, m.systemConfig.MotorID, 0x00}
+	cmd := []byte{0x3e, 0x81, m.systemConfig.Motor_ID, 0x00}
 	resp, err := m.Device.Send3EBus(cmd, 5, 0x3e)
 	if err != nil {
 		return err
@@ -309,7 +361,7 @@ func (m *MINIMTSService) MotorStop() error {
 // MotorJog 电机速度模式移动
 func (m *MINIMTSService) MotorJog(speed float32) error {
 	m.heartbeatMu.RLock()
-	blockedDirection := m.systemConfig.LimitDirection
+	blockedDirection := m.systemConfig.Limit_Direction
 	m.heartbeatMu.RUnlock()
 
 	if blockedDirection == 1 && speed > 0 {
@@ -325,8 +377,8 @@ func (m *MINIMTSService) MotorJog(speed float32) error {
 		return m.MotorStop()
 	}
 
-	rate := int32(float32(m.systemConfig.MotorDirection) * float32(speed) * m.systemConfig.MotorResolution * 100)
-	header := []byte{0x3e, 0xA2, m.systemConfig.MotorID, 0x04}
+	rate := int32(float32(m.systemConfig.Motor_Direction) * float32(speed) * m.systemConfig.Motor_Resolution * 100)
+	header := []byte{0x3e, 0xA2, m.systemConfig.Motor_ID, 0x04}
 	headerWithCheck := m.Device.Calculate3ECheckSum(header)
 
 	// 构造数据体 (4字节速率值)
@@ -354,11 +406,11 @@ func (m *MINIMTSService) MotorJog(speed float32) error {
 }
 
 func (m *MINIMTSService) Trigger(pulseWidth time.Duration) error {
-	if _, err := m.Device.SendModbus(m.systemConfig.LimitID, 0x06, 0x00, 0x01); err != nil {
+	if _, err := m.Device.SendModbus(m.systemConfig.Limit_ID, 0x06, 0x00, 0x01); err != nil {
 		return err
 	}
 	time.Sleep(pulseWidth)
-	_, err := m.Device.SendModbus(m.systemConfig.LimitID, 0x06, 0x00, 0x00)
+	_, err := m.Device.SendModbus(m.systemConfig.Limit_ID, 0x06, 0x00, 0x00)
 	return err
 }
 
@@ -444,7 +496,7 @@ func (m *MINIMTSService) EmergencyStop() error {
 }
 
 func (m *MINIMTSService) updateMotorPosition() (float32, error) {
-	cmd := []byte{0x3e, 0x92, m.systemConfig.MotorID, 0x00}
+	cmd := []byte{0x3e, 0x92, m.systemConfig.Motor_ID, 0x00}
 
 	resp, err := m.Device.Send3EBus(cmd, 14, 0x3e)
 	if err != nil {
@@ -456,7 +508,7 @@ func (m *MINIMTSService) updateMotorPosition() (float32, error) {
 		dataPart := resp[5:13]
 		motorAngle := int64(binary.LittleEndian.Uint64(dataPart))
 		length := float32(motorAngle) / 100.0
-		Pos := float32(m.systemConfig.MotorDirection) * length / m.systemConfig.MotorResolution
+		Pos := float32(m.systemConfig.Motor_Direction) * length / m.systemConfig.Motor_Resolution
 
 		return Pos, nil
 	}
@@ -465,7 +517,7 @@ func (m *MINIMTSService) updateMotorPosition() (float32, error) {
 }
 
 func (m *MINIMTSService) updateLoadData() (float32, error) {
-	resp, err := m.Device.SendModbus(m.systemConfig.WeighID, 0x03, 0x00, 0x02)
+	resp, err := m.Device.SendModbus(m.systemConfig.Weigh_ID, 0x03, 0x00, 0x02)
 	if err != nil {
 		fmt.Println("获取载荷数据失败:", err)
 		return 0, err
@@ -478,13 +530,13 @@ func (m *MINIMTSService) updateLoadData() (float32, error) {
 	dataSwapped := []byte{resp[4], resp[3], resp[6], resp[5]}
 	rawLoad := int32(binary.LittleEndian.Uint32(dataSwapped))
 
-	load := float32(m.systemConfig.WeighDirection) * float32(rawLoad) / float32(m.systemConfig.WeighResolution)
+	load := float32(m.systemConfig.Weigh_Direction) * float32(rawLoad) / float32(m.systemConfig.Weigh_Resolution)
 
 	return load, nil
 }
 
 func (m *MINIMTSService) updateTempData() (float32, error) {
-	resp, err := m.Device.SendModbus(m.systemConfig.TempID, 0x04, 0x00, 0x01)
+	resp, err := m.Device.SendModbus(m.systemConfig.Temp_ID, 0x04, 0x00, 0x01)
 	if err != nil {
 		return 0, err
 	}
@@ -502,7 +554,7 @@ func (m *MINIMTSService) updateTempData() (float32, error) {
 
 func (m *MINIMTSService) updateLimitStatus() (int, error) {
 
-	resp, err := m.Device.SendModbus(m.systemConfig.LimitID, 0x04, 0x00, 0x02)
+	resp, err := m.Device.SendModbus(m.systemConfig.Limit_ID, 0x04, 0x00, 0x02)
 	if err != nil {
 		fmt.Println("获取限位状态失败:", err)
 		return 0, err

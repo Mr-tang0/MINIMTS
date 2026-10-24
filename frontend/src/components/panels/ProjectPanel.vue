@@ -1,7 +1,16 @@
 <template>
-  <div class="project-settings-content">
+  <div class="modal-backdrop" @click.self="emit('cancel')">
+    <section class="modal-dialog" role="dialog" aria-modal="true" aria-labelledby="project-dialog-title">
+      <header class="dialog-header">
+        <div>
+          <strong id="project-dialog-title">项目设置</strong>
+        </div>
+        <button type="button" title="关闭" @click="emit('cancel')">
+          <i class="ri-close-line"></i>
+        </button>
+      </header>
 
-    <div class="settings-body scrollable">
+      <div class="settings-body scrollable">
       <!-- 1. 基本信息 -->
       <div class="config-section">
         <div class="section-tag">基本信息</div>
@@ -215,22 +224,23 @@
           </div>
         </div>
       </div>
-    </div>
-  </div>
+      </div>
 
-  <footer class="settings-footer">
-    <button class="btn-primary" :disabled="loading || saving" @click="handleSubmit">
-      <i class="ri-checkbox-circle-fill"></i> {{ saving ? '保存中...' : '提交项目' }}
-    </button>
-    <button class="btn-secondary" @click="$emit('cancel')">取消</button>
-  </footer>
+      <footer class="settings-footer">
+        <button class="btn-primary" :disabled="loading || saving" @click="handleSubmit">
+          <i class="ri-checkbox-circle-fill"></i> {{ saving ? '保存中...' : '提交项目' }}
+        </button>
+        <button class="btn-secondary" @click="emit('cancel')">取消</button>
+      </footer>
+    </section>
+  </div>
 </template>
 
 <script setup>
 import { reactive, ref, computed, inject, onMounted, onUnmounted } from 'vue';
 import { Events, Dialogs } from '@wailsio/runtime';
-import * as HIKCameraService from '../../bindings/MINIMTS/services/hikcameraservice.js';
-import { GetFromLocalPath, SaveToLocalPath } from '../../bindings/MINIMTS/services/UI/projectconfig.js';
+import * as HIKExtensometerService from '../../../bindings/MINIMTS/services/devices/hikextensometerservice.js';
+import { GetFromLocalPath, SaveToLocalPath } from '../../../bindings/MINIMTS/services/config/projectconfig.js';
 
 const props = defineProps({
   isCameraConnected: {
@@ -319,7 +329,7 @@ const formatROI = (roi) => {
 
 const openMarkerSelector = async (label) => {
   try {
-    await HIKCameraService.OpenROISelector(label)
+    await HIKExtensometerService.OpenROISelector(label)
   } catch (err) {
     console.error('Failed to open ROI selector:', err);
   }
@@ -327,7 +337,7 @@ const openMarkerSelector = async (label) => {
 
 const openDirectionSelector = async () => {
   try {
-    await HIKCameraService.OpenDirectionSelector()
+    await HIKExtensometerService.OpenDirectionSelector()
   } catch (err) {
     console.error('Failed to open direction selector:', err);
   }
@@ -335,7 +345,7 @@ const openDirectionSelector = async () => {
 
 const openCalibration = async () => {
   try {
-    await HIKCameraService.OpenCalibrationSelector()
+    await HIKExtensometerService.OpenCalibrationSelector()
   } catch (err) {
     console.error('Failed to open calibration selector:', err);
   }
@@ -414,7 +424,7 @@ const handleSubmit = async () => {
     };
     await SaveToLocalPath('', config);
     if (form.videoExtEnable && form.pixLength > 0 && form.physLength > 0) {
-      await HIKCameraService.SetResolutionRatio(form.pixLength, form.physLength);
+      await HIKExtensometerService.SetResolutionRatio(form.pixLength, form.physLength);
     }
     emit('submit', config);
   } catch (error) {
@@ -437,14 +447,65 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.project-settings-content {
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(2, 6, 23, 0.72);
+  --wails-draggable: no-drag;
+}
+
+.modal-dialog {
+  width: min(1100px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  padding: 0;
+  background: #0f172a;
+  border: 1px solid #475569;
+  border-radius: 8px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.45);
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #0f172a;
-  border-radius: 8px;
   color: #f1f5f9;
-  overflow: hidden;
   font-size: 13px;
+}
+
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 18px 18px 0;
+  flex-shrink: 0;
+}
+
+.dialog-header strong {
+  color: #f8fafc;
+  font-size: 16px;
+}
+
+.dialog-header button {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: #94a3b8;
+  background: transparent;
+  border: none;
+  border-radius: 6px;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.dialog-header button:hover {
+  color: #f8fafc;
+  background: rgba(148, 163, 184, 0.14);
 }
 
 .settings-body {
@@ -455,7 +516,6 @@ onUnmounted(() => {
   gap: 15px;
   overflow-y: auto;
   min-height: 0;
-  max-height: calc(80vh - 70px);
 }
 
 .scrollable { overflow-y: auto; }

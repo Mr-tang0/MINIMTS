@@ -309,19 +309,11 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { Events } from '@wailsio/runtime';
 import {
-  ClearCameraCalibration,
-  ClearPoseCalibration,
   GetCameraParams,
   GetHIKCameraDevices,
   GetLatestFrameForROI,
   IsHIKCameraConnected,
-  OpenCameraCalibration,
-  OpenCalibrationSelector,
-  OpenDirectionSelector,
-  OpenPoseCalibration,
-  OpenROISelector,
   SetBalanceWhiteAuto,
-  SetCalibrationPattern,
   SetDigitalGain,
   SetDigitalGainEnabled,
   SetExposureAuto,
@@ -333,7 +325,19 @@ import {
   SetWhiteBalanceBlue,
   SetWhiteBalanceGreen,
   SetWhiteBalanceRed,
-} from '../../bindings/MINIMTS/services/hikcameraservice.js';
+} from '../../bindings/MINIMTS/services/devices/hikcameraservice.js';
+import {
+  ClearCameraCalibration,
+  ClearPoseCalibration,
+  OpenCameraCalibration,
+  OpenPoseCalibration,
+  SetCalibrationPattern,
+} from '../../bindings/MINIMTS/services/devices/hikcalibrationservice.js';
+import {
+  OpenCalibrationSelector,
+  OpenDirectionSelector,
+  OpenROISelector,
+} from '../../bindings/MINIMTS/services/devices/hikextensometerservice.js';
 
 // 后端模式值：0 = 手动，1 = 单次自动，2 = 连续自动
 const MODE_VALUES = ['manual', 'once_auto', 'continuous_auto'];

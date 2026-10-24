@@ -111,6 +111,14 @@ export class ProjectConfig {
              */
             this["stopCondition"] = "";
         }
+        if (!("pauseCondition" in $$source)) {
+            /**
+             * 暂停动作
+             * @member
+             * @type {string}
+             */
+            this["pauseCondition"] = "";
+        }
         if (!("filePath" in $$source)) {
             /**
              * 准静态保存路径
@@ -153,6 +161,7 @@ export class ProjectConfig {
         }
         if (!("dicEnable" in $$source)) {
             /**
+             * 是否启用DIC保存
              * @member
              * @type {boolean}
              */
@@ -160,6 +169,7 @@ export class ProjectConfig {
         }
         if (!("dicFolder" in $$source)) {
             /**
+             * DIC保存路径
              * @member
              * @type {string}
              */
@@ -167,34 +177,47 @@ export class ProjectConfig {
         }
         if (!("dicFileName" in $$source)) {
             /**
+             * DIC文件名前缀
              * @member
              * @type {string}
              */
             this["dicFileName"] = "";
         }
-        if (!("triggerType" in $$source)) {
+        if (!("dicTriggerType" in $$source)) {
             /**
+             * DIC触发器类型，internal 或 external
              * @member
              * @type {string}
              */
-            this["triggerType"] = "";
+            this["dicTriggerType"] = "";
+        }
+        if (!("dicTriggerPeriodMs" in $$source)) {
+            /**
+             * DIC触发器周期，单位毫秒(如果为内触发)
+             * @member
+             * @type {number}
+             */
+            this["dicTriggerPeriodMs"] = 0;
+        }
+        if (!("dicTriggerPort" in $$source)) {
+            /**
+             * DIC触发器端口(如果为外触发)
+             * @member
+             * @type {string}
+             */
+            this["dicTriggerPort"] = "";
         }
         if (!("videoExtEnable" in $$source)) {
             /**
+             * 是否启用视频引伸计
              * @member
              * @type {boolean}
              */
             this["videoExtEnable"] = false;
         }
-        if (!("poissonEnable" in $$source)) {
-            /**
-             * @member
-             * @type {boolean}
-             */
-            this["poissonEnable"] = false;
-        }
         if (!("pixLength" in $$source)) {
             /**
+             * 像素长度，单位：mm
              * @member
              * @type {number}
              */
@@ -202,6 +225,7 @@ export class ProjectConfig {
         }
         if (!("physLength" in $$source)) {
             /**
+             * 物理长度，单位：mm
              * @member
              * @type {number}
              */
@@ -318,6 +342,70 @@ export class SystemConfig {
              * @type {boolean}
              */
             this["temp_enabled"] = false;
+        }
+        if (!("temp_offset" in $$source)) {
+            /**
+             * 温度模块偏移量
+             * @member
+             * @type {number}
+             */
+            this["temp_offset"] = 0;
+        }
+        if (!("pid_p" in $$source)) {
+            /**
+             * pidP值
+             * @member
+             * @type {number}
+             */
+            this["pid_p"] = 0;
+        }
+        if (!("pid_i" in $$source)) {
+            /**
+             * pidI值
+             * @member
+             * @type {number}
+             */
+            this["pid_i"] = 0;
+        }
+        if (!("pid_d" in $$source)) {
+            /**
+             * pidD值
+             * @member
+             * @type {number}
+             */
+            this["pid_d"] = 0;
+        }
+        if (!("pid_delta_t" in $$source)) {
+            /**
+             * 时间步长
+             * @member
+             * @type {number}
+             */
+            this["pid_delta_t"] = 0;
+        }
+        if (!("pid_max_speed" in $$source)) {
+            /**
+             * 最大速度
+             * @member
+             * @type {number}
+             */
+            this["pid_max_speed"] = 0;
+        }
+        if (!("pid_min_speed" in $$source)) {
+            /**
+             * 最小速度
+             * @member
+             * @type {number}
+             */
+            this["pid_min_speed"] = 0;
+        }
+        if (!("pid_dir" in $$source)) {
+            /**
+             * pid方向，1 或 -1
+             * @member
+             * @type {number}
+             */
+            this["pid_dir"] = 0;
         }
 
         Object.assign(this, $$source);

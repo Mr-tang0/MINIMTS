@@ -8,17 +8,19 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as services$0 from "../../../../../MINIMTS/services/models.js";
+import * as devices$0 from "../../../../../MINIMTS/services/devices/models.js";
 
 function configure() {
     Object.freeze(Object.assign($Create.Events, {
-        "mts-heartbeat": $$createType0,
-        "pc-heartbeat": $$createType1,
+        "hik_extensometer_result": $$createType0,
+        "mts-heartbeat": $$createType1,
+        "pc-heartbeat": $$createType2,
     }));
 }
 
 // Private type creation functions
-const $$createType0 = services$0.MINIMTSHeartbeat.createFrom;
-const $$createType1 = services$0.PCService.createFrom;
+const $$createType0 = devices$0.ExtensometerResult.createFrom;
+const $$createType1 = devices$0.MINIMTSHeartbeat.createFrom;
+const $$createType2 = devices$0.PCService.createFrom;
 
 configure();

@@ -8,10 +8,10 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as ui$0 from "./UI/models.js";
+import * as config$0 from "../config/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as time$0 from "../../time/models.js";
+import * as time$0 from "../../../time/models.js";
 
 /**
  * CallDataToZero 数据归零函数
@@ -19,21 +19,21 @@ import * as time$0 from "../../time/models.js";
  * @returns {$CancellablePromise<void>}
  */
 export function CallDataToZero(dataType) {
-    return $Call.ByID(553557124, dataType);
+    return $Call.ByID(1986463824, dataType);
 }
 
 /**
  * @returns {$CancellablePromise<void>}
  */
 export function CallExit() {
-    return $Call.ByID(4147012435);
+    return $Call.ByID(979056975);
 }
 
 /**
  * @returns {$CancellablePromise<void>}
  */
 export function CloseMINIMTS() {
-    return $Call.ByID(3499479260);
+    return $Call.ByID(991509024);
 }
 
 /**
@@ -41,14 +41,14 @@ export function CloseMINIMTS() {
  * @returns {$CancellablePromise<void>}
  */
 export function EmergencyStop() {
-    return $Call.ByID(2032304900);
+    return $Call.ByID(247328680);
 }
 
 /**
  * @returns {$CancellablePromise<string[]>}
  */
 export function GetMINIMTSDevices() {
-    return $Call.ByID(2720332019).then(/** @type {($result: any) => any} */(($result) => {
+    return $Call.ByID(1681017967).then(/** @type {($result: any) => any} */(($result) => {
         return $$createType0($result);
     }));
 }
@@ -57,7 +57,23 @@ export function GetMINIMTSDevices() {
  * @returns {$CancellablePromise<boolean>}
  */
 export function IsMINIMTSConnected() {
-    return $Call.ByID(1193546325);
+    return $Call.ByID(88172681);
+}
+
+/**
+ * @returns {$CancellablePromise<boolean>}
+ */
+export function IsOpened() {
+    return $Call.ByID(338970894);
+}
+
+/**
+ * ListenExtensometer 订阅引伸计结果事件，根据 ROI 距离计算视频位移与应变并写入 heartbeat。
+ * 需在 application 初始化之后调用。
+ * @returns {$CancellablePromise<void>}
+ */
+export function ListenExtensometer() {
+    return $Call.ByID(2310398911);
 }
 
 /**
@@ -66,7 +82,7 @@ export function IsMINIMTSConnected() {
  * @returns {$CancellablePromise<void>}
  */
 export function MotorJog(speed) {
-    return $Call.ByID(1910809284, speed);
+    return $Call.ByID(2019455392, speed);
 }
 
 /**
@@ -74,7 +90,7 @@ export function MotorJog(speed) {
  * @returns {$CancellablePromise<void>}
  */
 export function MotorOff() {
-    return $Call.ByID(2977848589);
+    return $Call.ByID(1138360785);
 }
 
 /**
@@ -82,7 +98,7 @@ export function MotorOff() {
  * @returns {$CancellablePromise<void>}
  */
 export function MotorOn() {
-    return $Call.ByID(1965414225);
+    return $Call.ByID(1440125269);
 }
 
 /**
@@ -90,7 +106,7 @@ export function MotorOn() {
  * @returns {$CancellablePromise<void>}
  */
 export function MotorStop() {
-    return $Call.ByID(3030363248);
+    return $Call.ByID(965938052);
 }
 
 /**
@@ -98,15 +114,7 @@ export function MotorStop() {
  * @returns {$CancellablePromise<void>}
  */
 export function OpenMINIMTS(name) {
-    return $Call.ByID(1227826926, name);
-}
-
-/**
- * StartHeartbeatTest 以 25ms 周期向前端发送模拟心跳数据，用于测试实时图表性能。
- * @returns {$CancellablePromise<void>}
- */
-export function StartHeartbeatTest() {
-    return $Call.ByID(319920559);
+    return $Call.ByID(3733101354, name);
 }
 
 /**
@@ -114,24 +122,16 @@ export function StartHeartbeatTest() {
  * @returns {$CancellablePromise<void>}
  */
 export function StartMeasurement() {
-    return $Call.ByID(2577832535);
+    return $Call.ByID(3896113715);
 }
 
 /**
- * @param {ui$0.SystemConfig | null} systemConfig
- * @param {ui$0.ProjectConfig | null} projectConfig
+ * @param {config$0.SystemConfig | null} systemConfig
+ * @param {config$0.ProjectConfig | null} projectConfig
  * @returns {$CancellablePromise<void>}
  */
 export function Startup(systemConfig, projectConfig) {
-    return $Call.ByID(1805858180, systemConfig, projectConfig);
-}
-
-/**
- * StopHeartbeatTest 停止模拟心跳数据发送。
- * @returns {$CancellablePromise<void>}
- */
-export function StopHeartbeatTest() {
-    return $Call.ByID(3366433969);
+    return $Call.ByID(3898791408, systemConfig, projectConfig);
 }
 
 /**
@@ -139,7 +139,7 @@ export function StopHeartbeatTest() {
  * @returns {$CancellablePromise<void>}
  */
 export function StopMeasurement() {
-    return $Call.ByID(2207334521);
+    return $Call.ByID(519687133);
 }
 
 /**
@@ -147,7 +147,7 @@ export function StopMeasurement() {
  * @returns {$CancellablePromise<void>}
  */
 export function Trigger(pulseWidth) {
-    return $Call.ByID(1836788957, pulseWidth);
+    return $Call.ByID(1514376673, pulseWidth);
 }
 
 // Private type creation functions

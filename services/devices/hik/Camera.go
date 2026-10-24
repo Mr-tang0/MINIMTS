@@ -50,8 +50,28 @@ import (
 	"unsafe"
 )
 
+// 海康像素格式标识（GigE Vision PFNC 标准值）
+const (
+	PixelTypeGvspMono8    uint32 = 0x01080001
+	PixelTypeGvspBayerGR8 uint32 = 0x01080008
+	PixelTypeGvspBayerRG8 uint32 = 0x01080009
+	PixelTypeGvspBayerGB8 uint32 = 0x0108000A
+	PixelTypeGvspBayerBG8 uint32 = 0x0108000B
+)
+
+// IsRaw8Bit 判断是否为单平面 8 位原始格式（可跳过 JPEG 压缩直接传原始像素）
+func IsRaw8Bit(pixelType uint32) bool {
+	switch pixelType {
+	case PixelTypeGvspMono8, PixelTypeGvspBayerGR8, PixelTypeGvspBayerRG8,
+		PixelTypeGvspBayerGB8, PixelTypeGvspBayerBG8:
+		return true
+	}
+	return false
+}
+
 // ImageCallback 图像数据回调函数类型
-type ImageCallback func(data []byte, frameId uint64)
+// pixelType 为 8 位原始格式（见 IsRaw8Bit）时 data 为原始像素，否则为 JPEG 压缩数据
+type ImageCallback func(data []byte, frameId uint64, width, height int, pixelType uint32)
 
 // Camera 相机结构体 - 只负责采集，不与前端直接交互
 type Camera struct {
@@ -182,6 +202,9 @@ func (c *Camera) OpenCamera(name string) error {
 	cameraMap[c.handle] = c
 	mapMu.Unlock()
 
+	// 诊断并尝试切换像素格式为 Mono8（灰度直传可跳过 JPEG 压缩链路）
+	c.tryEnableMono8()
+
 	C.RegisterCallbackBridge(c.handle, c.handle)
 
 	c.CameraStartGrabbing()
@@ -250,7 +273,11 @@ func goOnImageReceived(pData *C.uchar, pFrameInfo *C.MV_FRAME_OUT_INFO_EX, pUser
 	}
 
 	// 1. 估算输出缓冲区大小并实施复用机制
-	destSize := uint32(pFrameInfo.nWidth)*uint32(pFrameInfo.nHeight)*3 + 2048
+	width := int(pFrameInfo.nWidth)
+	height := int(pFrameInfo.nHeight)
+	pixelType := uint32(pFrameInfo.enPixelType)
+	frameLen := int(pFrameInfo.nFrameLen)
+	destSize := uint32(width)*uint32(height)*3 + 2048
 
 	// 加锁安全写入该相机的私有缓冲区
 	cam.ImgMu.Lock()
@@ -259,26 +286,36 @@ func goOnImageReceived(pData *C.uchar, pFrameInfo *C.MV_FRAME_OUT_INFO_EX, pUser
 	}
 	cam.ImgBuffer = cam.ImgBuffer[:destSize]
 
-	var actualLen C.uint
+	var actualLen int
 
-	// 2. 将 C 数据直接压缩并灌入预留的 Go 内存切片中
-	ret := C.ConvertAndSaveToJpeg(
-		cam.handle,
-		pFrameInfo,
-		pData,
-		(*C.uchar)(unsafe.Pointer(&cam.ImgBuffer[0])),
-		C.uint(destSize),
-		&actualLen,
-	)
-
-	if uint32(ret) != 0 {
-		cam.ImgMu.Unlock()
-		fmt.Printf("图像转换/压缩失败: 0x%08x\n", uint32(ret))
-		return
+	if IsRaw8Bit(pixelType) {
+		// 8 位原始数据（Mono8/Bayer8）直接拷贝，跳过 C 端 JPEG 压缩（显示端按需转换）
+		if frameLen > len(cam.ImgBuffer) {
+			cam.ImgBuffer = make([]byte, frameLen)
+		}
+		copy(cam.ImgBuffer[:frameLen], unsafe.Slice((*byte)(unsafe.Pointer(pData)), frameLen))
+		actualLen = frameLen
+	} else {
+		// 2. 将 C 数据直接压缩并灌入预留的 Go 内存切片中
+		var actualLenC C.uint
+		ret := C.ConvertAndSaveToJpeg(
+			cam.handle,
+			pFrameInfo,
+			pData,
+			(*C.uchar)(unsafe.Pointer(&cam.ImgBuffer[0])),
+			C.uint(destSize),
+			&actualLenC,
+		)
+		if uint32(ret) != 0 {
+			cam.ImgMu.Unlock()
+			fmt.Printf("图像转换/压缩失败: 0x%08x\n", uint32(ret))
+			return
+		}
+		actualLen = int(actualLenC)
 	}
 
-	// 3. 截取实际有效长度的 JPEG 数据
-	cam.ImgBuffer = cam.ImgBuffer[:int(actualLen)]
+	// 3. 截取实际有效长度的数据
+	cam.ImgBuffer = cam.ImgBuffer[:actualLen]
 	atomic.AddUint64(&cam.FrameId, 1)
 	frameId := atomic.LoadUint64(&cam.FrameId)
 
@@ -289,7 +326,38 @@ func goOnImageReceived(pData *C.uchar, pFrameInfo *C.MV_FRAME_OUT_INFO_EX, pUser
 
 	// 4. 通过回调将数据传递给上层（HIKCamera.go）
 	if cam.ImageCb != nil {
-		cam.ImageCb(dataCopy, frameId)
+		cam.ImageCb(dataCopy, frameId, width, height, pixelType)
+	}
+}
+
+// tryEnableMono8 查询相机支持的像素格式，若支持 Mono8 且当前不是，则切换过去
+func (c *Camera) tryEnableMono8() {
+	curVal, supportVals, err := c.GetEnumValue("PixelFormat")
+	if err != nil {
+		fmt.Println("查询像素格式失败:", err)
+		return
+	}
+
+	curName, _ := c.GetEnumEntrySymbolic("PixelFormat", curVal)
+	names := make([]string, 0, len(supportVals))
+	hasMono8 := false
+	for _, v := range supportVals {
+		n, err := c.GetEnumEntrySymbolic("PixelFormat", v)
+		if err == nil {
+			names = append(names, n)
+			if n == "Mono8" {
+				hasMono8 = true
+			}
+		}
+	}
+	fmt.Printf("相机像素格式: 当前=%s, 支持=%v\n", curName, names)
+
+	if hasMono8 && curName != "Mono8" {
+		if err := c.SetEnumValueByString("PixelFormat", "Mono8"); err == nil {
+			fmt.Println("像素格式已切换为 Mono8（启用原始灰度直传）")
+		} else {
+			fmt.Println("切换 Mono8 失败:", err)
+		}
 	}
 }
 

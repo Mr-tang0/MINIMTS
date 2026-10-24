@@ -8,8 +8,11 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
-import * as time$0 from "../../time/models.js";
+import * as time$0 from "../../../time/models.js";
 
+/**
+ * AddCalibrationCornersResult 相机标定角点累计结果
+ */
 export class AddCalibrationCornersResult {
     /**
      * Creates a new AddCalibrationCornersResult instance.
@@ -52,6 +55,9 @@ export class AddCalibrationCornersResult {
     }
 }
 
+/**
+ * CornerPoint 棋盘格角点坐标
+ */
 export class CornerPoint {
     /**
      * Creates a new CornerPoint instance.
@@ -87,6 +93,68 @@ export class CornerPoint {
     }
 }
 
+/**
+ * ExtensometerResult 引伸计计算结果：两个 ROI 的中心坐标与欧几里得距离（像素）
+ */
+export class ExtensometerResult {
+    /**
+     * Creates a new ExtensometerResult instance.
+     * @param {Partial<ExtensometerResult>} [$$source = {}] - The source object to create the ExtensometerResult.
+     */
+    constructor($$source = {}) {
+        if (!("ax" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["ax"] = 0;
+        }
+        if (!("ay" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["ay"] = 0;
+        }
+        if (!("bx" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["bx"] = 0;
+        }
+        if (!("by" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["by"] = 0;
+        }
+        if (!("distance" in $$source)) {
+            /**
+             * @member
+             * @type {number}
+             */
+            this["distance"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ExtensometerResult instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {ExtensometerResult}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ExtensometerResult(/** @type {Partial<ExtensometerResult>} */($$parsedSource));
+    }
+}
+
+/**
+ * FindChessboardResult 棋盘格角点识别结果
+ */
 export class FindChessboardResult {
     /**
      * Creates a new FindChessboardResult instance.
@@ -218,45 +286,37 @@ export class MINIMTSHeartbeat {
              */
             this["eStrain"] = 0;
         }
-        if (!("limit" in $$source)) {
+        if (!("limitDIR" in $$source)) {
             /**
-             * 禁止运动方向（idle-无，forward-正向，reverse-反向）
+             * 限位被触发方向（idle-无限位，cw-正向限位，ccw-反向限位）
              * @member
              * @type {string}
              */
-            this["limit"] = "";
+            this["limitDIR"] = "";
         }
-        if (!("temp" in $$source)) {
+        if (!("temperature" in $$source)) {
             /**
              * 当前温度值
              * @member
              * @type {number}
              */
-            this["temp"] = 0;
+            this["temperature"] = 0;
         }
-        if (!("time" in $$source)) {
+        if (!("duration" in $$source)) {
             /**
              * 实验时间，单位秒
              * @member
              * @type {number}
              */
-            this["time"] = 0;
+            this["duration"] = 0;
         }
         if (!("startTime" in $$source)) {
             /**
-             * 开始时间，用于计算实验时间
+             * 实验开始时间
              * @member
              * @type {time$0.Time}
              */
             this["startTime"] = null;
-        }
-        if (!("connected" in $$source)) {
-            /**
-             * MINIMTS 设备是否已连接
-             * @member
-             * @type {boolean}
-             */
-            this["connected"] = false;
         }
 
         Object.assign(this, $$source);
@@ -310,9 +370,9 @@ export class PCService {
             /**
              * 采集时间
              * @member
-             * @type {time$0.Time}
+             * @type {string}
              */
-            this["time"] = null;
+            this["time"] = "";
         }
 
         Object.assign(this, $$source);
