@@ -1,0 +1,13 @@
+[Desktop Entry]
+Version=1.0
+Name=My Product
+Comment=A MINIMTS application
+# The Exec line includes %u to pass the URL to the application
+Exec=/usr/local/bin/minimts.exe %u
+Terminal=false
+Type=Application
+Icon=minimts.exe
+Categories=Utility;
+StartupWMClass=minimts.exe
+
+ 
