@@ -19,5 +19,6 @@ export {
     ExtensometerResult,
     FindChessboardResult,
     MINIMTSHeartbeat,
+    NoiseFloorResult,
     PCService
 } from "./models.js";

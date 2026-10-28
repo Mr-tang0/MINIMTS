@@ -35,6 +35,14 @@ Unicode true
 ####
 !include "wails_tools.nsh"
 
+## Source directory of the MSYS2 UCRT64 runtime DLLs.
+## Change this if MSYS2 is installed elsewhere.
+!define MSYS2_BIN "C:\msys64\ucrt64\bin"
+
+## Source directory of the OpenCV runtime DLLs.
+## Change this if OpenCV is installed elsewhere.
+!define OPENCV_BIN "C:\opencv\build\bin"
+
 # The version information for this two must consist of 4 parts
 VIProductVersion "${INFO_PRODUCTVERSION}.0"
 VIFileVersion    "${INFO_PRODUCTVERSION}.0"
@@ -92,6 +100,25 @@ Section
     SetOutPath $INSTDIR
     
     !insertmacro wails.files
+
+    # MinGW-w64 (UCRT64) runtime DLLs required by the executable (direct and indirect dependencies)
+    File "${MSYS2_BIN}\libgcc_s_seh-1.dll"
+    File "${MSYS2_BIN}\libstdc++-6.dll"
+    File "${MSYS2_BIN}\libwinpthread-1.dll"
+
+    # OpenCV runtime DLLs required by the executable (transitive dependencies resolved from OPENCV_BIN)
+    File "${OPENCV_BIN}\libopencv_calib3d4130.dll"
+    File "${OPENCV_BIN}\libopencv_core4130.dll"
+    File "${OPENCV_BIN}\libopencv_dnn4130.dll"
+    File "${OPENCV_BIN}\libopencv_features2d4130.dll"
+    File "${OPENCV_BIN}\libopencv_flann4130.dll"
+    File "${OPENCV_BIN}\libopencv_highgui4130.dll"
+    File "${OPENCV_BIN}\libopencv_imgcodecs4130.dll"
+    File "${OPENCV_BIN}\libopencv_imgproc4130.dll"
+    File "${OPENCV_BIN}\libopencv_objdetect4130.dll"
+    File "${OPENCV_BIN}\libopencv_photo4130.dll"
+    File "${OPENCV_BIN}\libopencv_video4130.dll"
+    File "${OPENCV_BIN}\libopencv_videoio4130.dll"
 
     CreateShortcut "$SMPROGRAMS\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"
     CreateShortCut "$DESKTOP\${INFO_PRODUCTNAME}.lnk" "$INSTDIR\${PRODUCT_EXECUTABLE}"

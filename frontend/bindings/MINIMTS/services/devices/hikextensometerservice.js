@@ -35,12 +35,22 @@ export function ComputeROIResult() {
 }
 
 /**
+ * GetDICPreprocess 获取当前预处理设置
+ * @returns {$CancellablePromise<{ [_ in string]?: any }>}
+ */
+export function GetDICPreprocess() {
+    return $Call.ByID(467517421).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType2($result);
+    }));
+}
+
+/**
  * GetDirectionLine 获取当前方向线段，长度不足时返回 false
  * @returns {$CancellablePromise<[hik$0.LineDirection, boolean]>}
  */
 export function GetDirectionLine() {
     return $Call.ByID(3471902440).then(/** @type {($result: any) => any} */(($result) => {
-        $result[0] = $$createType2($result[0]);
+        $result[0] = $$createType3($result[0]);
         return $result;
     }));
 }
@@ -51,6 +61,19 @@ export function GetDirectionLine() {
  */
 export function GetResolutionRatio() {
     return $Call.ByID(772112810);
+}
+
+/**
+ * MeasureNoiseFloor 噪声底测量：静止状态下连续采集指定帧数的 ROI 距离值，
+ * 输出均值/标准差/极值。标准差即位移噪声底，用于评估预处理方法的效果。
+ * 同步阻塞直至采满或超时（60 秒）。
+ * @param {number} sampleCount
+ * @returns {$CancellablePromise<$models.NoiseFloorResult | null>}
+ */
+export function MeasureNoiseFloor(sampleCount) {
+    return $Call.ByID(3381414821, sampleCount).then(/** @type {($result: any) => any} */(($result) => {
+        return $$createType5($result);
+    }));
 }
 
 /**
@@ -77,6 +100,18 @@ export function OpenDirectionSelector() {
  */
 export function OpenROISelector(label) {
     return $Call.ByID(3663961770, label);
+}
+
+/**
+ * SetDICPreprocess 设置 DIC 预处理方法与锐化强度，立即作用于后续所有帧。
+ * method: none/gauss/bilateral/nlm/highpass
+ * 注意：修改方法后建议重新框选 ROI，使参考模板与实时帧的预处理保持一致。
+ * @param {string} method
+ * @param {number} sharpen
+ * @returns {$CancellablePromise<void>}
+ */
+export function SetDICPreprocess(method, sharpen) {
+    return $Call.ByID(2732675481, method, sharpen);
 }
 
 /**
@@ -120,4 +155,7 @@ export function SetResolutionRatio(pixelLength, realLength) {
 // Private type creation functions
 const $$createType0 = $models.ExtensometerResult.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = hik$0.LineDirection.createFrom;
+const $$createType2 = $Create.Map($Create.Any, $Create.Any);
+const $$createType3 = hik$0.LineDirection.createFrom;
+const $$createType4 = $models.NoiseFloorResult.createFrom;
+const $$createType5 = $Create.Nullable($$createType4);

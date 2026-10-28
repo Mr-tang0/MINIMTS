@@ -39,6 +39,7 @@ type LineDirection struct {
 // DICParam DIC 计算参数
 type DICParam struct {
 	PreprocessEnabled    bool
+	PreprocessMethod     string // 预处理方法: none/gauss/bilateral/nlm/highpass
 	DenoiseKernel        int
 	SharpenAmount        float64
 	TrackingSearchRadius int
@@ -60,6 +61,7 @@ type DICParam struct {
 func DefaultDICParam() *DICParam {
 	return &DICParam{
 		PreprocessEnabled:    true,
+		PreprocessMethod:     DICPreprocessGauss,
 		DenoiseKernel:        3,
 		SharpenAmount:        0.8,
 		SubsetSize:           25,

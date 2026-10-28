@@ -407,6 +407,22 @@ export class SystemConfig {
              */
             this["pid_dir"] = 0;
         }
+        if (!("dic_preprocess_method" in $$source)) {
+            /**
+             * DIC 预处理方法: none/gauss/bilateral/nlm/highpass
+             * @member
+             * @type {string}
+             */
+            this["dic_preprocess_method"] = "";
+        }
+        if (!("dic_sharpen_amount" in $$source)) {
+            /**
+             * DIC 锐化强度
+             * @member
+             * @type {number}
+             */
+            this["dic_sharpen_amount"] = 0;
+        }
 
         Object.assign(this, $$source);
     }

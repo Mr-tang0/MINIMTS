@@ -1,5 +1,5 @@
 <template>
-  <article class="metric-card" :style="{ '--accent': accent }">
+  <article class="metric-card" :style="{ '--accent': accent }" @dblclick="emit('dblclick')">
     <span class="accent-bar"></span>
     <div class="main-row">
       <span class="label">{{ label }}</span>
@@ -24,6 +24,8 @@ defineProps({
   subUnit: { type: String, default: '' },
   accent: { type: String, default: '#3b82f6' }
 });
+
+const emit = defineEmits(['dblclick']);
 </script>
 
 <style scoped>

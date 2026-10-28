@@ -87,13 +87,21 @@
               <label>运行速度 (mm/s)</label>
               <input v-model.number="form.speed" type="number" step="0.001" :class="{ 'danger-text': isSpeedOverridden }" @input="handleSpeedManualChange" />
             </div>
-            <div class="form-item mt-10">
+            <!-- <div class="form-item mt-10">
               <label>停止条件</label>
               <select v-model="form.stopCondition">
                 <option value="manual">手动停止</option>
                 <option value="time">按时间 (s)</option>
                 <option value="load">按载荷 (N)</option>
                 <option value="disp">按位移 (mm)</option>
+              </select>
+            </div> -->
+            <div class="form-item mt-10">
+              <label>暂停状态</label>
+              <select v-model="form.pauseCondition">
+                <option value="stop">立即停止</option>
+                <option value="load-maintain">载荷维持</option>
+                <option value="disp-maintain">位移维持(暂不使用)</option>
               </select>
             </div>
           </div>
@@ -268,6 +276,7 @@ const form = reactive({
   type: 'tension',
   speed: 0.025,
   stopCondition: 'manual',
+  pauseCondition: 'stop',
   triggerPulseWidthMs: 1000,
   filePath: './data/',
   fileName: 'Result_001',
@@ -408,6 +417,7 @@ const handleSubmit = async () => {
       testType: form.type === 'compression' ? -1 : 1,
       speed: form.speed,
       stopCondition: form.stopCondition,
+      pauseCondition: form.pauseCondition,
       triggerEnabled: form.externalTrigger,
       triggerPeriodMs: Number(form.triggerInterval),
       triggerPulseWidthMs: Number(form.triggerPulseWidthMs),

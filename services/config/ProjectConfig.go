@@ -61,7 +61,7 @@ func NewProjectConfig() *ProjectConfig {
 		TestType:       1,
 		Speed:          0.1,
 		StopCondition:  "time",
-		PauseCondition: "pause",
+		PauseCondition: "stop",
 		FilePath:       "./data/",
 		FileName:       "test.json",
 
@@ -102,6 +102,9 @@ func (s *ProjectConfig) GetFromLocalPath(path string) (*ProjectConfig, error) {
 	config := NewProjectConfig()
 	if err := json.Unmarshal(data, config); err != nil {
 		return nil, err
+	}
+	if config.PauseCondition == "" || config.PauseCondition == "pause" {
+		config.PauseCondition = "stop"
 	}
 	*s = *config
 	return s, nil

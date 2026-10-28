@@ -44,10 +44,10 @@
 
       <main class="data-area">
         <section class="metrics-grid" aria-label="实时数据显示">
-          <MetricCard label="应力" :value="metrics.mts.stress" unit="MPa" sub-label="载荷" :sub-value="metrics.mts.load" sub-unit="N" accent="#f59e0b" />
-          <MetricCard label="应变" :value="metrics.mts.strain" unit="ε" sub-label="位移" :sub-value="metrics.mts.disp" sub-unit="mm" accent="#8b5cf6" />
-          <MetricCard label="视频应变" :value="metrics.mts.eStrain" unit="ε" sub-label="视频位移" :sub-value="metrics.mts.ePos" sub-unit="pixels" accent="#06b6d4" />
-          <MetricCard label="时间" :value="metrics.mts.duration" unit="s" sub-label="北京时间" :sub-value="metrics.system.clock" accent="#ec4899" />
+          <MetricCard label="应力" :value="metrics.mts.stress" unit="MPa" sub-label="载荷" :sub-value="metrics.mts.load" sub-unit="N" accent="#f59e0b" @dblclick="handleCardDoubleClick('load')" />
+          <MetricCard label="应变" :value="metrics.mts.strain" unit="ε" sub-label="位移" :sub-value="metrics.mts.disp" sub-unit="mm" accent="#8b5cf6" @dblclick="handleCardDoubleClick('disp')" />
+          <MetricCard label="视频应变" :value="metrics.mts.eStrain" unit="ε" sub-label="视频位移" :sub-value="metrics.mts.ePos" sub-unit="pixels" accent="#06b6d4" @dblclick="handleCardDoubleClick('ePos')" />
+          <MetricCard label="时间" :value="metrics.mts.duration" unit="s" sub-label="北京时间" :sub-value="metrics.system.clock" accent="#ec4899" @dblclick="handleCardDoubleClick('time')" />
         </section>
 
         <section class="workspace">
@@ -162,7 +162,7 @@ const metrics = Vue.reactive({
       ePos: '0.000',
       eStrain: '0.0000',
       
-      duration: '0.000',
+      duration: '0.0',
     }
 });
 
@@ -223,7 +223,19 @@ const updateMetrics = (data) => {
   metrics.mts.eStrain = Number(data.eStrain || 0).toFixed(4);
   metrics.mts.ePos = Number(data.ePos || 0).toFixed(3);
 
-  metrics.mts.duration = Number(data.duration || 0).toFixed(3);
+  metrics.mts.duration = Number(data.duration || 0).toFixed(1);
+};
+
+// 双击数据卡片归零：load/disp/ePos 清除当前偏移，time 重置试验计时
+const ZERO_LABELS = { load: '载荷', disp: '位移', ePos: '视频位移', time: '时间' };
+
+const handleCardDoubleClick = async (dataType) => {
+  try {
+    await MINIMTSService.CallDataToZero(dataType);
+    showToast(`${ZERO_LABELS[dataType] || '数据'}已归零`, 'success');
+  } catch (error) {
+    showToast(error?.message || String(error || '归零失败'), 'error');
+  }
 };
 
 let unsubscribePCHeartbeat = null;

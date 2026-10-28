@@ -286,6 +286,14 @@ export class MINIMTSHeartbeat {
              */
             this["eStrain"] = 0;
         }
+        if (!("eZeroStrain" in $$source)) {
+            /**
+             * 归零后的视频应变值
+             * @member
+             * @type {number}
+             */
+            this["eZeroStrain"] = 0;
+        }
         if (!("limitDIR" in $$source)) {
             /**
              * 限位被触发方向（idle-无限位，cw-正向限位，ccw-反向限位）
@@ -330,6 +338,78 @@ export class MINIMTSHeartbeat {
     static createFrom($$source = {}) {
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         return new MINIMTSHeartbeat(/** @type {Partial<MINIMTSHeartbeat>} */($$parsedSource));
+    }
+}
+
+/**
+ * NoiseFloorResult 噪声底测量结果
+ */
+export class NoiseFloorResult {
+    /**
+     * Creates a new NoiseFloorResult instance.
+     * @param {Partial<NoiseFloorResult>} [$$source = {}] - The source object to create the NoiseFloorResult.
+     */
+    constructor($$source = {}) {
+        if (!("count" in $$source)) {
+            /**
+             * 有效样本数
+             * @member
+             * @type {number}
+             */
+            this["count"] = 0;
+        }
+        if (!("mean" in $$source)) {
+            /**
+             * 距离均值（像素）
+             * @member
+             * @type {number}
+             */
+            this["mean"] = 0;
+        }
+        if (!("std" in $$source)) {
+            /**
+             * 距离标准差（像素）——噪声底
+             * @member
+             * @type {number}
+             */
+            this["std"] = 0;
+        }
+        if (!("min" in $$source)) {
+            /**
+             * 最小值（像素）
+             * @member
+             * @type {number}
+             */
+            this["min"] = 0;
+        }
+        if (!("max" in $$source)) {
+            /**
+             * 最大值（像素）
+             * @member
+             * @type {number}
+             */
+            this["max"] = 0;
+        }
+        if (!("ratio" in $$source)) {
+            /**
+             * 比例标定系数（>0 时 Std/Ratio 为毫米噪声）
+             * @member
+             * @type {number}
+             */
+            this["ratio"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new NoiseFloorResult instance from a string or object.
+     * @param {any} [$$source = {}]
+     * @returns {NoiseFloorResult}
+     */
+    static createFrom($$source = {}) {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new NoiseFloorResult(/** @type {Partial<NoiseFloorResult>} */($$parsedSource));
     }
 }
 

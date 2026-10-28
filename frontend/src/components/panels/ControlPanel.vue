@@ -2,17 +2,23 @@
   <aside class="controls">
     <section class="group test-control">
       <h3><i class="ri-dashboard-3-line"></i> 试验控制</h3>
-      <button class="start" :class="{ running: measuring }" type="button" @click="toggleMeasurement">
-        <i :class="measuring ? 'ri-stop-fill' : 'ri-play-fill'"></i>
-        <span>{{ measuring ? '停止试验' : '开始试验' }}</span>
-      </button>
+      <div class="test-buttons">
+        <button class="start" :class="{ running: measuring }" type="button" @click="toggleMeasurement">
+          <i :class="measuring ? 'ri-stop-fill' : 'ri-play-fill'"></i>
+          <span>{{ measuring ? '停止试验' : '开始试验' }}</span>
+        </button>
+        <button class="pause" :class="{ resumed: paused }" type="button" :disabled="!measuring" @click="togglePause">
+          <i :class="paused ? 'ri-play-fill' : 'ri-pause-fill'"></i>
+          <span>{{ paused ? '继续试验' : '暂停试验' }}</span>
+        </button>
+      </div>
     </section>
 
     <section class="group data-control">
       <h3><i class="ri-database-2-line"></i> 数据操作</h3>
       <div class="data-buttons">
-        <button type="button"><i class="ri-delete-bin-6-line"></i><span>清除数据</span></button>
-        <button type="button"><i class="ri-save-3-line"></i><span>保存数据</span></button>
+        <button type="button" @click="clearData"><i class="ri-delete-bin-6-line"></i><span>清除数据</span></button>
+        <button type="button" @click="saveData"><i class="ri-save-3-line"></i><span>保存数据</span></button>
       </div>
     </section>
 
@@ -24,13 +30,25 @@
         <em>mm/s</em>
       </label>
       <div class="manual-buttons">
-        <button class="tensile" type="button" @click="jog(1)">
+        <button
+          class="tensile"
+          type="button"
+          @pointerdown.prevent="startJog(1, $event)"
+          @pointerup="releaseJog"
+          @pointercancel="releaseJog"
+        >
           <i class="ri-arrow-up-line"></i><span>拉伸</span>
         </button>
         <button class="stop" type="button" @click="stopMotor">
           <i class="ri-stop-fill"></i><span>停止</span>
         </button>
-        <button class="compress" type="button" @click="jog(-1)">
+        <button
+          class="compress"
+          type="button"
+          @pointerdown.prevent="startJog(-1, $event)"
+          @pointerup="releaseJog"
+          @pointercancel="releaseJog"
+        >
           <i class="ri-arrow-down-line"></i><span>压缩</span>
         </button>
       </div>
@@ -45,9 +63,14 @@
 
 <script setup>
 import { inject, ref } from 'vue';
+import { Events } from '@wailsio/runtime';
 import {
+  ClearDataCache,
+  SaveCache,
   MotorJog,
   MotorStop,
+  PauseMeasurement,
+  ResumeMeasurement,
   StartMeasurement,
   StopMeasurement,
 } from '../../../bindings/MINIMTS/services/devices/MINIMTSService.js';
@@ -56,7 +79,9 @@ const toast = inject('toast', () => {});
 
 const speed = ref(0.5);
 const measuring = ref(false);
+const paused = ref(false);
 const busy = ref(false);
+const jogging = ref(false);
 
 const runAction = async (action) => {
   if (busy.value) return false;
@@ -75,18 +100,70 @@ const runAction = async (action) => {
 
 const toggleMeasurement = async () => {
   if (measuring.value) {
-    if (await runAction(StopMeasurement)) measuring.value = false;
+    if (await runAction(StopMeasurement)) {
+      measuring.value = false;
+      paused.value = false;
+      toast('试验已停止', 'success');
+    }
     return;
   }
-  if (await runAction(StartMeasurement)) measuring.value = true;
+  if (await runAction(StartMeasurement)) {
+    measuring.value = true;
+    paused.value = false;
+    toast('试验已开始', 'success');
+  }
 };
 
-const jog = (direction) => {
+const togglePause = async () => {
+  if (!measuring.value) return;
+
+  if (paused.value) {
+    if (await runAction(ResumeMeasurement)) {
+      paused.value = false;
+      toast('试验已继续', 'success');
+    }
+    return;
+  }
+  if (await runAction(PauseMeasurement)) {
+    paused.value = true;
+    toast('试验已暂停', 'success');
+  }
+};
+
+const startJog = async (direction, event) => {
+  if (jogging.value) return;
+
+  event.currentTarget.setPointerCapture(event.pointerId);
+  jogging.value = true;
   const value = Number(speed.value) || 0;
-  return runAction(() => MotorJog(direction * value));
+  const started = await runAction(() => MotorJog(direction * value));
+  if (!started) jogging.value = false;
+
+  if (!jogging.value) await runAction(MotorStop);
 };
 
-const stopMotor = () => runAction(MotorStop);
+const releaseJog = async () => {
+  if (!jogging.value) return;
+
+  jogging.value = false;
+  if (!busy.value) await runAction(MotorStop);
+};
+
+const stopMotor = async () => {
+  jogging.value = false;
+  await runAction(MotorStop);
+};
+
+const saveData = async () => {
+  if (await runAction(SaveCache)) toast('数据已保存');
+};
+
+const clearData = async () => {
+  if (await runAction(ClearDataCache)) {
+    Events.Emit('mts-data-cleared');
+    toast('数据已清除');
+  }
+};
 </script>
 
 <style scoped>
@@ -153,6 +230,12 @@ button:hover {
   border-color: #64748b;
 }
 
+.test-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
 .start {
   width: 100%;
   height: 48px;
@@ -180,6 +263,35 @@ button:hover {
 .start.running:hover {
   background: #dc2626;
   border-color: #dc2626;
+}
+
+.pause {
+  height: 48px;
+  color: #f8fafc;
+  background: #f59e0b;
+  border-color: #f59e0b;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.pause:hover:not(:disabled) {
+  background: #d97706;
+  border-color: #d97706;
+}
+
+.pause.resumed {
+  background: #3b82f6;
+  border-color: #3b82f6;
+}
+
+.pause.resumed:hover {
+  background: #2563eb;
+  border-color: #2563eb;
+}
+
+.pause:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .data-buttons {

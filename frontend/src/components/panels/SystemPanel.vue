@@ -139,6 +139,73 @@
           </div>
         </div>
       </div>
+
+      <!-- DIC 预处理 -->
+      <div class="config-section">
+        <div class="section-tag color-dic">DIC 预处理</div>
+        <div class="form-grid">
+          <div class="form-item">
+            <label>预处理方法（实时生效）</label>
+            <select v-model="config.dic_preprocess_method" @change="applyDICPreprocess">
+              <option value="none">无处理</option>
+              <option value="gauss">高斯去噪 + 锐化</option>
+              <option value="bilateral">双边滤波（保边缘）</option>
+              <option value="nlm">非局部均值去噪</option>
+              <option value="highpass">光照平场（高通）</option>
+            </select>
+          </div>
+          <div class="form-item" v-if="config.dic_preprocess_method === 'gauss' || config.dic_preprocess_method === 'bilateral'">
+            <label>锐化强度</label>
+            <input v-model.number="config.dic_sharpen_amount" type="number" step="0.1" min="0" @change="applyDICPreprocess">
+          </div>
+          <div class="form-item">
+            <label>提示</label>
+            <span class="hint-text">修改方法后建议重新框选 ROI，使模板与实时帧预处理一致</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 噪声底测量（调试） -->
+      <div class="config-section">
+        <div class="section-tag color-noise">噪声底测量（调试）</div>
+        <div class="form-grid">
+          <div class="form-item">
+            <label>采样帧数 (50–2000)</label>
+            <input v-model.number="noiseCount" type="number" min="50" max="2000" step="50">
+          </div>
+          <div class="form-item checkbox-item">
+            <button class="btn-primary noise-btn" type="button" :disabled="noiseLoading || loading" @click="measureNoise">
+              <i class="ri-pulse-line"></i> {{ noiseLoading ? '测量中...' : '一键测量' }}
+            </button>
+          </div>
+        </div>
+        <div v-if="noiseResult" class="noise-result">
+          <div class="noise-item">
+            <span class="noise-label">有效样本</span>
+            <span class="noise-value">{{ noiseResult.count }}</span>
+          </div>
+          <div class="noise-item">
+            <span class="noise-label">距离均值</span>
+            <span class="noise-value">{{ noiseResult.mean.toFixed(4) }} px</span>
+          </div>
+          <div class="noise-item highlight">
+            <span class="noise-label">噪声底 (Std)</span>
+            <span class="noise-value">{{ noiseResult.std.toFixed(4) }} px</span>
+          </div>
+          <div class="noise-item highlight" v-if="noiseResult.ratio > 0">
+            <span class="noise-label">噪声底 (mm)</span>
+            <span class="noise-value">{{ (noiseResult.std / noiseResult.ratio).toFixed(5) }} mm</span>
+          </div>
+          <div class="noise-item">
+            <span class="noise-label">最小值</span>
+            <span class="noise-value">{{ noiseResult.min.toFixed(4) }} px</span>
+          </div>
+          <div class="noise-item">
+            <span class="noise-label">最大值</span>
+            <span class="noise-value">{{ noiseResult.max.toFixed(4) }} px</span>
+          </div>
+        </div>
+      </div>
         </div>
         <div class="system-footer">
           <button class="btn-secondary" type="button" :disabled="saving" @click="emit('close')">
@@ -159,6 +226,11 @@ import {
   GetFromLocalPath,
   SaveToLocalPath,
 } from '../../../bindings/MINIMTS/services/config/systemconfig.js';
+import {
+  GetDICPreprocess,
+  MeasureNoiseFloor,
+  SetDICPreprocess,
+} from '../../../bindings/MINIMTS/services/devices/hikextensometerservice.js';
 
 const emit = defineEmits(['close', 'save']);
 const toast = inject('toast', () => {});
@@ -184,13 +256,48 @@ const defaultConfig = {
   pid_max_speed: 0.3,
   pid_min_speed: -0.3,
   pid_dir: 1,
+  dic_preprocess_method: 'gauss',
+  dic_sharpen_amount: 0.8,
 };
 
 const config = reactive({ ...defaultConfig });
 const loading = ref(false);
 const saving = ref(false);
 
+// 噪声底测量状态
+const noiseCount = ref(300);
+const noiseLoading = ref(false);
+const noiseResult = ref(null);
+
 const errorText = (error) => error?.message || String(error || '操作失败');
+
+// 实时套用 DIC 预处理到运行中的引伸计
+const applyDICPreprocess = async () => {
+  try {
+    await SetDICPreprocess(config.dic_preprocess_method, Number(config.dic_sharpen_amount) || 0);
+    toast('DIC 预处理已实时生效，建议重新框选 ROI 同步模板', 'success');
+  } catch (error) {
+    toast(errorText(error), 'error');
+  }
+};
+
+// 一键噪声底测量：静止状态下连续采集 ROI 距离并统计
+const measureNoise = async () => {
+  if (noiseLoading.value) return;
+  noiseLoading.value = true;
+  noiseResult.value = null;
+  try {
+    const result = await MeasureNoiseFloor(Math.round(Number(noiseCount.value) || 300));
+    noiseResult.value = result;
+    if (result) {
+      toast(`测量完成：${result.count} 帧，噪声底 ${result.std.toFixed(4)} px`, 'success');
+    }
+  } catch (error) {
+    toast(errorText(error), 'error');
+  } finally {
+    noiseLoading.value = false;
+  }
+};
 
 const loadConfig = async () => {
   loading.value = true;
@@ -199,6 +306,14 @@ const loadConfig = async () => {
     if (savedConfig) {
       Object.assign(config, savedConfig);
     }
+    // 以后端运行中的实际预处理设置为准（可能被实时修改过且未保存）
+    try {
+      const dic = await GetDICPreprocess();
+      if (dic && dic.method) {
+        config.dic_preprocess_method = dic.method;
+        config.dic_sharpen_amount = dic.sharpen ?? config.dic_sharpen_amount;
+      }
+    } catch { /* 后端不可用时保持配置值 */ }
   } catch (error) {
     toast(errorText(error), 'error');
   } finally {
@@ -316,6 +431,8 @@ onMounted(loadConfig);
 .section-tag.color-limit { background: #ef4444; }
 .section-tag.color-temp { background: #10b981; }
 .section-tag.color-pid { background: #8b5cf6; }
+.section-tag.color-dic { background: #06b6d4; }
+.section-tag.color-noise { background: #ec4899; }
 
 .form-grid {
   display: grid;
@@ -452,5 +569,52 @@ select:focus {
 .btn-secondary:disabled {
   cursor: not-allowed;
   opacity: 0.6;
+}
+
+/* DIC 预处理提示 */
+.hint-text {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+/* 噪声底测量 */
+.noise-btn {
+  width: 100%;
+  justify-content: center;
+}
+
+.noise-result {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+}
+
+.noise-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.noise-label {
+  color: #64748b;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.noise-value {
+  color: #f1f5f9;
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.noise-item.highlight .noise-value {
+  color: #22d3ee;
 }
 </style>

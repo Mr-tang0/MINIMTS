@@ -34,6 +34,9 @@ type SystemConfig struct {
 	PID_MaxSpeed float64 `json:"pid_max_speed"` // 最大速度
 	PID_MinSpeed float64 `json:"pid_min_speed"` // 最小速度
 	PID_DIR      int     `json:"pid_dir"`       // pid方向，1 或 -1
+
+	DIC_PreprocessMethod string  `json:"dic_preprocess_method"` // DIC 预处理方法: none/gauss/bilateral/nlm/highpass
+	DIC_SharpenAmount    float64 `json:"dic_sharpen_amount"`    // DIC 锐化强度
 }
 
 func NewSystemConfig() *SystemConfig {
@@ -46,9 +49,9 @@ func NewSystemConfig() *SystemConfig {
 		Weigh_Resolution: 1.0, // 默认称重模块分辨率
 		Weigh_Direction:  1,   // 默认称重模块方向
 
-		Limit_ID:        4,    // 默认限位模块ID
-		Limit_Enabled:   true, // 默认启用限位模块
-		Limit_Direction: 2,    // 默认限位模块方向：CW对应的端口
+		Limit_ID:        4,     // 默认限位模块ID
+		Limit_Enabled:   false, // 默认启用限位模块
+		Limit_Direction: 2,     // 默认限位模块方向：CW对应的端口
 
 		Temp_ID:      5,     // 默认温度模块ID
 		Temp_Enabled: false, // 默认不启用温度模块
@@ -61,6 +64,9 @@ func NewSystemConfig() *SystemConfig {
 		PID_MaxSpeed: 0.3,  // 默认最大速度
 		PID_MinSpeed: -0.3, // 默认最小速度
 		PID_DIR:      1,    // 默认pid方向
+
+		DIC_PreprocessMethod: "gauss", // 默认预处理方法
+		DIC_SharpenAmount:    0.8,     // 默认锐化强度
 	}
 }
 

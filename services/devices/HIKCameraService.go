@@ -4,6 +4,7 @@ import (
 	"MINIMTS/services/devices/hik"
 	"encoding/base64"
 	"fmt"
+	"image"
 	"sync"
 	"time"
 
@@ -194,10 +195,7 @@ func bayerToBGRCode(pixelType uint32) gocv.ColorConversionCode {
 }
 
 // onImageReceived 图像数据回调（由 camera.go 调用）
-var lastFrameArrival time.Time              // 调试：帧到达间隔
-var lastPixelTypeLog uint32                 // 调试：像素格式变化打印
-var collectDebug = hik.NewDebugAverager(30) // 调试：采集路径降频输出
-var displayDebug = hik.NewDebugAverager(30) // 调试：显示路径降频输出
+var lastPixelTypeLog uint32 // 像素格式变化打印
 
 func (s *HIKCameraService) onImageReceived(data []byte, frameId uint64, width, height int, pixelType uint32) {
 	defer func() {
@@ -229,13 +227,8 @@ func (s *HIKCameraService) onImageReceived(data []byte, frameId uint64, width, h
 		return
 	}
 
-	arrival := time.Now()
-	gap := arrival.Sub(lastFrameArrival)
-	lastFrameArrival = arrival
-
 	// 解码（ROI 跟踪必需）：8 位原始格式直接包装像素跳过 JPEG 解码；
 	// Bayer 彩色格式转灰度供 DIC 使用，Mono8 直接作为灰度帧
-	decodeStart := time.Now()
 	var rawMat gocv.Mat
 	var err error
 	if hik.IsRaw8Bit(pixelType) {
@@ -257,24 +250,19 @@ func (s *HIKCameraService) onImageReceived(data []byte, frameId uint64, width, h
 		frameMat = rawMat
 	}
 	defer frameMat.Close()
-	decodeElapsed := time.Since(decodeStart)
 
 	// 保存原始图像，供标定使用
 	s.storeLatestRawFrame(data, width, height, pixelType)
 
 	// 应用标定变换
-	transformStart := time.Now()
 	displayMat, err := s.applyTransformHook(frameMat)
-	transformElapsed := time.Since(transformStart)
 	if err != nil || displayMat.Empty() {
 		closeMatQuietly(&displayMat)
 		displayMat = frameMat.Clone()
 	}
 
 	// ROI 跟踪快路径（DIC + 结果发射），不含任何编码绘制
-	trackStart := time.Now()
 	s.applyTrackHook(&displayMat)
-	trackElapsed := time.Since(trackStart)
 	displayMat.Close()
 
 	// 显示编码转入独立协程；通道满时丢弃旧帧保最新
@@ -289,25 +277,31 @@ func (s *HIKCameraService) onImageReceived(data []byte, frameId uint64, width, h
 		}
 		s.displayCh <- job
 	}
-
-	if gap < time.Second {
-		collectDebug.Add("帧间隔", gap)
-	}
-	collectDebug.Add("解码", decodeElapsed)
-	collectDebug.Add("标定", transformElapsed)
-	collectDebug.Add("ROI追踪", trackElapsed)
-	if avg := collectDebug.Report(); avg != "" {
-		fmt.Println("[采集调试]", avg)
-	}
 }
+
+// 显示链路减负参数：预览无交互，限帧率 + 降采样可大幅降低 CPU 占用；
+// DIC 追踪走采集回调快路径，不受显示节流影响
+const (
+	minDisplayInterval = 100 * time.Millisecond // 显示帧率上限（10fps，丢弃间隔内的帧）
+	cacheMinInterval   = time.Second            // 全分辨率缓存帧最小更新间隔（供选择器/标定取静态快照）
+	displayMaxWidth    = 1280                   // 预览帧最大宽度（超出则降采样）
+)
 
 // displayWorker 显示编码协程：JPEG 编码与前端推送不占用采集回调线程
 func (s *HIKCameraService) displayWorker() {
+	var lastDisplay, lastCache time.Time
 	for {
 		select {
 		case <-s.stopCh:
 			return
 		case job := <-s.displayCh:
+			// 帧率节流：未到间隔直接丢弃，通道容量 1 自动保最新
+			now := time.Now()
+			if !lastDisplay.IsZero() && now.Sub(lastDisplay) < minDisplayInterval {
+				continue
+			}
+			lastDisplay = now
+
 			// 原始帧 → BGR 显示帧；JPEG 数据直接解码
 			var mat gocv.Mat
 			if hik.IsRaw8Bit(job.pixelType) {
@@ -339,21 +333,28 @@ func (s *HIKCameraService) displayWorker() {
 				continue
 			}
 
-			// 先缓存无叠加的图像，供 ROI/方向线选择器与标定界面取帧
-			cacheStart := time.Now()
-			if frame, err := encodeJPEG(displayMat); err == nil {
-				s.storeLatestFrame(frame, displayMat.Cols(), displayMat.Rows())
+			// 降频缓存无叠加的全分辨率图像，供 ROI/方向线选择器与标定界面取帧
+			// （缓存帧直接喂 DIC 模板，必须保持全分辨率；每秒编码一次开销可忽略）
+			if lastCache.IsZero() || now.Sub(lastCache) >= cacheMinInterval {
+				if frame, err := encodeJPEG(displayMat); err == nil {
+					s.storeLatestFrame(frame, displayMat.Cols(), displayMat.Rows())
+				}
+				lastCache = now
 			}
-			cacheElapsed := time.Since(cacheStart)
 
-			// 再叠加跟踪 ROI 与方向线，推送预览
-			drawStart := time.Now()
+			// 叠加跟踪 ROI 与方向线（全图坐标，降采样前绘制）
 			s.applyDrawHook(&displayMat)
-			drawElapsed := time.Since(drawStart)
 
-			encodeStart := time.Now()
+			// 显示帧降采样：降低 JPEG 编码与前端解码开销
+			if displayMat.Cols() > displayMaxWidth {
+				scale := float64(displayMaxWidth) / float64(displayMat.Cols())
+				small := gocv.NewMat()
+				gocv.Resize(displayMat, &small, image.Pt(displayMaxWidth, int(float64(displayMat.Rows())*scale)), 0, 0, gocv.InterpolationArea)
+				displayMat.Close()
+				displayMat = small
+			}
+
 			out, err := encodeJPEG(displayMat)
-			encodeElapsed := time.Since(encodeStart)
 			displayMat.Close()
 
 			if err != nil {
@@ -364,18 +365,10 @@ func (s *HIKCameraService) displayWorker() {
 			if app == nil {
 				continue
 			}
-			pushStart := time.Now()
 			app.Event.Emit("hik_camera_frame", map[string]any{
 				"frameId": job.frameId,
 				"image":   "data:image/jpeg;base64," + base64.StdEncoding.EncodeToString(out),
 			})
-			displayDebug.Add("缓存编码", cacheElapsed)
-			displayDebug.Add("绘制", drawElapsed)
-			displayDebug.Add("显示编码", encodeElapsed)
-			displayDebug.Add("推送", time.Since(pushStart))
-			if avg := displayDebug.Report(); avg != "" {
-				fmt.Println("[显示调试]", avg)
-			}
 		}
 	}
 }

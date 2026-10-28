@@ -30,6 +30,14 @@ export function CallExit() {
 }
 
 /**
+ * ClearDataCache 清空内存中的心跳数据缓存，不删除已保存的文件。
+ * @returns {$CancellablePromise<void>}
+ */
+export function ClearDataCache() {
+    return $Call.ByID(3705106642);
+}
+
+/**
  * @returns {$CancellablePromise<void>}
  */
 export function CloseMINIMTS() {
@@ -115,6 +123,30 @@ export function MotorStop() {
  */
 export function OpenMINIMTS(name) {
     return $Call.ByID(3733101354, name);
+}
+
+/**
+ * PauseMeasurement 根据项目配置暂停测量。
+ * @returns {$CancellablePromise<void>}
+ */
+export function PauseMeasurement() {
+    return $Call.ByID(1334116117);
+}
+
+/**
+ * ResumeMeasurement 结束暂停状态并恢复试验速度。
+ * @returns {$CancellablePromise<void>}
+ */
+export function ResumeMeasurement() {
+    return $Call.ByID(1806487312);
+}
+
+/**
+ * SaveCache 将当前缓存快照保存为 CSV；path 和 name 为空时使用项目配置。
+ * @returns {$CancellablePromise<void>}
+ */
+export function SaveCache() {
+    return $Call.ByID(77005288);
 }
 
 /**

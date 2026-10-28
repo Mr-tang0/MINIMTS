@@ -27,10 +27,18 @@ func main() {
 	if _, err := projectConfig.GetFromLocalPath(""); err != nil {
 		log.Fatal(err)
 	}
+	if _, err := systemConfig.GetFromLocalPath(""); err != nil {
+		log.Fatal(err)
+	}
 
 	camera := Devices.NewHIKCamera()
 	calibration := Devices.NewHIKCalibration(camera)
 	extensometer := Devices.NewHIKExtensometer(camera)
+
+	// 从配置套用 DIC 预处理设置
+	if err := extensometer.SetDICPreprocess(systemConfig.DIC_PreprocessMethod, systemConfig.DIC_SharpenAmount); err != nil {
+		log.Fatal(err)
+	}
 
 	minimts := Devices.NewMINIMTSService(extensometer)
 	if err := minimts.Startup(systemConfig, projectConfig); err != nil {

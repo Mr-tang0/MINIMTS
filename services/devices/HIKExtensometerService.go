@@ -49,6 +49,28 @@ type HIKExtensometerService struct {
 	// ── 比例标定 ──
 	resolutionRatio float64
 	resolutionMu    sync.RWMutex
+
+	// ── DIC 预处理参数（系统设置实时修改） ──
+	dicParamMu sync.Mutex
+	dicMethod  string  // none/gauss/bilateral/nlm/highpass
+	dicSharpen float64 // 锐化强度
+
+	// ── 噪声底测量 ──
+	noiseMu         sync.Mutex
+	noiseCollecting bool
+	noiseSamples    []float64
+	noiseTarget     int
+	noiseDone       chan struct{}
+}
+
+// NoiseFloorResult 噪声底测量结果
+type NoiseFloorResult struct {
+	Count int     `json:"count"` // 有效样本数
+	Mean  float64 `json:"mean"`  // 距离均值（像素）
+	Std   float64 `json:"std"`   // 距离标准差（像素）——噪声底
+	Min   float64 `json:"min"`   // 最小值（像素）
+	Max   float64 `json:"max"`   // 最大值（像素）
+	Ratio float64 `json:"ratio"` // 比例标定系数（>0 时 Std/Ratio 为毫米噪声）
 }
 
 // NewHIKExtensometer 创建引伸计服务，并把它注册为相机服务的跟踪与绘制钩子
@@ -142,6 +164,7 @@ func (s *HIKExtensometerService) SetROI(label string, rect hik.ROIRect) error {
 	defer closeMatQuietly(&mat)
 
 	tracker := hik.NewExtensometerService()
+	s.applyDICParamsToTracker(tracker) // 模板提取前先套用当前预处理方法
 	tracker.SetOrignalImg(mat)
 	tracker.SetROI(hik.Rect2f{
 		X:      rect.X,
@@ -272,16 +295,180 @@ func (s *HIKExtensometerService) emitROIResult() {
 	if err != nil {
 		return
 	}
+	s.collectNoiseSample(result.Distance)
 	if app := application.Get(); app != nil {
 		app.Event.Emit("hik_extensometer_result", *result)
 	}
 }
 
+// ────────────── DIC 预处理参数 ──────────────
+
+// SetDICPreprocess 设置 DIC 预处理方法与锐化强度，立即作用于后续所有帧。
+// method: none/gauss/bilateral/nlm/highpass
+// 注意：修改方法后建议重新框选 ROI，使参考模板与实时帧的预处理保持一致。
+func (s *HIKExtensometerService) SetDICPreprocess(method string, sharpen float64) error {
+	valid := map[string]bool{
+		hik.DICPreprocessNone:      true,
+		hik.DICPreprocessGauss:     true,
+		hik.DICPreprocessBilateral: true,
+		hik.DICPreprocessNLM:       true,
+		hik.DICPreprocessHighPass:  true,
+	}
+	if !valid[method] {
+		return fmt.Errorf("未知预处理方法: %s", method)
+	}
+	if sharpen < 0 {
+		sharpen = 0
+	}
+
+	s.dicParamMu.Lock()
+	s.dicMethod = method
+	s.dicSharpen = sharpen
+	s.dicParamMu.Unlock()
+
+	// 已存在的 tracker 立即生效
+	s.roiMu.Lock()
+	trackers := []*hik.ExtensometerService{s.roiA, s.roiB}
+	s.roiMu.Unlock()
+	for _, t := range trackers {
+		if t != nil {
+			s.applyDICParamsToTracker(t)
+		}
+	}
+
+	if app := application.Get(); app != nil {
+		app.Event.Emit("hik_dic_preprocess_changed", map[string]any{
+			"method":  method,
+			"sharpen": sharpen,
+		})
+	}
+	return nil
+}
+
+// GetDICPreprocess 获取当前预处理设置
+func (s *HIKExtensometerService) GetDICPreprocess() map[string]any {
+	s.dicParamMu.Lock()
+	defer s.dicParamMu.Unlock()
+	return map[string]any{
+		"method":  s.dicMethod,
+		"sharpen": s.dicSharpen,
+	}
+}
+
+// applyDICParamsToTracker 将当前预处理设置套用到 tracker（其余参数保持默认）
+func (s *HIKExtensometerService) applyDICParamsToTracker(tracker *hik.ExtensometerService) {
+	s.dicParamMu.Lock()
+	method, sharpen := s.dicMethod, s.dicSharpen
+	s.dicParamMu.Unlock()
+
+	param := hik.DefaultDICParam()
+	param.PreprocessMethod = method
+	param.SharpenAmount = sharpen
+	tracker.SetDICParam(param)
+}
+
+// ────────────── 噪声底测量 ──────────────
+
+// MeasureNoiseFloor 噪声底测量：静止状态下连续采集指定帧数的 ROI 距离值，
+// 输出均值/标准差/极值。标准差即位移噪声底，用于评估预处理方法的效果。
+// 同步阻塞直至采满或超时（60 秒）。
+func (s *HIKExtensometerService) MeasureNoiseFloor(sampleCount int) (*NoiseFloorResult, error) {
+	if sampleCount < 50 {
+		sampleCount = 50
+	}
+	if sampleCount > 2000 {
+		sampleCount = 2000
+	}
+
+	s.noiseMu.Lock()
+	if s.noiseCollecting {
+		s.noiseMu.Unlock()
+		return nil, fmt.Errorf("测量进行中，请稍候")
+	}
+	s.noiseCollecting = true
+	s.noiseSamples = make([]float64, 0, sampleCount)
+	s.noiseTarget = sampleCount
+	done := make(chan struct{})
+	s.noiseDone = done
+	s.noiseMu.Unlock()
+
+	defer func() {
+		s.noiseMu.Lock()
+		s.noiseCollecting = false
+		s.noiseDone = nil
+		s.noiseMu.Unlock()
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(60 * time.Second):
+		return nil, fmt.Errorf("测量超时，请确认相机在采集且 ROI A/B 已框选")
+	}
+
+	s.noiseMu.Lock()
+	samples := s.noiseSamples
+	s.noiseSamples = nil
+	s.noiseMu.Unlock()
+	if len(samples) == 0 {
+		return nil, fmt.Errorf("未采集到数据")
+	}
+
+	var sum float64
+	min, max := samples[0], samples[0]
+	for _, v := range samples {
+		sum += v
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+	}
+	mean := sum / float64(len(samples))
+
+	var varSum float64
+	for _, v := range samples {
+		d := v - mean
+		varSum += d * d
+	}
+	std := math.Sqrt(varSum / float64(len(samples)))
+
+	return &NoiseFloorResult{
+		Count: len(samples),
+		Mean:  mean,
+		Std:   std,
+		Min:   min,
+		Max:   max,
+		Ratio: s.GetResolutionRatio(),
+	}, nil
+}
+
+// collectNoiseSample 噪声底采样（每帧结果发射时调用）
+func (s *HIKExtensometerService) collectNoiseSample(distance float64) {
+	s.noiseMu.Lock()
+	defer s.noiseMu.Unlock()
+	if !s.noiseCollecting || s.noiseDone == nil {
+		return
+	}
+	s.noiseSamples = append(s.noiseSamples, distance)
+	if len(s.noiseSamples) >= s.noiseTarget {
+		close(s.noiseDone)
+		s.noiseDone = nil
+	}
+}
+
 // ────────────── 相机叠加钩子 ──────────────
 
-// processFrame 每帧执行 ROI 跟踪、方向线调整与结果发射（快路径，不含绘制编码）
-var roiTrackDebug = hik.NewDebugAverager(30) // 调试：ROI 追踪分段降频输出
+// rect2fToImageRect 浮点 ROI 转整型图像区域（向外取整保证覆盖）
+func rect2fToImageRect(r hik.Rect2f) image.Rectangle {
+	x0 := int(math.Floor(r.X))
+	y0 := int(math.Floor(r.Y))
+	x1 := int(math.Ceil(r.X + r.Width))
+	y1 := int(math.Ceil(r.Y + r.Height))
+	return image.Rect(x0, y0, x1, y1)
+}
 
+// processFrame 每帧执行 ROI 跟踪、方向线调整与结果发射（快路径，不含绘制编码）
 func (s *HIKExtensometerService) processFrame(frame *gocv.Mat) {
 	s.roiMu.Lock()
 	hasROI := s.roiA != nil || s.roiB != nil
@@ -292,13 +479,8 @@ func (s *HIKExtensometerService) processFrame(frame *gocv.Mat) {
 
 	s.updateTrackedROIs(*frame)
 
-	postStart := time.Now()
 	s.adjustDirectionLine()
 	s.emitROIResult()
-	roiTrackDebug.Add("后处理", time.Since(postStart))
-	if avg := roiTrackDebug.Report(); avg != "" {
-		fmt.Println("[ROI分段]", avg)
-	}
 }
 
 // drawOverlay 绘制 ROI 跟踪框与方向线（仅显示编码协程调用，不占用采集回调线程）
@@ -322,16 +504,16 @@ func (s *HIKExtensometerService) updateTrackedROIs(frame gocv.Mat) {
 		return
 	}
 
-	// 帧已是单通道灰度（Mono8 直传 / Bayer 转灰）时直接预处理，省去一次全图拷贝
-	prepStart := time.Now()
-	preparedFrame := roiA.PreprocessGrayForDIC(frame)
-	prepElapsed := time.Since(prepStart)
+	// 仅对两个 ROI 覆盖区域（含搜索余量）做预处理，跳过全图模糊
+	regions := []image.Rectangle{
+		rect2fToImageRect(roiA.ROIF),
+		rect2fToImageRect(roiB.ROIF),
+	}
+	preparedFrame := roiA.PreprocessRegionsForDIC(frame, regions)
 	defer preparedFrame.Close()
 
 	// 全图字节只提取一次，两个 ROI 共享（省去重复全图拷贝）
-	toBytesStart := time.Now()
 	preparedBytes := preparedFrame.ToBytes()
-	toBytesElapsed := time.Since(toBytesStart)
 
 	var wg sync.WaitGroup
 	runTracker := func(tracker *hik.ExtensometerService) {
@@ -340,15 +522,9 @@ func (s *HIKExtensometerService) updateTrackedROIs(frame gocv.Mat) {
 	}
 
 	wg.Add(2)
-	dicStart := time.Now()
 	go runTracker(roiA)
 	go runTracker(roiB)
 	wg.Wait()
-	dicElapsed := time.Since(dicStart)
-
-	roiTrackDebug.Add("预处理", prepElapsed)
-	roiTrackDebug.Add("全图字节", toBytesElapsed)
-	roiTrackDebug.Add("DIC并行", dicElapsed)
 }
 
 func (s *HIKExtensometerService) drawTrackedROIs(frame *gocv.Mat) {

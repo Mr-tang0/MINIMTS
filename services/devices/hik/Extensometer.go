@@ -5,67 +5,10 @@ import (
 	"image"
 	"math"
 	"sort"
-	"strings"
 	"sync"
-	"time"
 
 	"gocv.io/x/gocv"
 )
-
-// DebugAverager 调试输出降频器：累计 every 次输出一次各项平均值（毫秒）
-type DebugAverager struct {
-	every int
-	count int
-	names []string
-	items map[string]float64
-	mu    sync.Mutex
-}
-
-// NewDebugAverager 创建降频调试器
-func NewDebugAverager(every int) *DebugAverager {
-	return &DebugAverager{every: every, items: make(map[string]float64)}
-}
-
-func (d *DebugAverager) add(name string, ms float64) {
-	if _, ok := d.items[name]; !ok {
-		d.names = append(d.names, name)
-	}
-	d.items[name] += ms
-}
-
-// Add 累计一项耗时
-func (d *DebugAverager) Add(name string, v time.Duration) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.add(name, float64(v.Microseconds())/1000.0)
-}
-
-// AddMS 累计一项非时长数值（如有效点数）
-func (d *DebugAverager) AddMS(name string, ms float64) {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.add(name, ms)
-}
-
-// Report 累计满 every 次时返回平均值串并清零，否则返回空串
-func (d *DebugAverager) Report() string {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.count++
-	if d.count < d.every {
-		return ""
-	}
-	n := float64(d.every)
-	parts := make([]string, 0, len(d.names))
-	for _, name := range d.names {
-		parts = append(parts, fmt.Sprintf("%s=%.1f", name, d.items[name]/n))
-	}
-	// 整体重置，避免 names 重复累积导致旧条目以 0.0 重复输出
-	d.names = d.names[:0]
-	d.items = make(map[string]float64)
-	d.count = 0
-	return strings.Join(parts, " ")
-}
 
 // Rect2f 浮点矩形
 type Rect2f struct {
@@ -77,9 +20,6 @@ type Rect2f struct {
 
 // TrackingAxis 追踪轴类型
 type TrackingAxis int
-
-// dicDebug DIC 计时降频输出（每 30 帧平均值）
-var dicDebug = NewDebugAverager(30)
 
 const (
 	TrackingAxisVertical TrackingAxis = iota
@@ -277,26 +217,123 @@ func (e *ExtensometerService) SetOrignalImg(originalImg gocv.Mat) {
 
 // PreprocessGrayForDIC applies the same denoise/sharpen pipeline used by DIC tracking.
 func (e *ExtensometerService) PreprocessGrayForDIC(grayImg gocv.Mat) gocv.Mat {
-	if e.dicParam == nil || !e.dicParam.PreprocessEnabled || grayImg.Empty() {
-		return grayImg.Clone()
+	return preprocessGrayPipeline(grayImg, e.dicParam)
+}
+
+// PreprocessRegionsForDIC 仅对 frame 的指定区域做 DIC 预处理（其余像素保持原样），
+// 返回整幅帧的克隆。区域会按搜索半径 + 子集半径 + 核尺寸外扩，保证 DIC 的
+// 模板搜索窗口与亚像素精读范围全部落在已处理像素内。用于跳过全图模糊，
+// 将预处理耗时从 ~9ms 降到 ~1ms。
+func (e *ExtensometerService) PreprocessRegionsForDIC(frame gocv.Mat, regions []image.Rectangle) gocv.Mat {
+	prepared := frame.Clone()
+	if e.dicParam == nil || !e.dicParam.PreprocessEnabled || frame.Empty() {
+		return prepared
 	}
 
 	kernel := oddKernel(e.dicParam.DenoiseKernel)
-	denoised := gocv.NewMat()
-	gocv.GaussianBlur(grayImg, &denoised, image.Pt(kernel, kernel), 0, 0, gocv.BorderDefault)
+	margin := e.dicParam.SearchRadius + e.dicParam.SubsetSize/2 + kernel + 32
+	for _, r := range regions {
+		rect := expandClampRect(r, margin, frame.Cols(), frame.Rows())
+		if rect.Dx() <= 0 || rect.Dy() <= 0 {
+			continue
+		}
+		sub := prepared.Region(rect)
+		processed := preprocessGrayPipeline(sub, e.dicParam)
+		processed.CopyTo(&sub)
+		processed.Close()
+		sub.Close()
+	}
+	return prepared
+}
 
-	if e.dicParam.SharpenAmount <= 0 {
-		return denoised
+// DIC 预处理方法常量
+const (
+	DICPreprocessNone      = "none"      // 不处理
+	DICPreprocessGauss     = "gauss"     // 高斯去噪 + 可选锐化（默认）
+	DICPreprocessBilateral = "bilateral" // 双边滤波（保边降噪）+ 可选锐化
+	DICPreprocessNLM       = "nlm"       // 非局部均值降噪
+	DICPreprocessHighPass  = "highpass"  // 光照平场化（去除缓慢光照变化）
+)
+
+// DICPreprocessMethods 返回支持的预处理方法列表
+func DICPreprocessMethods() []string {
+	return []string{DICPreprocessNone, DICPreprocessGauss, DICPreprocessBilateral, DICPreprocessNLM, DICPreprocessHighPass}
+}
+
+// preprocessGrayPipeline DIC 预处理管线：按 PreprocessMethod 分派
+func preprocessGrayPipeline(grayImg gocv.Mat, param *DICParam) gocv.Mat {
+	if param == nil || !param.PreprocessEnabled || grayImg.Empty() {
+		return grayImg.Clone()
 	}
 
+	switch param.PreprocessMethod {
+	case DICPreprocessNone:
+		return grayImg.Clone()
+
+	case DICPreprocessBilateral:
+		// 双边滤波：降噪同时保留斑点边缘
+		denoised := gocv.NewMat()
+		gocv.BilateralFilter(grayImg, &denoised, oddKernel(param.DenoiseKernel)+2, 30, 5)
+		return applySharpen(denoised, param)
+
+	case DICPreprocessNLM:
+		// 非局部均值：降噪质量最好，计算量较大（仅 ROI 区域内使用）
+		denoised := gocv.NewMat()
+		gocv.FastNlMeansDenoising(grayImg, &denoised)
+		return denoised
+
+	case DICPreprocessHighPass:
+		// 光照平场化：减去大核模糊背景再抬回中灰，消除缓慢光照不均与漂移
+		bg := gocv.NewMat()
+		gocv.GaussianBlur(grayImg, &bg, image.Pt(51, 51), 0, 0, gocv.BorderDefault)
+		flat := gocv.NewMat()
+		gocv.AddWeighted(grayImg, 1, bg, -1, 128, &flat)
+		bg.Close()
+		return flat
+
+	default: // gauss
+		kernel := oddKernel(param.DenoiseKernel)
+		denoised := gocv.NewMat()
+		gocv.GaussianBlur(grayImg, &denoised, image.Pt(kernel, kernel), 0, 0, gocv.BorderDefault)
+		return applySharpen(denoised, param)
+	}
+}
+
+// applySharpen 反锐化掩模（SharpenAmount<=0 时原样返回）
+func applySharpen(denoised gocv.Mat, param *DICParam) gocv.Mat {
+	if param.SharpenAmount <= 0 {
+		return denoised
+	}
+	kernel := oddKernel(param.DenoiseKernel)
 	blurred := gocv.NewMat()
 	defer blurred.Close()
 	gocv.GaussianBlur(denoised, &blurred, image.Pt(kernel, kernel), 0, 0, gocv.BorderDefault)
 
 	sharpened := gocv.NewMat()
-	_ = gocv.AddWeighted(denoised, 1+e.dicParam.SharpenAmount, blurred, -e.dicParam.SharpenAmount, 0, &sharpened)
+	_ = gocv.AddWeighted(denoised, 1+param.SharpenAmount, blurred, -param.SharpenAmount, 0, &sharpened)
 	denoised.Close()
 	return sharpened
+}
+
+// expandClampRect 矩形按 margin 外扩并裁剪到图像范围内
+func expandClampRect(r image.Rectangle, margin, cols, rows int) image.Rectangle {
+	x0 := r.Min.X - margin
+	y0 := r.Min.Y - margin
+	x1 := r.Max.X + margin
+	y1 := r.Max.Y + margin
+	if x0 < 0 {
+		x0 = 0
+	}
+	if y0 < 0 {
+		y0 = 0
+	}
+	if x1 > cols {
+		x1 = cols
+	}
+	if y1 > rows {
+		y1 = rows
+	}
+	return image.Rect(x0, y0, x1, y1)
 }
 
 func (e *ExtensometerService) preprocessGrayForDIC(grayImg gocv.Mat) gocv.Mat {
@@ -1286,21 +1323,7 @@ func (e *ExtensometerService) RunDICPreparedGrayMatShared(defMat gocv.Mat, defBy
 		return nil, fmt.Errorf("target image is empty")
 	}
 
-	startTime := time.Now()
-	firstFrame := !e.mIsInitialized
 	frameResult := e.calculateDisplacementMatShared(defMat, defBytes)
-	elapsed := time.Since(startTime)
-	if firstFrame {
-		fmt.Printf("[DIC计时] 首帧(含初始化): %v, 点数=%d\n", elapsed, len(e.mSubsets))
-	} else {
-		dicDebug.Add("耗时", elapsed)
-		if frameResult != nil {
-			dicDebug.AddMS("有效点", float64(frameResult.SubsetCount))
-		}
-		if avg := dicDebug.Report(); avg != "" {
-			fmt.Println("[DIC计时]", avg)
-		}
-	}
 	if frameResult == nil {
 		return nil, fmt.Errorf("DIC tracking failed")
 	}
