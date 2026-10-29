@@ -4,7 +4,7 @@ vars:
   APP_NAME: "minimts"
   BIN_DIR: "bin"
   PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "npm"}}'
-  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9345}}'
 
 includes:
   common: ./build/Taskfile.yml
