@@ -94,3 +94,5 @@ func main() {
 	minimts.CallExit()
 	camera.CallExit()
 }
+
+//wails3 task common:update:build-assets

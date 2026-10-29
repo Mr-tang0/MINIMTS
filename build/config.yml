@@ -4,6 +4,7 @@
 version: '3'
 
 # This information is used to generate the build assets.
+
 info:
   companyName: "PIMS" # The name of the company
   productName: "MINIMTS PRO" # The name of the application
@@ -11,6 +12,15 @@ info:
   description: "A program that does X" # The application description
   copyright: "(c) 2026, TangLifa" # Copyright text
   comments: "MINIMTS PRO" # Comments
+  version: "1.0.0" # The application version
+
+nimte:
+  companyName: "NIMTE" # The name of the company
+  productName: "MTS For Diffract" # The name of the application
+  productIdentifier: "com.nimte.mts.for.diffract" # The unique product identifier
+  description: "A program that does X" # The application description
+  copyright: "(c) 2026, TangLifa" # Copyright text
+  comments: "MTS For Diffract" # Comments
   version: "1.0.0" # The application version
   # cfBundleIconName: "appicon" # The macOS icon name in Assets.car icon bundles (optional)
   #                               # Should match the name of your .icon file without the extension
