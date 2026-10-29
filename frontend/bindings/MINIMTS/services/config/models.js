@@ -183,29 +183,13 @@ export class ProjectConfig {
              */
             this["dicFileName"] = "";
         }
-        if (!("dicTriggerType" in $$source)) {
+        if (!("dicCapturePeriodMs" in $$source)) {
             /**
-             * DIC触发器类型，internal 或 external
-             * @member
-             * @type {string}
-             */
-            this["dicTriggerType"] = "";
-        }
-        if (!("dicTriggerPeriodMs" in $$source)) {
-            /**
-             * DIC触发器周期，单位毫秒(如果为内触发)
+             * DIC拍摄周期，单位毫秒
              * @member
              * @type {number}
              */
-            this["dicTriggerPeriodMs"] = 0;
-        }
-        if (!("dicTriggerPort" in $$source)) {
-            /**
-             * DIC触发器端口(如果为外触发)
-             * @member
-             * @type {string}
-             */
-            this["dicTriggerPort"] = "";
+            this["dicCapturePeriodMs"] = 0;
         }
         if (!("videoExtEnable" in $$source)) {
             /**
@@ -214,22 +198,6 @@ export class ProjectConfig {
              * @type {boolean}
              */
             this["videoExtEnable"] = false;
-        }
-        if (!("pixLength" in $$source)) {
-            /**
-             * 像素长度，单位：mm
-             * @member
-             * @type {number}
-             */
-            this["pixLength"] = 0;
-        }
-        if (!("physLength" in $$source)) {
-            /**
-             * 物理长度，单位：mm
-             * @member
-             * @type {number}
-             */
-            this["physLength"] = 0;
         }
 
         Object.assign(this, $$source);

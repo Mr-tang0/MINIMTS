@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"image"
+	"os"
+	"path/filepath"
 	"sync"
 	"time"
 
@@ -47,6 +49,10 @@ type HIKCameraService struct {
 
 	// ── 显示编码通道 ──
 	displayCh chan *displayJob
+
+	// ── DIC 图像保存 ──
+	dicMu     sync.Mutex
+	dicStopCh chan struct{} // DIC 保存循环停止信号
 }
 
 // displayJob 显示编码任务：data 为回调数据副本（8位原始像素或 JPEG），仅显示协程使用
@@ -135,6 +141,7 @@ func (s *HIKCameraService) CallExit() {
 
 // Stop 停止所有后台协程（应用退出时调用）
 func (s *HIKCameraService) Stop() {
+	s.stopDICCaptureLoop()
 	s.stopOnce.Do(func() {
 		close(s.stopCh)
 	})
@@ -486,6 +493,115 @@ func encodeJPEG(img gocv.Mat) ([]byte, error) {
 	out := make([]byte, len(buf.GetBytes()))
 	copy(out, buf.GetBytes())
 	return out, nil
+}
+
+// ────────────── DIC 图像保存 ──────────────
+
+// DICCaptureConfig DIC 图像保存参数（由测量控制方通过事件下发）
+type DICCaptureConfig struct {
+	Folder   string `json:"folder"`   // 保存目录
+	FileName string `json:"fileName"` // 文件名前缀
+	PeriodMs int    `json:"periodMs"` // 拍摄周期，单位毫秒
+}
+
+// ListenDICCapture 订阅 DIC 图像保存的开始/停止事件，需在 application 初始化之后调用
+func (s *HIKCameraService) ListenDICCapture() {
+	app := application.Get()
+	if app == nil {
+		return
+	}
+	app.Event.On("dic_capture_start", func(event *application.CustomEvent) {
+		cfg, ok := event.Data.(DICCaptureConfig)
+		if !ok {
+			return
+		}
+		s.startDICCaptureLoop(cfg)
+	})
+	app.Event.On("dic_capture_stop", func(event *application.CustomEvent) {
+		s.stopDICCaptureLoop()
+	})
+}
+
+// startDICCaptureLoop 按拍摄周期循环保存原始帧（参照触发循环逻辑，开始时立即保存一张）
+func (s *HIKCameraService) startDICCaptureLoop(cfg DICCaptureConfig) {
+	if cfg.PeriodMs <= 0 || cfg.Folder == "" {
+		fmt.Println("DIC 保存参数无效，未启动:", cfg)
+		return
+	}
+
+	s.stopDICCaptureLoop()
+
+	stopCh := make(chan struct{})
+	s.dicMu.Lock()
+	s.dicStopCh = stopCh
+	s.dicMu.Unlock()
+
+	go func() {
+		ticker := time.NewTicker(time.Duration(cfg.PeriodMs) * time.Millisecond)
+		defer ticker.Stop()
+
+		if err := s.captureDICImage(cfg); err != nil {
+			fmt.Println("保存DIC图像失败:", err)
+		}
+
+		for {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				if err := s.captureDICImage(cfg); err != nil {
+					fmt.Println("保存DIC图像失败:", err)
+				}
+			}
+		}
+	}()
+}
+
+// stopDICCaptureLoop 停止 DIC 图像保存循环
+func (s *HIKCameraService) stopDICCaptureLoop() {
+	s.dicMu.Lock()
+	stopCh := s.dicStopCh
+	s.dicStopCh = nil
+	s.dicMu.Unlock()
+
+	if stopCh != nil {
+		close(stopCh)
+	}
+}
+
+// captureDICImage 将当前原始帧直接保存为 TIFF（保留原始像素值，不做 JPEG 压缩与标定变换），
+// 文件名为「前缀+时间戳(毫秒).tiff」，避免相互覆盖
+func (s *HIKCameraService) captureDICImage(cfg DICCaptureConfig) error {
+	data, width, height, pixelType := s.latestRawFrameSnapshot()
+	if len(data) == 0 {
+		return fmt.Errorf("暂无相机图像")
+	}
+
+	// 8 位原始格式（Mono8/Bayer）直接包装像素，其余按原格式解码
+	var frame gocv.Mat
+	var err error
+	if hik.IsRaw8Bit(pixelType) {
+		frame, err = gocv.NewMatFromBytes(height, width, gocv.MatTypeCV8U, data)
+	} else {
+		frame, err = gocv.IMDecode(data, gocv.IMReadUnchanged)
+	}
+	if err != nil || frame.Empty() {
+		closeMatQuietly(&frame)
+		return fmt.Errorf("解析相机图像失败: %v", err)
+	}
+	defer frame.Close()
+
+	buf, err := gocv.IMEncode(gocv.FileExt(".tiff"), frame)
+	if err != nil {
+		return fmt.Errorf("TIFF 编码失败: %v", err)
+	}
+	defer buf.Close()
+
+	if err := os.MkdirAll(cfg.Folder, 0755); err != nil {
+		return err
+	}
+	name := fmt.Sprintf("%s%s.tiff", cfg.FileName, time.Now().Format("20060102_150405.000"))
+	return os.WriteFile(filepath.Join(cfg.Folder, name), buf.GetBytes(), 0644)
 }
 
 // ────────────── 相机参数读取 ──────────────

@@ -1,15 +1,15 @@
 {
 	"fixed": {
-		"file_version": "0.1.0"
+		"file_version": "1.0.0"
 	},
 	"info": {
 		"0000": {
-			"ProductVersion": "0.1.0",
-			"CompanyName": "My Company",
-			"FileDescription": "A MINIMTS application",
-			"LegalCopyright": "© 2026, My Company",
-			"ProductName": "My Product",
-			"Comments": "This is a comment"
+			"ProductVersion": "1.0.0",
+			"CompanyName": "PIMS",
+			"FileDescription": "A program that does X",
+			"LegalCopyright": "(c) 2026, TangLifa",
+			"ProductName": "MINIMTS PRO",
+			"Comments": "MINIMTS PRO"
 		}
 	}
 }

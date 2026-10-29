@@ -53,6 +53,14 @@ export function EmergencyStop() {
 }
 
 /**
+ * GetBlockedDirection 返回当前被限位的方向（0=无，+1=正向挡，-1=反向挡）
+ * @returns {$CancellablePromise<number>}
+ */
+export function GetBlockedDirection() {
+    return $Call.ByID(813205160);
+}
+
+/**
  * @returns {$CancellablePromise<string[]>}
  */
 export function GetMINIMTSDevices() {

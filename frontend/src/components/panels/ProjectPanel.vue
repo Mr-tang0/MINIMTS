@@ -5,9 +5,6 @@
         <div>
           <strong id="project-dialog-title">项目设置</strong>
         </div>
-        <button type="button" title="关闭" @click="emit('cancel')">
-          <i class="ri-close-line"></i>
-        </button>
       </header>
 
       <div class="settings-body scrollable">
@@ -87,15 +84,6 @@
               <label>运行速度 (mm/s)</label>
               <input v-model.number="form.speed" type="number" step="0.001" :class="{ 'danger-text': isSpeedOverridden }" @input="handleSpeedManualChange" />
             </div>
-            <!-- <div class="form-item mt-10">
-              <label>停止条件</label>
-              <select v-model="form.stopCondition">
-                <option value="manual">手动停止</option>
-                <option value="time">按时间 (s)</option>
-                <option value="load">按载荷 (N)</option>
-                <option value="disp">按位移 (mm)</option>
-              </select>
-            </div> -->
             <div class="form-item mt-10">
               <label>暂停状态</label>
               <select v-model="form.pauseCondition">
@@ -123,115 +111,113 @@
         </div>
       </div>
 
-      <!-- 3. DIC 与 视频引伸 并排 -->
-      <div v-if="props.isCameraConnected" class="dual-row">
+            <!-- 4. 触发信号发射（独立于相机连接） -->
+        <div class="config-section">
+          <div class="section-tag">触发信号发射</div>
+          <div class="trigger-settings">
+            <label class="switch-item">
+              <input v-model="form.triggerEnabled" type="checkbox" />
+              <span class="switch-track"><span class="switch-thumb"></span></span>
+              <span>使能触发信号</span>
+            </label>
+            <div v-if="form.triggerEnabled" class="trigger-fields animate-in">
+              <div class="trigger-field">
+                <label>触发周期 (ms)</label>
+                <input v-model.number="form.triggerPeriodMs" type="number" min="1" step="1" />
+              </div>
+              <div class="trigger-field">
+                <label>触发脉宽 (ms)</label>
+                <input
+                  v-model.number="form.triggerPulseWidthMs"
+                  type="number"
+                  min="1"
+                  :max="form.triggerPeriodMs"
+                  step="1"
+                  :class="{ 'danger-text': !isTriggerValid }"
+                />
+              </div>
+              <div v-if="!isTriggerValid" class="validation-message">触发脉宽必须大于 0 且不能超过触发周期</div>
+            </div>
+          </div>
+        </div>
 
-
-        <!-- 视频引伸计 -->
-        <div v-if="props.isCameraConnected" class="config-section flex-1">
-          <div class="section-tag color-video">视频引伸计 (AVE)</div>
-          <div class="split-layout">
-            <div class="left-controls">
-              <label class="check-item text-cyan">
+        <!-- 3. DIC 与 视频引伸 并排 -->
+        <div v-if="props.isCameraConnected" class="dual-row">
+          <!-- 视频引伸计 -->
+          <div class="config-section flex-1">
+            <div class="section-tag color-video">视频引伸计 (AVE)</div>
+            <div class="panel-body">
+              <label class="switch-item text-cyan">
                 <input type="checkbox" v-model="form.videoExtEnable" />
-                <span class="mark"></span> 变形测算
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span>变形测算</span>
               </label>
-              <label v-if="form.videoExtEnable" class="check-item poisson-check">
-                <input type="checkbox" v-model="form.poissonEnable" />
-                <span class="mark"></span> 横向变形
-              </label>
-            </div>
-            <div class="right-display">
-              <div v-if="!form.videoExtEnable" class="placeholder">
-                <svg viewBox="0 0 100 60" class="diag-svg">
-                   <rect x="42" y="10" width="16" height="40" fill="none" stroke="#334155" stroke-width="1.5"/>
-                   <circle cx="50" cy="22" r="3" fill="#06b6d4" />
-                   <circle cx="50" cy="38" r="3" fill="#06b6d4" />
-                   <path d="M60,22 L70,22 M60,38 L70,38 M65,22 L65,38" stroke="#06b6d4" stroke-width="0.5"/>
-                </svg>
-                <span>AVE 测算已关闭</span>
-              </div>
+              <div class="right-display">
+                <div v-if="!form.videoExtEnable" class="placeholder">
+                  <svg viewBox="0 0 100 60" class="diag-svg">
+                    <rect x="42" y="10" width="16" height="40" fill="none" stroke="#334155" stroke-width="1.5"/>
+                    <circle cx="50" cy="22" r="3" fill="#06b6d4" />
+                    <circle cx="50" cy="38" r="3" fill="#06b6d4" />
+                    <path d="M60,22 L70,22 M60,38 L70,38 M65,22 L65,38" stroke="#06b6d4" stroke-width="0.5"/>
+                  </svg>
+                  <span>AVE 测算已关闭</span>
+                </div>
 
-              <div v-else class="ave-flow animate-in">
-                <div class="dir-row">
-                  <button class="btn-ave" @click="openDirectionSelector"><i class="ri-edit-2-line"></i> 绘制方向</button>
-                  <div class="dir-info-line">{{ form.directionLine || '未绘制' }}</div>
-                </div>
-                <div class="marker-row">
-                  <button class="btn-ave mini" @click="openMarkerSelector('A')">选取 A 点</button>
-                  <div class="res-box">{{ form.markerA || '--, --' }}</div>
-                  <button class="btn-ave mini" @click="openMarkerSelector('B')">选取 B 点</button>
-                  <div class="res-box">{{ form.markerB || '--, --' }}</div>
-                </div>
-                <div class="calib-row">
-                  <button class="btn-ave mini" @click="openCalibration">比例标定</button>
-                  <div class="calib-unit"> </div>
-                  <input type="number" class="calib-input" v-model.number="form.pixLength" placeholder="像素" />
-                  <div class="calib-unit">px = </div>
-                  <input type="number" class="calib-input" v-model.number="form.physLength" placeholder="实际距离(mm)" />
-                  <div class="calib-unit">mm</div>
+                <div v-else class="ave-flow animate-in">
+                  <div class="dir-row">
+                    <button class="btn-ave" @click="openDirectionSelector"><i class="ri-edit-2-line"></i> 绘制方向</button>
+                    <div class="dir-info-line">{{ form.directionLine || '未绘制' }}</div>
+                  </div>
+                  <div class="dir-row">
+                    <button class="btn-ave mini" @click="openMarkerSelector('A')">选取 A 点</button>
+                    <div class="res-box">{{ form.markerA || '--, --' }}</div>
+                  </div>
+                  <div class="dir-row">
+                    <button class="btn-ave mini" @click="openMarkerSelector('B')">选取 B 点</button>
+                    <div class="res-box">{{ form.markerB || '--, --' }}</div>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
-        </div>
-                <!-- DIC 配置 -->
-        <div class="config-section flex-1">
-          <div class="section-tag color-dic">DIC 采集配置</div>
-          <div class="split-layout">
-            <div class="left-controls">
-              <label class="check-item">
+          <!-- DIC 图像配置 -->
+          <div class="config-section flex-1">
+            <div class="section-tag color-dic">DIC 采集配置</div>
+            <div class="panel-body">
+              <label class="switch-item">
                 <input type="checkbox" v-model="form.dicEnable" />
-                <span class="mark"></span> 相机拍摄图片
+                <span class="switch-track"><span class="switch-thumb"></span></span>
+                <span>相机拍摄图片</span>
               </label>
-              <label class="check-item">
-                <input type="checkbox" v-model="form.externalTrigger" />
-                <span class="mark"></span> 发射外触发信号
-              </label>
-            </div>
-            <div class="right-display">
-              <div v-if="!form.dicEnable && !form.externalTrigger" class="placeholder">
-                <i class="ri-camera-lens-line"></i>
-                <span>启用 DIC 配置</span>
-              </div>
-
-              <div v-if="form.dicEnable" class="expand-group animate-in">
-                <div class="form-item">
-                  <label>图片保存路径</label>
-                  <div class="path-picker">
-                    <input v-model="form.dicFolder" type="text" placeholder="选择保存目录" />
-                    <button class="btn-picker" @click="handleSelectDir('dicFolder')">...</button>
-                  </div>
+              <div class="right-display">
+                <div v-if="!form.dicEnable" class="placeholder">
+                  <i class="ri-camera-lens-line"></i>
+                  <span>启用 DIC 配置</span>
                 </div>
-                <div class="form-item mt-5">
-                  <label>命名前缀</label>
-                  <input v-model="form.dicFileName" type="text" />
-                </div>
-              </div>
 
-              <div v-if="form.externalTrigger" class="expand-group border-t mt-10 pt-10 animate-in">
-                <div class="form-row">
-                  <div class="form-item flex-1">
-                    <label>触发类型</label>
-                    <select v-model="form.triggerType">
-                      <option value="internal">固定频率</option>
-                      <option value="external">外部同步</option>
-                    </select>
+                <div v-if="form.dicEnable" class="expand-group animate-in">
+                  <div class="form-item">
+                    <label>图片保存路径</label>
+                    <div class="path-picker">
+                      <input v-model="form.dicFolder" type="text" placeholder="选择保存目录" />
+                      <button class="btn-picker" @click="handleSelectDir('dicFolder')">...</button>
+                    </div>
                   </div>
-                  <div class="form-item flex-1">
-                    <label>间隔(ms)</label>
-                    <input v-model.number="form.triggerInterval" type="number" min="1" />
+                  <div class="form-item mt-5">
+                    <label>命名前缀</label>
+                    <input v-model="form.dicFileName" type="text" />
                   </div>
-                  <div class="form-item flex-1">
-                    <label>脉宽(ms)</label>
-                    <input v-model.number="form.triggerPulseWidthMs" type="number" min="1" />
+                  <div class="form-item mt-5">
+                    <label>拍摄周期 (ms)</label>
+                    <input v-model.number="form.dicCapturePeriodMs" type="number" min="1" step="1" />
                   </div>
                 </div>
               </div>
             </div>
           </div>
         </div>
-      </div>
+
+
       </div>
 
       <footer class="settings-footer">
@@ -277,23 +263,22 @@ const form = reactive({
   speed: 0.025,
   stopCondition: 'manual',
   pauseCondition: 'stop',
+  // 触发信号发射
+  triggerEnabled: false,
+  triggerPeriodMs: 1000,
   triggerPulseWidthMs: 1000,
   filePath: './data/',
   fileName: 'Result_001',
   // DIC
   dicEnable: false,
-  externalTrigger: false,
-  triggerType: 'internal',
-  triggerInterval: 100,
   dicFolder: '',
   dicFileName: 'IMG_',
+  dicCapturePeriodMs: 5000,
   // AVE
   videoExtEnable: false,
   markerA: '',
   markerB: '',
   directionLine: '',
-  pixLength: 400,
-  physLength: 25,
   poissonEnable: false
 });
 
@@ -302,6 +287,13 @@ const currentArea = computed(() => {
     return (form.width * form.thickness).toFixed(3);
   }
   return (Math.PI * Math.pow(form.diameter / 2, 2)).toFixed(3);
+});
+
+const isTriggerValid = computed(() => {
+  if (!form.triggerEnabled) return true;
+  return form.triggerPeriodMs > 0
+    && form.triggerPulseWidthMs > 0
+    && form.triggerPulseWidthMs <= form.triggerPeriodMs;
 });
 
 const autoCalcSpeed = () => {
@@ -372,7 +364,7 @@ const handleROISelected = (payload) => {
 
 const formatLine = (line) => {
   if (!line) return '未绘制'
-  return `(${Math.round(line.x1)},${Math.round(line.y1)})→(${Math.round(line.x2)},${Math.round(line.y2)})`
+  return `A(${Math.round(line.x1)},${Math.round(line.y1)})→B(${Math.round(line.x2)},${Math.round(line.y2)})`
 }
 
 const handleDirectionSelected = (payload) => {
@@ -390,8 +382,6 @@ const loadConfig = async () => {
     Object.assign(form, {
       ...config,
       type: config.testType === -1 ? 'compression' : 'tension',
-      externalTrigger: config.triggerEnabled,
-      triggerInterval: config.triggerPeriodMs,
     });
     isSpeedOverridden.value = form.speed !== Number((form.sectionLength * 0.001).toFixed(4));
   } catch (error) {
@@ -402,6 +392,10 @@ const loadConfig = async () => {
 };
 
 const handleSubmit = async () => {
+  if (!isTriggerValid.value) {
+    toast('触发脉宽必须大于 0 且不能超过触发周期', 'error');
+    return;
+  }
   saving.value = true;
   try {
     const config = {
@@ -418,24 +412,19 @@ const handleSubmit = async () => {
       speed: form.speed,
       stopCondition: form.stopCondition,
       pauseCondition: form.pauseCondition,
-      triggerEnabled: form.externalTrigger,
-      triggerPeriodMs: Number(form.triggerInterval),
+      triggerEnabled: form.triggerEnabled,
+      triggerPeriodMs: Number(form.triggerPeriodMs),
       triggerPulseWidthMs: Number(form.triggerPulseWidthMs),
-      triggerType: form.triggerType,
       filePath: form.filePath,
       fileName: form.fileName,
       dicEnable: form.dicEnable,
       dicFolder: form.dicFolder,
       dicFileName: form.dicFileName,
+      dicCapturePeriodMs: Number(form.dicCapturePeriodMs),
       videoExtEnable: form.videoExtEnable,
       poissonEnable: form.poissonEnable,
-      pixLength: form.pixLength,
-      physLength: form.physLength,
     };
     await SaveToLocalPath('', config);
-    if (form.videoExtEnable && form.pixLength > 0 && form.physLength > 0) {
-      await HIKExtensometerService.SetResolutionRatio(form.pixLength, form.physLength);
-    }
     emit('submit', config);
   } catch (error) {
     toast(errorText(error), 'error');
@@ -469,8 +458,8 @@ onUnmounted(() => {
 }
 
 .modal-dialog {
-  width: min(1100px, calc(100vw - 32px));
-  max-height: calc(100vh - 32px);
+  width: min(800px, calc(100vw - 32px));
+  max-height: 80vh;
   padding: 0;
   background: #0f172a;
   border: 1px solid #475569;
@@ -585,9 +574,24 @@ onUnmounted(() => {
 }
 .btn-picker:hover { background: #3b82f6; color: white; }
 
-.split-layout { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 20px; min-height: 130px; margin-top: 5px; }
-.left-controls { display: flex; flex-direction: column; gap: 15px; padding-top: 5px; }
-.right-display { min-width: 0; background: rgba(0,0,0,0.15); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: center; }
+.trigger-settings { display: flex; align-items: center; gap: 30px; margin-top: 5px; }
+.trigger-settings .switch-item { align-self: center; }
+.trigger-fields { flex: 1; min-width: 0; display: flex; align-items: center; gap: 30px; flex-wrap: wrap; background: rgba(0,0,0,0.15); border-radius: 8px; padding: 12px; }
+.trigger-field { display: flex; align-items: center; gap: 10px; }
+.trigger-field label { font-size: 12px; color: #94a3b8; font-weight: 800; white-space: nowrap; }
+.trigger-field input { width: 160px; }
+.validation-message { color: #ef4444; font-size: 11px; flex-basis: 100%; }
+
+/* switch 开关样式 */
+.switch-item { display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 800; align-self: flex-start; }
+.switch-item input { display: none; }
+.switch-track { width: 36px; height: 20px; border-radius: 999px; background: #334155; position: relative; transition: background 0.2s; flex-shrink: 0; }
+.switch-thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #94a3b8; transition: all 0.2s; }
+.switch-item input:checked + .switch-track { background: #3b82f6; }
+.switch-item input:checked + .switch-track .switch-thumb { transform: translateX(16px); background: #f8fafc; }
+
+.panel-body { display: flex; flex-direction: column; gap: 10px; margin-top: 5px; }
+.right-display { min-width: 0; background: rgba(0,0,0,0.15); border-radius: 8px; padding: 12px; display: flex; flex-direction: column; justify-content: center; min-height: 88px; }
 .right-display .form-row { flex-wrap: wrap; }
 .right-display .form-row .form-item { min-width: 130px; }
 
@@ -604,16 +608,6 @@ onUnmounted(() => {
 .calib-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .calib-input { width: 80px; padding: 6px 8px; border: 1px solid #334155; border-radius: 4px; background: #0f172a; color: #f1f5f9; font-size: 11px; text-align: center; }
 .calib-input::placeholder { color: #64748b; }
-
-.check-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: bold; position: relative; }
-.poisson-check { margin-top: 5px; font-size: 13px; color: #8b5cf6 !important; }
-.mark { width: 18px; height: 18px; border: 2px solid #334155; border-radius: 4px; transition: 0.2s; position: relative; flex-shrink: 0; }
-input[type="checkbox"]:checked + .mark { background: #3b82f6; border-color: #3b82f6; }
-input[type="checkbox"]:checked + .mark::after {
-  content: '✓'; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-  color: white; font-size: 11px; font-weight: bold;
-}
-input[type="checkbox"] { display: none; }
 
 .btn-ave {
   background: #334155; border: 1px solid #475569; color: white; padding: 8px 16px;
@@ -667,17 +661,16 @@ input:focus, select:focus { border-color: #3b82f6; }
 .pt-10 { padding-top: 10px; }
 .text-cyan { color: #06b6d4 !important; }
 .flex-1 { flex: 1; }
-.dual-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 15px; }
+.dual-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
 .dual-row > .config-section { min-width: 0; }
 .color-dic { background: #8b5cf6; }
 
 @media (max-width: 700px) {
+  .dual-row { grid-template-columns: 1fr; }
   .settings-body { padding: 12px; }
   .quasi-grid { grid-template-columns: 1fr; gap: 15px; }
   .sub-pane { padding: 0; }
   .border-r { border-right: none; }
-  .split-layout { grid-template-columns: 1fr; gap: 12px; }
-  .left-controls { padding-top: 0; }
   .right-display { padding: 10px; }
   .dir-row { align-items: stretch; flex-direction: column; }
   .dir-row .btn-ave { width: 100%; }

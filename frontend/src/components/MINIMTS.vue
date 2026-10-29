@@ -75,10 +75,6 @@
           <i class="ri-signal-wifi-line"></i>
           <em>在线</em>
         </span>
-        <span class="status-item" title="串口通信">
-          <i class="ri-serial-port-line"></i>
-          <em>COM3</em>
-        </span>
         <span class="status-item alert" title="告警信息">
           <i class="ri-error-warning-line"></i>
           <em>0</em>

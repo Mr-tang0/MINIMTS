@@ -46,10 +46,6 @@ type HIKExtensometerService struct {
 	perpDistA    float64 // ROI A 中心到方向线的初始垂距
 	perpDistB    float64 // ROI B 中心到方向线的初始垂距
 
-	// ── 比例标定 ──
-	resolutionRatio float64
-	resolutionMu    sync.RWMutex
-
 	// ── DIC 预处理参数（系统设置实时修改） ──
 	dicParamMu sync.Mutex
 	dicMethod  string  // none/gauss/bilateral/nlm/highpass
@@ -70,7 +66,6 @@ type NoiseFloorResult struct {
 	Std   float64 `json:"std"`   // 距离标准差（像素）——噪声底
 	Min   float64 `json:"min"`   // 最小值（像素）
 	Max   float64 `json:"max"`   // 最大值（像素）
-	Ratio float64 `json:"ratio"` // 比例标定系数（>0 时 Std/Ratio 为毫米噪声）
 }
 
 // NewHIKExtensometer 创建引伸计服务，并把它注册为相机服务的跟踪与绘制钩子
@@ -79,6 +74,11 @@ func NewHIKExtensometer(camera *HIKCameraService) *HIKExtensometerService {
 	camera.setTrackHook(service.processFrame)
 	camera.setDrawHook(service.drawOverlay)
 	return service
+}
+
+// IsCameraConnected 返回相机是否已实际连接（非 nil 且已打开）
+func (s *HIKExtensometerService) IsCameraConnected() bool {
+	return s != nil && s.camera != nil && s.camera.IsHIKCameraConnected()
 }
 
 // ────────────── 选择器窗口 ──────────────
@@ -240,26 +240,6 @@ func (s *HIKExtensometerService) GetDirectionLine() (hik.LineDirection, bool) {
 		return hik.LineDirection{}, false
 	}
 	return s.directionLine, true
-}
-
-// ────────────── 比例标定 ──────────────
-
-// SetResolutionRatio 设置比例标定系数（像素长度 / 实际长度）
-func (s *HIKExtensometerService) SetResolutionRatio(pixelLength, realLength float64) error {
-	if pixelLength <= 0 || realLength <= 0 {
-		return fmt.Errorf("像素长度和实际距离必须大于0")
-	}
-	s.resolutionMu.Lock()
-	s.resolutionRatio = pixelLength / realLength
-	s.resolutionMu.Unlock()
-	return nil
-}
-
-// GetResolutionRatio 获取比例标定系数
-func (s *HIKExtensometerService) GetResolutionRatio() float64 {
-	s.resolutionMu.RLock()
-	defer s.resolutionMu.RUnlock()
-	return s.resolutionRatio
 }
 
 // ────────────── 结果计算与信号发射 ──────────────
@@ -439,7 +419,6 @@ func (s *HIKExtensometerService) MeasureNoiseFloor(sampleCount int) (*NoiseFloor
 		Std:   std,
 		Min:   min,
 		Max:   max,
-		Ratio: s.GetResolutionRatio(),
 	}, nil
 }
 

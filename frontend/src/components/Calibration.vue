@@ -243,8 +243,6 @@ const confirm = async () => {
       const result = await HIKCalibrationService.AddCalibrationCorners(corners.value, rows.value, cols.value, squareSize.value)
       if (!result?.success) throw new Error(result?.error || '相机标定失败')
       Events.Emit('calibration_added', { data: { count: result.count } })
-    } else if (mode.value === 'calibration') {
-      await HIKExtensometerService.SetResolutionRatio(lineLength.value, realLength.value)
     } else if (mode.value === 'line') {
       await HIKExtensometerService.SetDirectionLine(line.value)
     } else {
@@ -306,7 +304,7 @@ canvas { display: block; width: 100%; height: 100%; cursor: crosshair; }
 .real-length { display: flex; align-items: center; gap: 8px; color: #94a3b8; font-size: 12px; }
 .real-length input { width: 90px; padding: 6px 8px; border: 1px solid #475569; border-radius: 6px; background: #111827; color: #e2e8f0; font-size: 13px; }
 .actions { display: flex; gap: 10px; }
-button { border: 1px solid #475569; border-radius: 6px; padding: 9px 20px; color: #e2e8f0; background: transparent; font-weight: 700; cursor: pointer; }
+button { border: 1px solid #475569; border-radius: 6px; padding: 9px 28px; min-width: 90px; height: 40px; color: #e2e8f0; background: transparent; font-weight: 700; font-size: 14px; cursor: pointer; box-sizing: border-box; white-space: nowrap; }
 button.primary { border-color: #2563eb; background: #2563eb; }
 button:disabled { cursor: not-allowed; opacity: .45; }
 </style>

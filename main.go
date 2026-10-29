@@ -67,6 +67,9 @@ func main() {
 	// MINIMTS 订阅引伸计结果，根据 ROI 距离计算视频位移与应变
 	minimts.ListenExtensometer()
 
+	// 相机订阅 DIC 图像保存的开始/停止事件（由 MINIMTS 测量控制发出）
+	camera.ListenDICCapture()
+
 	app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:     "MINIMTS PRO",
 		Frameless: true,

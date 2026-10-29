@@ -26,30 +26,34 @@
       <h3><i class="ri-equalizer-2-line"></i> 手动移动</h3>
       <label class="speed-field">
         <span>移动速度</span>
-        <input v-model.number="speed" type="number" min="0" step="0.1">
+        <input v-model.number="speed" type="number" min="0" step="0.1" :disabled="measuring">
         <em>mm/s</em>
       </label>
       <div class="manual-buttons">
         <button
           class="tensile"
           type="button"
+          :disabled="measuring || blockedDirection >= 1"
           @pointerdown.prevent="startJog(1, $event)"
           @pointerup="releaseJog"
           @pointercancel="releaseJog"
         >
           <i class="ri-arrow-up-line"></i><span>拉伸</span>
+          <small v-if="blockedDirection >= 1" class="limit-hint">已限位</small>
         </button>
-        <button class="stop" type="button" @click="stopMotor">
+        <button class="stop" type="button" :disabled="measuring" @click="stopMotor">
           <i class="ri-stop-fill"></i><span>停止</span>
         </button>
         <button
           class="compress"
           type="button"
+          :disabled="measuring || blockedDirection <= -1"
           @pointerdown.prevent="startJog(-1, $event)"
           @pointerup="releaseJog"
           @pointercancel="releaseJog"
         >
           <i class="ri-arrow-down-line"></i><span>压缩</span>
+          <small v-if="blockedDirection <= -1" class="limit-hint">已限位</small>
         </button>
       </div>
     </section>
@@ -62,7 +66,7 @@
 </template>
 
 <script setup>
-import { inject, ref } from 'vue';
+import { inject, onMounted, onUnmounted, ref } from 'vue';
 import { Events } from '@wailsio/runtime';
 import {
   ClearDataCache,
@@ -82,6 +86,24 @@ const measuring = ref(false);
 const paused = ref(false);
 const busy = ref(false);
 const jogging = ref(false);
+const blockedDirection = ref(0); // 0=无限位；+1=正向挡；-1=反向挡
+
+let offLimitChanged;
+onMounted(() => {
+  offLimitChanged = Events.On('mts-limit-changed', (event) => {
+    const data = event?.data ?? event;
+    blockedDirection.value = Number(data?.blockedDirection ?? 0);
+    if (blockedDirection.value !== 0) {
+      const dir = blockedDirection.value > 0 ? '正向' : '反向';
+      toast(`${dir}已被限位，手动${dir === '正向' ? '拉伸' : '压缩'}按钮已禁用`, 'warning');
+    } else {
+      toast('限位已解除', 'success');
+    }
+  });
+});
+onUnmounted(() => {
+  offLimitChanged?.();
+});
 
 const runAction = async (action) => {
   if (busy.value) return false;
@@ -131,7 +153,7 @@ const togglePause = async () => {
 };
 
 const startJog = async (direction, event) => {
-  if (jogging.value) return;
+  if (measuring.value || jogging.value) return;
 
   event.currentTarget.setPointerCapture(event.pointerId);
   jogging.value = true;
@@ -224,10 +246,15 @@ button span {
   white-space: nowrap;
 }
 
-button:hover {
+button:hover:not(:disabled) {
   color: #fff;
   background: #3e4d62;
   border-color: #64748b;
+}
+
+button:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
 }
 
 .test-buttons {
@@ -349,6 +376,11 @@ button:hover {
   border-color: #3b82f6;
 }
 
+.speed-field input:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
 .manual-buttons {
   display: flex;
   flex-direction: column;
@@ -371,6 +403,12 @@ button:hover {
 
 .compress {
   color: #f87171;
+}
+
+.limit-hint {
+  margin-left: 4px;
+  font-size: 10px;
+  opacity: 0.7;
 }
 
 .instrument-placeholder {

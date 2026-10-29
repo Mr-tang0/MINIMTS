@@ -390,14 +390,6 @@ export class NoiseFloorResult {
              */
             this["max"] = 0;
         }
-        if (!("ratio" in $$source)) {
-            /**
-             * 比例标定系数（>0 时 Std/Ratio 为毫米噪声）
-             * @member
-             * @type {number}
-             */
-            this["ratio"] = 0;
-        }
 
         Object.assign(this, $$source);
     }

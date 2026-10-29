@@ -56,11 +56,11 @@ export function GetDirectionLine() {
 }
 
 /**
- * GetResolutionRatio 获取比例标定系数
- * @returns {$CancellablePromise<number>}
+ * IsCameraConnected 返回相机是否已实际连接（非 nil 且已打开）
+ * @returns {$CancellablePromise<boolean>}
  */
-export function GetResolutionRatio() {
-    return $Call.ByID(772112810);
+export function IsCameraConnected() {
+    return $Call.ByID(3763090199);
 }
 
 /**
@@ -140,16 +140,6 @@ export function SetDirectionLineFromConfig(line) {
  */
 export function SetROI(label, rect) {
     return $Call.ByID(861814537, label, rect);
-}
-
-/**
- * SetResolutionRatio 设置比例标定系数（像素长度 / 实际长度）
- * @param {number} pixelLength
- * @param {number} realLength
- * @returns {$CancellablePromise<void>}
- */
-export function SetResolutionRatio(pixelLength, realLength) {
-    return $Call.ByID(3083439742, pixelLength, realLength);
 }
 
 // Private type creation functions

@@ -36,13 +36,9 @@ type ProjectConfig struct {
 	DICEnable          bool   `json:"dicEnable"`          // 是否启用DIC保存
 	DICFolder          string `json:"dicFolder"`          // DIC保存路径
 	DICFileName        string `json:"dicFileName"`        // DIC文件名前缀
-	DICTriggerType     string `json:"dicTriggerType"`     // DIC触发器类型，internal 或 external
-	DICTriggerPeriodMs int    `json:"dicTriggerPeriodMs"` // DIC触发器周期，单位毫秒(如果为内触发)
-	DICTriggerPort     string `json:"dicTriggerPort"`     // DIC触发器端口(如果为外触发)
+	DICCapturePeriodMs int    `json:"dicCapturePeriodMs"` // DIC拍摄周期，单位毫秒
 
-	VideoExtEnable bool    `json:"videoExtEnable"` // 是否启用视频引伸计
-	PixLength      float32 `json:"pixLength"`      // 像素长度，单位：mm
-	PhysLength     float32 `json:"physLength"`     // 物理长度，单位：mm
+	VideoExtEnable bool `json:"videoExtEnable"` // 是否启用视频引伸计
 }
 
 func NewProjectConfig() *ProjectConfig {
@@ -72,13 +68,9 @@ func NewProjectConfig() *ProjectConfig {
 		DICEnable:          false,
 		DICFolder:          "./data/",
 		DICFileName:        "IMG_",
-		DICTriggerType:     "internal",
-		DICTriggerPeriodMs: 5000,
-		DICTriggerPort:     "OUT1",
+		DICCapturePeriodMs: 5000,
 
 		VideoExtEnable: false,
-		PixLength:      400,
-		PhysLength:     25,
 	}
 }
 
@@ -105,6 +97,9 @@ func (s *ProjectConfig) GetFromLocalPath(path string) (*ProjectConfig, error) {
 	}
 	if config.PauseCondition == "" || config.PauseCondition == "pause" {
 		config.PauseCondition = "stop"
+	}
+	if config.DICCapturePeriodMs <= 0 {
+		config.DICCapturePeriodMs = 5000 // 兼容旧配置文件
 	}
 	*s = *config
 	return s, nil

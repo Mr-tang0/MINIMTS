@@ -42,6 +42,7 @@ type MINIMTSService struct {
 	heartbeat   MINIMTSHeartbeat
 	heartbeatMu sync.RWMutex       // 保护 heartbeat 的读写锁
 	dataList    []MINIMTSHeartbeat // 数据列表，用于存储心跳数据
+	cacheActive bool               // 是否处于测量中（仅在测量过程中缓存数据，heartbeatMu 保护）
 	cacheSaveMu sync.Mutex         // 串行化文件保存，避免定时保存相互覆盖
 
 	Device *protocol.SerialCommunicator //连接句柄
@@ -55,9 +56,14 @@ type MINIMTSService struct {
 	videoBaseDistance float64 // ROI A/B 的初始欧几里得距离（像素）
 	videoBaseReady    bool    // 初始距离是否已记录
 
-	eposFiltered     float32 // 视频位移滤波状态（heartbeatMu 保护）
-	estrainFiltered  float32 // 视频应变滤波状态（heartbeatMu 保护）
-	videoFilterReady bool    // 滤波状态是否已初始化（heartbeatMu 保护）
+	eposFiltered     float32 // 视频位移一阶低通输出（heartbeatMu 保护）
+	estrainFiltered  float32 // 视频应变一阶低通输出（heartbeatMu 保护）
+	videoFilterReady bool    // 一阶低通状态是否已初始化（heartbeatMu 保护）
+
+	eposWindow       [videoWindowSize]float32 // 视频位移滑动窗口环形缓冲（heartbeatMu 保护）
+	estrainWindow    [videoWindowSize]float32 // 视频应变滑动窗口环形缓冲（heartbeatMu 保护）
+	videoWindowIdx   int                      // 滑动窗口下一个写入位置（heartbeatMu 保护）
+	videoWindowCount int                      // 滑动窗口已填充样本数（heartbeatMu 保护）
 
 	triggerStopCh chan struct{}
 
@@ -67,6 +73,9 @@ type MINIMTSService struct {
 	pauseMu     sync.Mutex
 	pauseStopCh chan struct{}
 	pauseDoneCh chan struct{}
+
+	blockedMu        sync.RWMutex
+	blockedDirection int // 0=无限位；+1=正向被限位（禁止 speed>0）；-1=反向被限位（禁止 speed<0）
 }
 
 func NewMINIMTSService(extensometer *HIKExtensometerService) *MINIMTSService {
@@ -129,9 +138,13 @@ func (m *MINIMTSService) ListenExtensometer() {
 	})
 }
 
+// videoWindowSize 滑动窗口平均滤波器的窗口大小。
+const videoWindowSize = 5
+
 // videoFilterAlpha 视频位移/应变一阶低通滤波系数（0~1，越小越平滑但滞后越大）。
-// 取 0.2 时噪声标准差约衰减为原来的 1/3，时间常数约为 4 帧。
-const videoFilterAlpha = 0.2
+// 取 0.4 时噪声标准差约衰减为原来的 1/2.5，时间常数约为 2~3 帧。
+// 一阶低通后再叠加窗口为 videoWindowSize 的滑动窗口平均，进一步抑制随机噪声。
+const videoFilterAlpha = 0.4
 
 // updateVideoMetrics 根据两个 ROI 的欧几里得距离计算视频位移与应变。
 //
@@ -153,11 +166,6 @@ func (m *MINIMTSService) updateVideoMetrics(distance float64) {
 	m.videoMu.Unlock()
 
 	epos := distance
-	if m.extensometer != nil {
-		if ratio := m.extensometer.GetResolutionRatio(); ratio > 0 {
-			epos = distance / ratio
-		}
-	}
 
 	var estrain float64
 	if baseDistance > 0 {
@@ -181,8 +189,25 @@ func (m *MINIMTSService) updateVideoMetrics(distance float64) {
 		m.estrainFiltered = estrainValue
 		m.videoFilterReady = true
 	}
-	m.heartbeat.EPos = m.eposFiltered - m.heartbeat.EZeroPos
-	m.heartbeat.EStrain = m.estrainFiltered - m.heartbeat.EZeroStrain
+
+	// 一阶低通输出送入滑动窗口环形缓冲，取窗口均值进一步平滑
+	idx := m.videoWindowIdx
+	m.eposWindow[idx] = m.eposFiltered
+	m.estrainWindow[idx] = m.estrainFiltered
+	m.videoWindowIdx = (idx + 1) % videoWindowSize
+	if m.videoWindowCount < videoWindowSize {
+		m.videoWindowCount++
+	}
+	var eposSum, estrainSum float32
+	for i := 0; i < m.videoWindowCount; i++ {
+		eposSum += m.eposWindow[i]
+		estrainSum += m.estrainWindow[i]
+	}
+	eposAvg := eposSum / float32(m.videoWindowCount)
+	estrainAvg := estrainSum / float32(m.videoWindowCount)
+
+	m.heartbeat.EPos = eposAvg - m.heartbeat.EZeroPos
+	m.heartbeat.EStrain = estrainAvg - m.heartbeat.EZeroStrain
 	m.heartbeatMu.Unlock()
 }
 
@@ -198,7 +223,11 @@ func (m *MINIMTSService) resetExtensometerBaseline() {
 	m.heartbeat.EStrain = 0
 	m.heartbeat.EZeroPos = 0    // ROI 变更后像素基准已不同，归零偏移需一并清除
 	m.heartbeat.EZeroStrain = 0 // 应变归零偏移同样失效
-	m.videoFilterReady = false  // 滤波状态随基准一同重置
+	m.videoFilterReady = false  // 一阶低通状态随基准一同重置
+	m.eposWindow = [videoWindowSize]float32{}
+	m.estrainWindow = [videoWindowSize]float32{}
+	m.videoWindowIdx = 0
+	m.videoWindowCount = 0
 	m.heartbeatMu.Unlock()
 }
 
@@ -232,10 +261,12 @@ func (m *MINIMTSService) IsOpened() bool {
 
 func (m *MINIMTSService) go_heartbeat() {
 	// 单次扫描实测约 32ms（峰值 40ms），周期需大于该耗时，否则 ticker 会持续积压
-	scanTicker := time.NewTicker(50 * time.Millisecond) // 扫描数据周期
+	scanTicker := time.NewTicker(50 * time.Millisecond) // 主扫描：电机/载荷高速采样
+	auxTicker := time.NewTicker(200 * time.Millisecond) // 辅助：限位/温度低速采样
 	cacheTicker := time.NewTicker(60 * time.Second)     // 缓存数据自动保存周期，单位秒
 
 	defer scanTicker.Stop()
+	defer auxTicker.Stop()
 	defer cacheTicker.Stop()
 
 	for {
@@ -252,9 +283,25 @@ func (m *MINIMTSService) go_heartbeat() {
 			m.heartbeatMu.RUnlock()
 
 			application.Get().Event.Emit("mts-heartbeat", heartbeat)
+		case <-auxTicker.C:
+			// 限位 & 温度低速采样（200ms 足够，与 50ms 主扫描解耦）
+			// 这两个方法内部只做 Modbus 读取，不写 heartbeat 字段，因此不持 heartbeatMu
+			if m.systemConfig != nil {
+				if m.systemConfig.Limit_Enabled {
+					_, _ = m.updateLimitStatus()
+				}
+				if m.systemConfig.Temp_Enabled {
+					_, _ = m.updateTempData()
+				}
+			}
 		case <-cacheTicker.C:
-			// 缓存数据自动保存
-			go m.go_save_cache() //每分钟存储缓存数据
+			// 缓存数据自动保存（仅在测量过程中）
+			m.heartbeatMu.RLock()
+			active := m.cacheActive
+			m.heartbeatMu.RUnlock()
+			if active {
+				go m.go_save_cache() //每分钟存储缓存数据
+			}
 		}
 	}
 }
@@ -281,18 +328,10 @@ func (m *MINIMTSService) go_scan() error {
 		m.heartbeat.Stress = load / m.projectConfig.SectionArea
 	}
 
-	// 更新限位状态(如果已启用)
-	if m.systemConfig.Limit_Enabled {
-		m.updateLimitStatus()
+	// 缓存保存数据到列表（仅在测量过程中缓存）
+	if m.cacheActive {
+		m.dataList = append(m.dataList, m.heartbeat)
 	}
-
-	// 更新温度数据(如果已启用)
-	if m.systemConfig.Temp_Enabled {
-		m.updateTempData()
-	}
-
-	// 缓存保存数据到列表
-	m.dataList = append(m.dataList, m.heartbeat)
 	return nil
 }
 
@@ -313,11 +352,53 @@ func (m *MINIMTSService) IsMINIMTSConnected() bool {
 	return m.Device.IsConnected()
 }
 
+// go_save_cache 自动缓存数据到本地文件，防止未手动保存导致数据丢失。
 func (m *MINIMTSService) go_save_cache() {
-	fmt.Println("go_save_cache")
-	// if err := m.SaveCache(); err != nil {
-	// 	fmt.Println("保存缓存数据失败:", err)
-	// }
+	if err := m.saveCacheFile(); err != nil {
+		fmt.Println("保存缓存数据失败:", err)
+	}
+}
+
+// cacheFileName 自动缓存文件名：项目文件名追加 "_cache"。
+func (m *MINIMTSService) cacheFileName() string {
+	return strings.TrimSuffix(m.projectConfig.FileName, filepath.Ext(m.projectConfig.FileName)) + "_cache.csv"
+}
+
+// saveCacheFile 将内存中的心跳数据写入自动缓存文件（m.projectConfig.FilePath + "_cache" 文件名）。
+func (m *MINIMTSService) saveCacheFile() error {
+	m.cacheSaveMu.Lock()
+	defer m.cacheSaveMu.Unlock()
+
+	if m.projectConfig == nil {
+		return fmt.Errorf("项目配置未初始化")
+	}
+	path := m.projectConfig.FilePath
+	if path == "" || m.projectConfig.FileName == "" {
+		return fmt.Errorf("缓存保存路径和文件名不能为空")
+	}
+	name := m.cacheFileName()
+
+	m.heartbeatMu.RLock()
+	data := append([]MINIMTSHeartbeat(nil), m.dataList...)
+	m.heartbeatMu.RUnlock()
+
+	if err := os.MkdirAll(path, 0755); err != nil {
+		return err
+	}
+	file, err := os.CreateTemp(path, ".minimts-cache-*.csv")
+	if err != nil {
+		return err
+	}
+	defer os.Remove(file.Name())
+
+	if err := m.writeHeartbeatCSV(file, data); err != nil {
+		file.Close()
+		return err
+	}
+	if err := file.Close(); err != nil {
+		return err
+	}
+	return os.Rename(file.Name(), filepath.Join(path, name))
 }
 
 // SaveCache 将当前缓存快照保存为 CSV；path 和 name 为空时使用项目配置。
@@ -349,43 +430,141 @@ func (m *MINIMTSService) SaveCache() error {
 	}
 	defer os.Remove(file.Name())
 
-	writer := csv.NewWriter(file)
-	typ := reflect.TypeOf(MINIMTSHeartbeat{})
-	header := make([]string, typ.NumField())
-	for i := range header {
-		header[i] = typ.Field(i).Tag.Get("json")
-	}
-	if err := writer.Write(header); err != nil {
-		file.Close()
-		return err
-	}
-	for _, heartbeat := range data {
-		value := reflect.ValueOf(heartbeat)
-		row := make([]string, len(header))
-		for i := range row {
-			field := value.Field(i)
-			if field.Type() == reflect.TypeOf(time.Time{}) {
-				row[i] = field.Interface().(time.Time).Format(time.RFC3339Nano)
-			} else if field.Kind() == reflect.Float32 {
-				row[i] = strconv.FormatFloat(field.Float(), 'f', -1, 32)
-			} else {
-				row[i] = fmt.Sprint(field.Interface())
-			}
-		}
-		if err := writer.Write(row); err != nil {
-			file.Close()
-			return err
-		}
-	}
-	writer.Flush()
-	if err := writer.Error(); err != nil {
+	if err := m.writeHeartbeatCSV(file, data); err != nil {
 		file.Close()
 		return err
 	}
 	if err := file.Close(); err != nil {
 		return err
 	}
-	return os.Rename(file.Name(), filepath.Join(path, name))
+	if err := os.Rename(file.Name(), filepath.Join(path, uniqueFileName(path, name))); err != nil {
+		return err
+	}
+	// 手动保存成功后删除自动缓存文件，避免保留重复数据
+	os.Remove(filepath.Join(path, m.cacheFileName()))
+	return nil
+}
+
+// writeHeartbeatCSV 向已打开的文件写入：项目元数据注释行 + 过滤后的心跳 CSV。
+// 相机未连接时会把 videoExtEnable / dicEnable 强制视为 false，并隐藏 ePos / eStrain 列。
+func (m *MINIMTSService) writeHeartbeatCSV(file *os.File, data []MINIMTSHeartbeat) error {
+	// ---- 相机连接判定 ----
+	camConnected := m.extensometer != nil && m.extensometer.IsCameraConnected()
+	videoEnabled := camConnected && m.projectConfig.VideoExtEnable
+	dicEnabled := camConnected && m.projectConfig.DICEnable
+
+	// ---- 列过滤 ----
+	excluded := map[string]struct{}{
+		"zeroLoad":    {},
+		"zeroDisp":    {},
+		"eZeroPos":    {},
+		"eZeroStrain": {},
+		"limitDIR":    {},
+		"temperature": {},
+		"startTime":   {},
+	}
+	if !videoEnabled {
+		excluded["ePos"] = struct{}{}
+		excluded["eStrain"] = struct{}{}
+	}
+
+	typ := reflect.TypeOf(MINIMTSHeartbeat{})
+	type fieldIdx struct {
+		idx int
+		tag string
+	}
+	var keep []fieldIdx
+	for i := 0; i < typ.NumField(); i++ {
+		tag := typ.Field(i).Tag.Get("json")
+		if _, skip := excluded[tag]; skip {
+			continue
+		}
+		keep = append(keep, fieldIdx{i, tag})
+	}
+
+	// ---- 项目元数据注释行 ----
+	pc := m.projectConfig
+	meta := []struct{ k, v string }{
+		{"experimenter", pc.Experimenter},
+		{"sampleNo", pc.SampleNo},
+		{"testDate", pc.TestDate},
+		{"sampleShape", pc.SampleShape},
+		{"testType", fmt.Sprint(pc.TestType)},
+		{"width", formatNumber(pc.Width)},
+		{"thickness", formatNumber(pc.Thickness)},
+		{"diameter", formatNumber(pc.Diameter)},
+		{"sectionArea", formatNumber(pc.SectionArea)},
+		{"sectionLength", formatNumber(pc.SectionLength)},
+		{"speed", formatNumber(pc.Speed)},
+		{"pauseCondition", pc.PauseCondition},
+		{"triggerEnabled", fmt.Sprint(pc.TriggerEnabled)},
+		{"triggerPeriodMs", fmt.Sprint(pc.TriggerPeriodMs)},
+		{"triggerPulseWidthMs", fmt.Sprint(pc.TriggerPulseWidthMs)},
+		{"videoExtEnable", fmt.Sprint(videoEnabled)},
+		{"dicEnable", fmt.Sprint(dicEnabled)},
+	}
+	for _, item := range meta {
+		if _, err := fmt.Fprintf(file, "# %s: %s\n", item.k, item.v); err != nil {
+			return err
+		}
+	}
+
+	// ---- CSV 数据 ----
+	writer := csv.NewWriter(file)
+	header := make([]string, len(keep))
+	for i, f := range keep {
+		header[i] = f.tag
+	}
+	if err := writer.Write(header); err != nil {
+		return err
+	}
+	for _, hb := range data {
+		value := reflect.ValueOf(hb)
+		row := make([]string, len(keep))
+		for i, f := range keep {
+			field := value.Field(f.idx)
+			switch field.Kind() {
+			case reflect.Float32:
+				row[i] = strconv.FormatFloat(field.Float(), 'f', -1, 32)
+			case reflect.Float64:
+				row[i] = strconv.FormatFloat(field.Float(), 'f', -1, 64)
+			case reflect.String:
+				row[i] = field.String()
+			default:
+				row[i] = fmt.Sprint(field.Interface())
+			}
+		}
+		if err := writer.Write(row); err != nil {
+			return err
+		}
+	}
+	writer.Flush()
+	return writer.Error()
+}
+
+// formatNumber 去除浮点尾部多余零
+func formatNumber(f float32) string {
+	return strconv.FormatFloat(float64(f), 'f', -1, 32)
+}
+
+// uniqueFileName 在目录 dir 下为 baseName 寻找一个不冲突的文件名。
+// 若 baseName 已存在，依次尝试 stem(1).ext、stem(2).ext … 直到空闲。
+func uniqueFileName(dir, baseName string) string {
+	target := filepath.Join(dir, baseName)
+	if _, err := os.Stat(target); os.IsNotExist(err) {
+		return baseName
+	}
+
+	ext := filepath.Ext(baseName)
+	stem := strings.TrimSuffix(baseName, ext)
+	for i := 1; i < 10000; i++ {
+		candidate := fmt.Sprintf("%s(%d)%s", stem, i, ext)
+		if _, err := os.Stat(filepath.Join(dir, candidate)); os.IsNotExist(err) {
+			return candidate
+		}
+	}
+	// 理论上不会走到
+	return baseName
 }
 
 // ClearDataCache 清空内存中的心跳数据缓存，不删除已保存的文件。
@@ -393,6 +572,8 @@ func (m *MINIMTSService) ClearDataCache() {
 	m.heartbeatMu.Lock()
 	m.dataList = nil
 	m.heartbeatMu.Unlock()
+
+	m.CallDataToZero("time")
 }
 
 // CallDataToZero 数据归零函数
@@ -464,17 +645,13 @@ func (m *MINIMTSService) MotorStop() error {
 
 // MotorJog 电机速度模式移动
 func (m *MINIMTSService) MotorJog(speed float32) error {
-	m.heartbeatMu.RLock()
-	blockedDirection := m.systemConfig.Limit_Direction
-	m.heartbeatMu.RUnlock()
+	blocked := m.GetBlockedDirection()
 
-	if blockedDirection == 1 && speed > 0 {
-		fmt.Println("正向限位，禁止正向运动")
-		return fmt.Errorf("正向限位，禁止正向运动")
+	if blocked > 0 && speed > 0 {
+		return fmt.Errorf("正向已被限位，禁止正向运动")
 	}
-	if blockedDirection == -1 && speed < 0 {
-		fmt.Println("反向限位，禁止反向运动")
-		return fmt.Errorf("反向限位，禁止反向运动")
+	if blocked < 0 && speed < 0 {
+		return fmt.Errorf("反向已被限位，禁止反向运动")
 	}
 
 	if speed == 0 {
@@ -553,6 +730,23 @@ func (m *MINIMTSService) stopTriggerLoop() {
 	}
 }
 
+// emitDICCapture 通知相机服务开始/停止 DIC 图像保存；实际采集与落盘由相机服务负责
+func (m *MINIMTSService) emitDICCapture(start bool) {
+	app := application.Get()
+	if app == nil {
+		return
+	}
+	if !start {
+		app.Event.Emit("dic_capture_stop", nil)
+		return
+	}
+	app.Event.Emit("dic_capture_start", DICCaptureConfig{
+		Folder:   m.projectConfig.DICFolder,
+		FileName: m.projectConfig.DICFileName,
+		PeriodMs: m.projectConfig.DICCapturePeriodMs,
+	})
+}
+
 // StartMeasurement 开始测量逻辑
 func (m *MINIMTSService) StartMeasurement() error {
 	if m.projectConfig.TriggerEnabled {
@@ -564,11 +758,24 @@ func (m *MINIMTSService) StartMeasurement() error {
 		}
 	}
 
+	if m.projectConfig.DICEnable {
+		if m.projectConfig.DICCapturePeriodMs <= 0 {
+			return fmt.Errorf("DIC 拍摄周期必须大于 0 ms")
+		}
+		if m.projectConfig.DICFolder == "" {
+			return fmt.Errorf("DIC 图片保存路径不能为空")
+		}
+	}
+
 	if m.projectConfig.TriggerEnabled {
 		m.startTriggerLoop(
 			time.Duration(m.projectConfig.TriggerPeriodMs)*time.Millisecond,
 			time.Duration(m.projectConfig.TriggerPulseWidthMs)*time.Millisecond,
 		)
+	}
+
+	if m.projectConfig.DICEnable {
+		m.emitDICCapture(true)
 	}
 
 	if err := m.MotorOn(); err != nil {
@@ -579,14 +786,25 @@ func (m *MINIMTSService) StartMeasurement() error {
 		return err
 	}
 
+	// 测量开始后才启用数据缓存与定时自动保存
+	m.heartbeatMu.Lock()
+	m.cacheActive = true
+	m.heartbeatMu.Unlock()
+
 	return nil
 }
 
 // StopMeasurement 停止测量
 func (m *MINIMTSService) StopMeasurement() error {
+	// 停止测量后不再缓存数据
+	m.heartbeatMu.Lock()
+	m.cacheActive = false
+	m.heartbeatMu.Unlock()
+
 	m.stopLoadControl()
 	err := m.MotorStop()
 	m.stopTriggerLoop()
+	m.emitDICCapture(false)
 	return err
 }
 
@@ -595,6 +813,9 @@ func (m *MINIMTSService) PauseMeasurement() error {
 	if m.projectConfig == nil {
 		return fmt.Errorf("项目配置未初始化")
 	}
+
+	m.stopTriggerLoop()
+	m.emitDICCapture(false)
 
 	switch m.projectConfig.PauseCondition {
 	case "stop", "disp-maintain":
@@ -605,12 +826,24 @@ func (m *MINIMTSService) PauseMeasurement() error {
 	default:
 		return fmt.Errorf("暂停条件 %s 未知", m.projectConfig.PauseCondition)
 	}
+
 }
 
 // ResumeMeasurement 结束暂停状态并恢复试验速度。
 func (m *MINIMTSService) ResumeMeasurement() error {
 	if m.projectConfig == nil {
 		return fmt.Errorf("项目配置未初始化")
+	}
+
+	if m.projectConfig.TriggerEnabled {
+		m.startTriggerLoop(
+			time.Duration(m.projectConfig.TriggerPeriodMs)*time.Millisecond,
+			time.Duration(m.projectConfig.TriggerPulseWidthMs)*time.Millisecond,
+		)
+	}
+
+	if m.projectConfig.DICEnable {
+		m.emitDICCapture(true)
 	}
 
 	m.stopLoadControl()
@@ -704,6 +937,7 @@ func (m *MINIMTSService) EmergencyStop() error {
 	m.stopLoadControl()
 	stopErr := m.MotorStop()
 	m.stopTriggerLoop()
+	m.emitDICCapture(false)
 	if stopErr != nil {
 		return stopErr
 	}
@@ -773,11 +1007,11 @@ func (m *MINIMTSService) updateTempData() (float32, error) {
 
 }
 
+// updateLimitStatus 读取限位状态，触发时立即停机并更新 blockedDirection。
+// 内部会向前端 Emit("mts-limit-changed", {blockedDirection}) 事件。
 func (m *MINIMTSService) updateLimitStatus() (int, error) {
-
 	resp, err := m.Device.SendModbus(m.systemConfig.Limit_ID, 0x04, 0x00, 0x02)
 	if err != nil {
-		fmt.Println("获取限位状态失败:", err)
 		return 0, err
 	}
 	if len(resp) < 9 {
@@ -790,5 +1024,46 @@ func (m *MINIMTSService) updateLimitStatus() (int, error) {
 	} else if resp[6] == 0x01 {
 		limit = 2
 	}
+
+	// 计算当前被挡住的方向
+	var blocked int
+	if limit == 0 {
+		blocked = 0
+	} else if limit == m.systemConfig.Limit_Direction {
+		// 实际触发的端口与配置方向一致 → 挡正向
+		blocked = +1
+	} else {
+		// 触发的是另一端口 → 挡反向
+		blocked = -1
+	}
+
+	// 如果方向状态改变，立即停机并通知前端
+	var changed bool
+	m.blockedMu.Lock()
+	if m.blockedDirection != blocked {
+		m.blockedDirection = blocked
+		changed = true
+	}
+	m.blockedMu.Unlock()
+
+	if changed && blocked != 0 {
+		go func() {
+			fmt.Printf("限位触发：端口 %d，挡 %s 方向，立即停机\n", limit, map[int]string{1: "正向", -1: "反向"}[blocked])
+			_ = m.MotorStop()
+		}()
+	}
+
+	if changed {
+		application.Get().Event.Emit("mts-limit-changed", map[string]any{
+			"blockedDirection": blocked,
+		})
+	}
 	return limit, nil
+}
+
+// GetBlockedDirection 返回当前被限位的方向（0=无，+1=正向挡，-1=反向挡）
+func (m *MINIMTSService) GetBlockedDirection() int {
+	m.blockedMu.RLock()
+	defer m.blockedMu.RUnlock()
+	return m.blockedDirection
 }

@@ -81,6 +81,14 @@ export function IsHIKCameraConnected() {
 }
 
 /**
+ * ListenDICCapture 订阅 DIC 图像保存的开始/停止事件，需在 application 初始化之后调用
+ * @returns {$CancellablePromise<void>}
+ */
+export function ListenDICCapture() {
+    return $Call.ByID(594804642);
+}
+
+/**
  * OpenHIKCamera 打开 HIK 相机
  * @param {string} name
  * @returns {$CancellablePromise<void>}

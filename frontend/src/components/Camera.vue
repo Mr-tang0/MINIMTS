@@ -634,6 +634,7 @@ onBeforeUnmount(() => {
   min-width: 0;
   min-height: 0;
   display: flex;
+  overflow: hidden;
 }
 
 .video-stage {
@@ -650,38 +651,48 @@ onBeforeUnmount(() => {
 }
 
 .stream-image {
-  max-width: 100%;
-  max-height: 100%;
+  width: 100%;
+  height: 100%;
   display: block;
   object-fit: contain;
 }
 
 .no-signal {
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
+  gap: 6px;
   color: #64748b;
+  text-align: center;
+  overflow: hidden;
 }
 
 .no-signal i {
-  font-size: 46px;
+  font-size: clamp(24px, 6vw, 46px);
 }
 
 .no-signal strong {
   color: #94a3b8;
-  font-size: 15px;
+  font-size: clamp(12px, 2vw, 15px);
   letter-spacing: 3px;
 }
 
 .no-signal span {
-  font-size: 12px;
+  font-size: clamp(10px, 1.5vw, 12px);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .osd-rec {
   position: absolute;
-  top: 10px;
-  left: 12px;
+  top: 8px;
+  left: 8px;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -691,6 +702,9 @@ onBeforeUnmount(() => {
   border-radius: 4px;
   font-size: 11px;
   letter-spacing: 1px;
+  max-width: calc(100% - 16px);
+  box-sizing: border-box;
+  overflow: hidden;
 }
 
 .osd-rec em {
@@ -713,6 +727,15 @@ onBeforeUnmount(() => {
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  .camera-body {
+    grid-template-columns: 1fr;
+  }
+  .param-panel {
+    display: none;
+  }
 }
 
 .panel-group {
