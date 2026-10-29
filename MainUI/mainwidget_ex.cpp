@@ -389,7 +389,9 @@ void mainWidget::initSystem(){
 
     //更新采样率
     dataFreshTimer->stop();
-    dataFreshTimer->start(1000/systemWidget::systemMap["normal"]["sampleRate"].toInt());
+    int sample = systemWidget::systemMap["normal"]["sampleRate"].toInt();
+    if(sample<=0)sample=10; //免得除0
+    dataFreshTimer->start(1000/sample);
 
     //根据设置更改表格显示
 

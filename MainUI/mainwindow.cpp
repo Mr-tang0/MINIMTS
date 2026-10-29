@@ -49,7 +49,11 @@ MainWindow::MainWindow(QWidget *parent)
         runUpdateCommand();
     }
 
-    onlinelogin->show();
+    user->Name = "user";
+    user->Password = "user";
+    user->role = "user";
+    user->isLogined = true;
+    user->UserLogin();
 }
 
 MainWindow::~MainWindow()
