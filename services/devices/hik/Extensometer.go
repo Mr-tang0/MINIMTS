@@ -888,7 +888,7 @@ func icgnRefineFull(defBytes []uint8, defW, defH int,
 			xDef := cxRef + xi + p[0] + p[2]*xi + p[3]*yi
 			yDef := cyRef + yi + p[1] + p[4]*xi + p[5]*yi
 
-			if xDef < 1 || xDef >= float64(defW-2) || yDef < 1 || yDef >= float64(defH-2) {
+			if !(xDef >= 1 && xDef < float64(defW-2) && yDef >= 1 && yDef < float64(defH-2)) {
 				gWarped[i] = 0
 				continue
 			}
@@ -907,7 +907,7 @@ func icgnRefineFull(defBytes []uint8, defW, defH int,
 		gMean := gSum / float64(validCount)
 		gVar := gSumSq/float64(validCount) - gMean*gMean
 		gStd := math.Sqrt(gVar * float64(validCount) / float64(validCount-1))
-		if gStd < 1e-10 {
+		if !(gStd >= 1e-10) || math.IsInf(gStd, 0) {
 			return 0, false
 		}
 
@@ -935,8 +935,14 @@ func icgnRefineFull(defBytes []uint8, defW, defH int,
 			}
 		}
 
+		// 数值发散时终止精搜索，由调用方保留有效的粗搜索结果。
+		for _, value := range delta {
+			if math.IsNaN(value) || math.IsInf(value, 0) {
+				return 0, false
+			}
+		}
 		// 5. 逆合成更新: p ← p - Δp（含阻尼防止发散）
-		transNorm := math.Sqrt(delta[0]*delta[0] + delta[1]*delta[1])
+		transNorm := math.Hypot(delta[0], delta[1])
 		const maxStep = 2.0
 		if transNorm > maxStep {
 			scale := maxStep / transNorm
@@ -946,6 +952,9 @@ func icgnRefineFull(defBytes []uint8, defW, defH int,
 		}
 		for j := 0; j < 6; j++ {
 			p[j] -= delta[j]
+			if math.IsNaN(p[j]) || math.IsInf(p[j], 0) {
+				return 0, false
+			}
 		}
 
 		// 6. 收敛检查（平移分量）
@@ -974,7 +983,7 @@ func computeZNCC(defBytes []uint8, defW, defH int,
 		yi := coords[i][1]
 		xDef := cxRef + xi + p[0] + p[2]*xi + p[3]*yi
 		yDef := cyRef + yi + p[1] + p[4]*xi + p[5]*yi
-		if xDef < 1 || xDef >= float64(defW-2) || yDef < 1 || yDef >= float64(defH-2) {
+		if !(xDef >= 1 && xDef < float64(defW-2) && yDef >= 1 && yDef < float64(defH-2)) {
 			continue
 		}
 		gVal := bicubicSampleCR(defBytes, defW, defH, xDef, yDef)
@@ -990,7 +999,7 @@ func computeZNCC(defBytes []uint8, defW, defH int,
 	gMean := gSum / float64(validCount)
 	gVar := gSumSq/float64(validCount) - gMean*gMean
 	gStd := math.Sqrt(gVar * float64(validCount) / float64(validCount-1))
-	if gStd < 1e-10 {
+	if !(gStd >= 1e-10) || math.IsInf(gStd, 0) {
 		return 0
 	}
 
@@ -1014,6 +1023,10 @@ func computeZNCC(defBytes []uint8, defW, defH int,
 
 // bicubicSampleCR Catmull-Rom 样条双三次插值 (a = -0.5)
 func bicubicSampleCR(img []uint8, width, height int, x, y float64) float64 {
+	// 转整数前拒绝非有限坐标，避免 NaN 转换后的索引运算溢出。
+	if math.IsNaN(x) || math.IsNaN(y) || math.IsInf(x, 0) || math.IsInf(y, 0) {
+		return math.NaN()
+	}
 	ix := int(math.Floor(x))
 	iy := int(math.Floor(y))
 	fx := x - float64(ix)
@@ -1113,6 +1126,69 @@ func mat6Invert(m []float64) bool {
 	return true
 }
 
+// fitCenterDisplacement 按参考位置拟合线性位移场，返回初始 ROI 中心材料点的位移。
+func (e *ExtensometerService) fitCenterDisplacement(positions, u, v []float64) (float64, float64, int, bool) {
+	if len(positions) < 2 {
+		return 0, 0, 0, false
+	}
+	center := e.baseROIF.Y + e.baseROIF.Height/2
+	if e.axis == TrackingAxisHorizontal {
+		center = e.baseROIF.X + e.baseROIF.Width/2
+	}
+	fit := func(indices []int) (float64, float64, float64, float64, bool) {
+		var meanS, meanU, meanV float64
+		for _, i := range indices {
+			meanS += positions[i] - center
+			meanU += u[i]
+			meanV += v[i]
+		}
+		n := float64(len(indices))
+		meanS, meanU, meanV = meanS/n, meanU/n, meanV/n
+		var ss, su, sv float64
+		for _, i := range indices {
+			ds := positions[i] - center - meanS
+			ss += ds * ds
+			su += ds * (u[i] - meanU)
+			sv += ds * (v[i] - meanV)
+		}
+		if len(indices) < 2 || ss < 1e-12 {
+			return 0, 0, 0, 0, false
+		}
+		bu, bv := su/ss, sv/ss
+		return meanU - bu*meanS, meanV - bv*meanS, bu, bv, true
+	}
+	indices := make([]int, len(positions))
+	for i := range indices {
+		indices[i] = i
+	}
+	cu, cv, bu, bv, ok := fit(indices)
+	if !ok {
+		return 0, 0, 0, false
+	}
+	// 按拟合残差过滤，避免把真实的线性变形当作位移异常。
+	residuals := make([]float64, len(positions))
+	for i, position := range positions {
+		s := position - center
+		residuals[i] = math.Hypot(u[i]-cu-bu*s, v[i]-cv-bv*s)
+	}
+	valid := iqrFilter(residuals, 1.5)
+	if len(valid) >= 2 && len(valid) < len(indices) {
+		if fu, fv, _, _, validFit := fit(valid); validFit {
+			cu, cv, indices = fu, fv, valid
+		}
+	}
+	// 中心必须位于有效参考点覆盖范围内，避免单侧点导致外推。
+	minS, maxS := positions[indices[0]], positions[indices[0]]
+	for _, i := range indices[1:] {
+		minS = math.Min(minS, positions[i])
+		maxS = math.Max(maxS, positions[i])
+	}
+	if center < minS || center > maxS {
+		return 0, 0, 0, false
+	}
+	return cu, cv, len(indices), true
+}
+
 // ---------- 主追踪逻辑 ----------
 
 // calculateDisplacement 核心多点 DIC 追踪逻辑（对应 C++ 版 calculateDisplacement）
@@ -1122,7 +1198,7 @@ func mat6Invert(m []float64) bool {
 //  2. 对每个点:
 //     a. 整像素 ZNCC 粗搜索（带位移预测，对应 C++ 步骤 A）
 //     b. IC-GN 亚像素精搜索（一阶仿射 6 DOF，对应 C++ 步骤 B）
-//  3. 中值融合剔除离群点（对应 C++ 步骤 3）
+//  3. 拟合线性位移场并取初始 ROI 中心位移
 func (e *ExtensometerService) calculateDisplacement(defBytes []uint8, defW, defH int) *DICFrameResult {
 	if !e.mIsInitialized {
 		if !e.initMultiPoints() {
@@ -1135,6 +1211,7 @@ func (e *ExtensometerService) calculateDisplacement(defBytes []uint8, defW, defH
 
 	uList := make([]float64, 0, len(e.mSubsets))
 	vList := make([]float64, 0, len(e.mSubsets))
+	positions := make([]float64, 0, len(e.mSubsets))
 
 	for _, ref := range e.mSubsets {
 		dx, dy, score, ok := searchSubsetDisplacement(defBytes, defW, defH, ref, e.prevDx, e.prevDy, e.dicParam)
@@ -1143,23 +1220,25 @@ func (e *ExtensometerService) calculateDisplacement(defBytes []uint8, defW, defH
 		}
 		uList = append(uList, dx)
 		vList = append(vList, dy)
+		position := float64(ref.centerYi)
+		if e.axis == TrackingAxisHorizontal {
+			position = float64(ref.centerXi)
+		}
+		positions = append(positions, position)
 	}
 
-	if len(uList) == 0 {
+	uCenter, vCenter, count, ok := e.fitCenterDisplacement(positions, uList, vList)
+	if !ok {
 		return nil
 	}
-
-	uMedian := medianFloat64(uList)
-	vMedian := medianFloat64(vList)
-
-	e.prevDx = uMedian
-	e.prevDy = vMedian
+	e.prevDx = uCenter
+	e.prevDy = vCenter
 
 	return &DICFrameResult{
-		U:            uMedian,
-		V:            vMedian,
-		Displacement: math.Sqrt(uMedian*uMedian + vMedian*vMedian),
-		SubsetCount:  len(uList),
+		U:            uCenter,
+		V:            vCenter,
+		Displacement: math.Hypot(uCenter, vCenter),
+		SubsetCount:  count,
 	}
 }
 
@@ -1217,51 +1296,34 @@ func (e *ExtensometerService) calculateDisplacementMatShared(defMat gocv.Mat, de
 
 	uList := make([]float64, 0, len(e.mSubsets))
 	vList := make([]float64, 0, len(e.mSubsets))
-	for _, result := range results {
+	positions := make([]float64, 0, len(e.mSubsets))
+	for i, result := range results {
 		if !result.ok {
 			continue
 		}
 		uList = append(uList, result.dx)
 		vList = append(vList, result.dy)
+		ref := e.mSubsets[i]
+		position := float64(ref.centerYi)
+		if e.axis == TrackingAxisHorizontal {
+			position = float64(ref.centerXi)
+		}
+		positions = append(positions, position)
 	}
-	if len(uList) == 0 {
+	uCenter, vCenter, count, ok := e.fitCenterDisplacement(positions, uList, vList)
+	if !ok {
 		return nil
 	}
-
-	// IQR 离群点过滤：按位移幅值剔除异常点
-	type uvPair struct{ u, v float64 }
-	pairs := make([]uvPair, len(uList))
-	dispList := make([]float64, len(uList))
-	for i := range uList {
-		pairs[i] = uvPair{uList[i], vList[i]}
-		dispList[i] = math.Sqrt(uList[i]*uList[i] + vList[i]*vList[i])
-	}
-	validIndices := iqrFilter(dispList, 1.5)
-	if len(validIndices) == 0 {
-		validIndices = make([]int, len(uList))
-		for i := range validIndices {
-			validIndices[i] = i
-		}
-	}
-	filteredU := make([]float64, 0, len(validIndices))
-	filteredV := make([]float64, 0, len(validIndices))
-	for _, idx := range validIndices {
-		filteredU = append(filteredU, pairs[idx].u)
-		filteredV = append(filteredV, pairs[idx].v)
-	}
-
-	uMedian := medianFloat64(filteredU)
-	vMedian := medianFloat64(filteredV)
 	e.prevPrevDx = e.prevDx
 	e.prevPrevDy = e.prevDy
-	e.prevDx = uMedian
-	e.prevDy = vMedian
+	e.prevDx = uCenter
+	e.prevDy = vCenter
 
 	return &DICFrameResult{
-		U:            uMedian,
-		V:            vMedian,
-		Displacement: math.Sqrt(uMedian*uMedian + vMedian*vMedian),
-		SubsetCount:  len(filteredU),
+		U:            uCenter,
+		V:            vCenter,
+		Displacement: math.Hypot(uCenter, vCenter),
+		SubsetCount:  count,
 	}
 }
 

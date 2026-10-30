@@ -139,7 +139,7 @@ func (m *MINIMTSService) ListenExtensometer() {
 }
 
 // videoWindowSize 滑动窗口平均滤波器的窗口大小。
-const videoWindowSize = 5
+const videoWindowSize = 20
 
 // videoFilterAlpha 视频位移/应变一阶低通滤波系数（0~1，越小越平滑但滞后越大）。
 // 取 0.4 时噪声标准差约衰减为原来的 1/2.5，时间常数约为 2~3 帧。
