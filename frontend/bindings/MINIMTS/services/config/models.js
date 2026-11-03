@@ -105,11 +105,19 @@ export class ProjectConfig {
         }
         if (!("stopCondition" in $$source)) {
             /**
-             * 停止条件，time 或 disp
+             * 停止条件：manual-stop、stress-stop 或 strian-stop
              * @member
              * @type {string}
              */
             this["stopCondition"] = "";
+        }
+        if (!("stopValue" in $$source)) {
+            /**
+             * 停止阈值，应力 MPa 或应变 %
+             * @member
+             * @type {number}
+             */
+            this["stopValue"] = 0;
         }
         if (!("pauseCondition" in $$source)) {
             /**

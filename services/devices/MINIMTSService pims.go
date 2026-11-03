@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"encoding/csv"
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -39,11 +40,12 @@ type MINIMTSHeartbeat struct {
 }
 
 type MINIMTSService struct {
-	heartbeat   MINIMTSHeartbeat
-	heartbeatMu sync.RWMutex       // 保护 heartbeat 的读写锁
-	dataList    []MINIMTSHeartbeat // 数据列表，用于存储心跳数据
-	cacheActive bool               // 是否处于测量中（仅在测量过程中缓存数据，heartbeatMu 保护）
-	cacheSaveMu sync.Mutex         // 串行化文件保存，避免定时保存相互覆盖
+	heartbeat         MINIMTSHeartbeat
+	heartbeatMu       sync.RWMutex       // 保护 heartbeat 的读写锁
+	dataList          []MINIMTSHeartbeat // 数据列表，用于存储心跳数据
+	autoStopTriggered bool               // 本次试验是否已触发阈值停机，heartbeatMu 保护
+	cacheActive       bool               // 是否处于测量中（仅在测量过程中缓存数据，heartbeatMu 保护）
+	cacheSaveMu       sync.Mutex         // 串行化文件保存，避免定时保存相互覆盖
 
 	Device *protocol.SerialCommunicator //连接句柄
 
@@ -139,12 +141,12 @@ func (m *MINIMTSService) ListenExtensometer() {
 }
 
 // videoWindowSize 滑动窗口平均滤波器的窗口大小。
-const videoWindowSize = 20
+const videoWindowSize = 5
 
 // videoFilterAlpha 视频位移/应变一阶低通滤波系数（0~1，越小越平滑但滞后越大）。
 // 取 0.4 时噪声标准差约衰减为原来的 1/2.5，时间常数约为 2~3 帧。
 // 一阶低通后再叠加窗口为 videoWindowSize 的滑动窗口平均，进一步抑制随机噪声。
-const videoFilterAlpha = 0.4
+const videoFilterAlpha = 0.2
 
 // updateVideoMetrics 根据两个 ROI 的欧几里得距离计算视频位移与应变。
 //
@@ -276,9 +278,10 @@ func (m *MINIMTSService) go_heartbeat() {
 			if err := m.go_scan(); err != nil {
 				return
 			}
+			m.checkAutoStop()
 			//更新时间
 			m.heartbeatMu.RLock()
-			m.heartbeat.Duration = float32(time.Now().Sub(m.heartbeat.StartTime).Seconds())
+			m.heartbeat.Duration = float32(time.Since(m.heartbeat.StartTime).Seconds())
 			heartbeat := m.heartbeat
 			m.heartbeatMu.RUnlock()
 
@@ -304,6 +307,50 @@ func (m *MINIMTSService) go_heartbeat() {
 			}
 		}
 	}
+}
+
+func (m *MINIMTSService) checkAutoStop() {
+	m.heartbeatMu.Lock()
+	if !m.cacheActive || m.autoStopTriggered || m.projectConfig == nil {
+		m.heartbeatMu.Unlock()
+		return
+	}
+	condition, target := m.projectConfig.StopCondition, m.projectConfig.StopValue
+	var value float64
+	var label, unit string
+	switch condition {
+	case "stress-stop":
+		value, label, unit = float64(m.heartbeat.Stress), "应力", "MPa"
+	case "strian-stop":
+		strain := m.heartbeat.EStrain
+		label = "视频应变"
+		if strain == 0 {
+			strain = m.heartbeat.Strain
+			label = "位移应变"
+		}
+		value, unit = float64(strain)*100, "%"
+	default:
+		m.heartbeatMu.Unlock()
+		return
+	}
+	if !(target > 0) || !(math.Abs(value) >= float64(target)) {
+		m.heartbeatMu.Unlock()
+		return
+	}
+	m.autoStopTriggered = true
+	m.heartbeatMu.Unlock()
+
+	// 防止载荷维持循环在停机后再次下发运动指令。
+	m.stopLoadControl()
+	err := m.MotorStop()
+	message := fmt.Sprintf("%s已达到停止阈值 %g %s，电机已停止", label, target, unit)
+	if err != nil {
+		message = fmt.Sprintf("%s已达到停止阈值，但电机停止失败：%v", label, err)
+	}
+	application.Get().Event.Emit("mts-auto-stop", map[string]interface{}{
+		"message": message,
+		"success": err == nil,
+	})
 }
 
 func (m *MINIMTSService) go_scan() error {
@@ -749,6 +796,12 @@ func (m *MINIMTSService) emitDICCapture(start bool) {
 
 // StartMeasurement 开始测量逻辑
 func (m *MINIMTSService) StartMeasurement() error {
+	if m.projectConfig.StopCondition != "manual-stop" {
+		value := float64(m.projectConfig.StopValue)
+		if value <= 0 || math.IsNaN(value) || math.IsInf(value, 0) {
+			return fmt.Errorf("自动停止阈值必须大于 0 且为有限数值")
+		}
+	}
 	if m.projectConfig.TriggerEnabled {
 		if m.projectConfig.TriggerPeriodMs <= 0 {
 			return fmt.Errorf("触发周期必须大于 0 ms")
@@ -789,6 +842,7 @@ func (m *MINIMTSService) StartMeasurement() error {
 	// 测量开始后才启用数据缓存与定时自动保存
 	m.heartbeatMu.Lock()
 	m.cacheActive = true
+	m.autoStopTriggered = false
 	m.heartbeatMu.Unlock()
 
 	return nil
@@ -818,9 +872,9 @@ func (m *MINIMTSService) PauseMeasurement() error {
 	m.emitDICCapture(false)
 
 	switch m.projectConfig.PauseCondition {
-	case "stop", "disp-maintain":
+	case "disp-maintain":
 		m.stopLoadControl()
-		return m.MotorStop()
+		return m.MotorJog(0)
 	case "load-maintain":
 		return m.startLoadControl()
 	default:

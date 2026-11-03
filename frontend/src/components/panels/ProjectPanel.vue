@@ -68,6 +68,8 @@
               <div class="input-unit-group highlight"><span>标距 L0</span><input v-model.number="form.sectionLength" type="number" step="0.01" @input="autoCalcSpeed" /></div>
               <div class="area-calc">计算截面积: <span>π × {{ form.diameter }}² = {{ currentArea }} </span> mm²</div>
             </div>
+
+            
           </div>
 
           <!-- 测试控制 -->
@@ -84,13 +86,25 @@
               <label>运行速度 (mm/s)</label>
               <input v-model.number="form.speed" type="number" step="0.001" :class="{ 'danger-text': isSpeedOverridden }" @input="handleSpeedManualChange" />
             </div>
+            
             <div class="form-item mt-10">
               <label>暂停状态</label>
               <select v-model="form.pauseCondition">
-                <option value="stop">立即停止</option>
+                <option value="disp-maintain">位移维持</option>
                 <option value="load-maintain">载荷维持</option>
-                <option value="disp-maintain">位移维持(暂不使用)</option>
               </select>
+            </div>
+            <div class="form-item mt-10">
+              <label>自动停止条件</label>
+              <select v-model="form.stopCondition">
+                <option value="manual-stop">手动停止</option>
+                <option value="stress-stop">应力到达</option>
+                <option value="strian-stop">应变到达</option>
+              </select>
+            </div>
+            <div v-if="form.stopCondition !== 'manual-stop'" class="form-item mt-10">
+              <label>{{ form.stopCondition === 'stress-stop' ? '停止应力（MPa）' : '停止应变（%）' }}</label>
+              <input v-model.number="form.stopValue" type="number" min="0" step="any" />
             </div>
           </div>
         </div>
@@ -261,7 +275,8 @@ const form = reactive({
   sectionLength: 25.0,
   type: 'tension',
   speed: 0.025,
-  stopCondition: 'manual',
+  stopCondition: 'manual-stop',
+  stopValue: 0,
   pauseCondition: 'stop',
   // 触发信号发射
   triggerEnabled: false,
@@ -392,6 +407,11 @@ const loadConfig = async () => {
 };
 
 const handleSubmit = async () => {
+  if (form.stopCondition !== 'manual-stop' &&
+      (!Number.isFinite(form.stopValue) || form.stopValue <= 0)) {
+    toast('自动停止阈值必须大于 0', 'error');
+    return;
+  }
   if (!isTriggerValid.value) {
     toast('触发脉宽必须大于 0 且不能超过触发周期', 'error');
     return;
@@ -411,6 +431,7 @@ const handleSubmit = async () => {
       testType: form.type === 'compression' ? -1 : 1,
       speed: form.speed,
       stopCondition: form.stopCondition,
+      stopValue: Number(form.stopValue),
       pauseCondition: form.pauseCondition,
       triggerEnabled: form.triggerEnabled,
       triggerPeriodMs: Number(form.triggerPeriodMs),
@@ -553,7 +574,7 @@ onUnmounted(() => {
 .input-unit-group { display: flex; align-items: center; justify-content: space-between; }
 .input-unit-group span { font-size: 12px; color: #94a3b8; }
 .input-unit-group input { width: 80px; text-align: right; }
-.area-calc { margin-top: 10px; font-size: 15px; color: #64748b; text-align: right; }
+.area-calc { margin-top: 10px; font-size: 10px; color: #64748b; text-align: right; }
 .area-calc span { color: #10b981; font-weight: bold; font-family: monospace; }
 
 .quasi-footer { display: flex; gap: 15px; }

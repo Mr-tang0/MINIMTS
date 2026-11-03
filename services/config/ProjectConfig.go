@@ -22,12 +22,14 @@ type ProjectConfig struct {
 	SectionArea   float32 `json:"sectionArea"`   // 样本截面面积
 	SectionLength float32 `json:"sectionLength"` // 样本截面长度
 
-	TestType       int     `json:"testType"`       // 1:tension, -1:compression
-	Speed          float32 `json:"speed"`          // 测试速度，单位：mm/s
-	StopCondition  string  `json:"stopCondition"`  // 停止条件，time 或 disp
-	PauseCondition string  `json:"pauseCondition"` // 暂停动作
-	FilePath       string  `json:"filePath"`       // 准静态保存路径
-	FileName       string  `json:"fileName"`       // 准静态文件名
+	TestType      int     `json:"testType"`      // 1:tension, -1:compression
+	Speed         float32 `json:"speed"`         // 测试速度，单位：mm/s
+	StopCondition string  `json:"stopCondition"` // 停止条件：manual-stop、stress-stop 或 strian-stop
+	StopValue     float32 `json:"stopValue"`     // 停止阈值，应力 MPa 或应变 %
+
+	PauseCondition string `json:"pauseCondition"` // 暂停动作
+	FilePath       string `json:"filePath"`       // 准静态保存路径
+	FileName       string `json:"fileName"`       // 准静态文件名
 
 	TriggerEnabled      bool `json:"triggerEnabled"`      // 是否启用触发器
 	TriggerPeriodMs     int  `json:"triggerPeriodMs"`     // 触发器周期，单位毫秒
@@ -56,7 +58,7 @@ func NewProjectConfig() *ProjectConfig {
 
 		TestType:       1,
 		Speed:          0.1,
-		StopCondition:  "time",
+		StopCondition:  "manual-stop",
 		PauseCondition: "stop",
 		FilePath:       "./data/",
 		FileName:       "test.json",
@@ -94,6 +96,11 @@ func (s *ProjectConfig) GetFromLocalPath(path string) (*ProjectConfig, error) {
 	config := NewProjectConfig()
 	if err := json.Unmarshal(data, config); err != nil {
 		return nil, err
+	}
+	switch config.StopCondition {
+	case "manual-stop", "stress-stop", "strian-stop":
+	default:
+		config.StopCondition = "manual-stop"
 	}
 	if config.PauseCondition == "" || config.PauseCondition == "pause" {
 		config.PauseCondition = "stop"

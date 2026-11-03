@@ -32,11 +32,15 @@
       <div class="manual-buttons">
         <button
           class="tensile"
+          :class="{ pressed: jogDirection === 1 }"
+          :aria-pressed="jogDirection === 1"
+          title="按住 Ctrl+W 拉伸，松开停止"
           type="button"
           :disabled="measuring || blockedDirection >= 1"
           @pointerdown.prevent="startJog(1, $event)"
           @pointerup="releaseJog"
           @pointercancel="releaseJog"
+          @lostpointercapture="releaseJog"
         >
           <i class="ri-arrow-up-line"></i><span>拉伸</span>
           <small v-if="blockedDirection >= 1" class="limit-hint">已限位</small>
@@ -46,11 +50,15 @@
         </button>
         <button
           class="compress"
+          :class="{ pressed: jogDirection === -1 }"
+          :aria-pressed="jogDirection === -1"
+          title="按住 Ctrl+S 压缩，松开停止"
           type="button"
           :disabled="measuring || blockedDirection <= -1"
           @pointerdown.prevent="startJog(-1, $event)"
           @pointerup="releaseJog"
           @pointercancel="releaseJog"
+          @lostpointercapture="releaseJog"
         >
           <i class="ri-arrow-down-line"></i><span>压缩</span>
           <small v-if="blockedDirection <= -1" class="limit-hint">已限位</small>
@@ -86,10 +94,21 @@ const measuring = ref(false);
 const paused = ref(false);
 const busy = ref(false);
 const jogging = ref(false);
+const jogDirection = ref(0);
+let jogKey = null;
 const blockedDirection = ref(0); // 0=无限位；+1=正向挡；-1=反向挡
 
 let offLimitChanged;
+let offAutoStop;
 onMounted(() => {
+  offAutoStop = Events.On('mts-auto-stop', (event) => {
+    const data = event?.data ?? event;
+    toast(data.message, data.success ? 'warning' : 'error');
+  });
+  window.addEventListener('keydown', onJogKeyDown, true);
+  window.addEventListener('keyup', onJogKeyUp, true);
+  window.addEventListener('blur', releaseJog);
+  document.addEventListener('visibilitychange', onVisibilityChange);
   offLimitChanged = Events.On('mts-limit-changed', (event) => {
     const data = event?.data ?? event;
     blockedDirection.value = Number(data?.blockedDirection ?? 0);
@@ -102,7 +121,13 @@ onMounted(() => {
   });
 });
 onUnmounted(() => {
+  window.removeEventListener('keydown', onJogKeyDown, true);
+  window.removeEventListener('keyup', onJogKeyUp, true);
+  window.removeEventListener('blur', releaseJog);
+  document.removeEventListener('visibilitychange', onVisibilityChange);
   offLimitChanged?.();
+  offAutoStop?.();
+  releaseJog();
 });
 
 const runAction = async (action) => {
@@ -152,14 +177,47 @@ const togglePause = async () => {
   }
 };
 
-const startJog = async (direction, event) => {
-  if (measuring.value || jogging.value) return;
+const onJogKeyDown = (event) => {
+  if (event.code === 'F12') {
+    event.preventDefault();
+    if (!event.repeat && !measuring.value) stopMotor();
+    return;
+  }
+  const direction = event.code === 'KeyW' ? 1 : event.code === 'KeyS' ? -1 : 0;
+  if (!event.ctrlKey || !direction) return;
+  event.preventDefault();
+  if (event.repeat || event.altKey || event.metaKey || event.isComposing) return;
+  startJog(direction, event);
+};
 
-  event.currentTarget.setPointerCapture(event.pointerId);
+const onJogKeyUp = (event) => {
+  if (jogKey && (event.code === jogKey || !event.ctrlKey)) {
+    event.preventDefault();
+    releaseJog();
+  }
+};
+
+const onVisibilityChange = () => {
+  if (document.hidden) releaseJog();
+};
+
+const startJog = async (direction, event) => {
+  if (measuring.value || jogging.value || busy.value ||
+      (direction > 0 && blockedDirection.value >= 1) ||
+      (direction < 0 && blockedDirection.value <= -1)) return;
+  if (event?.pointerId !== undefined) {
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+  jogKey = event?.type === 'keydown' ? event.code : null;
+  jogDirection.value = direction;
   jogging.value = true;
   const value = Number(speed.value) || 0;
   const started = await runAction(() => MotorJog(direction * value));
-  if (!started) jogging.value = false;
+  if (!started) {
+    jogging.value = false;
+    jogDirection.value = 0;
+    jogKey = null;
+  }
 
   if (!jogging.value) await runAction(MotorStop);
 };
@@ -168,11 +226,19 @@ const releaseJog = async () => {
   if (!jogging.value) return;
 
   jogging.value = false;
-  if (!busy.value) await runAction(MotorStop);
+  jogDirection.value = 0;
+  jogKey = null;
+  try {
+    await MotorStop();
+  } catch (error) {
+    toast(error?.message || String(error || '停止失败'), 'error');
+  }
 };
 
 const stopMotor = async () => {
   jogging.value = false;
+  jogDirection.value = 0;
+  jogKey = null;
   await runAction(MotorStop);
 };
 
@@ -403,6 +469,14 @@ button:disabled {
 
 .compress {
   color: #f87171;
+}
+
+.manual-buttons button.pressed:not(:disabled) {
+  color: #fff;
+  background: #1e40af;
+  border-color: #60a5fa;
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.4);
+  transform: translateY(1px);
 }
 
 .limit-hint {
