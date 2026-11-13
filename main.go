@@ -5,6 +5,8 @@ import (
 	Devices "MINIMTS/services/devices"
 	"embed"
 	"log"
+	"os"
+	"strconv"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -30,6 +32,24 @@ func main() {
 	if _, err := systemConfig.GetFromLocalPath(""); err != nil {
 		log.Fatal(err)
 	}
+	hardwareConfig, err := Config.LoadHardwareConfig("")
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// 启动参数: 第一个位置参数为 Diffract 主程序监听端口；无参数即非联机模式。
+	onlinePort := 0
+	if len(os.Args) >= 2 {
+		if p, err := strconv.Atoi(os.Args[1]); err == nil {
+			onlinePort = p
+		}
+	}
+
+	// 联机模式下默认使用 NIMTE 协议；非联机使用 hardware.json 配置（缺省 PIMS）。
+	effectiveProtocol := hardwareConfig.Protocol
+	if onlinePort > 0 {
+		effectiveProtocol = "nimte"
+	}
 
 	camera := Devices.NewHIKCamera()
 	calibration := Devices.NewHIKCalibration(camera)
@@ -40,8 +60,12 @@ func main() {
 		log.Fatal(err)
 	}
 
-	minimts := Devices.NewMINIMTSService(extensometer)
+	minimts := Devices.NewMINIMTSService(extensometer, effectiveProtocol)
 	if err := minimts.Startup(systemConfig, projectConfig); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := minimts.AttachOnlinePort(onlinePort); err != nil {
 		log.Fatal(err)
 	}
 

@@ -2,10 +2,13 @@ package devices
 
 import (
 	"MINIMTS/services/config"
-	"encoding/binary"
+	"MINIMTS/services/devices/minimts"
+	"bufio"
 	"encoding/csv"
+	"encoding/json"
 	"fmt"
 	"math"
+	"net"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -14,7 +17,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Mr-tang0/PIMSGoMod/protocol"
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
@@ -47,7 +49,8 @@ type MINIMTSService struct {
 	cacheActive       bool               // 是否处于测量中（仅在测量过程中缓存数据，heartbeatMu 保护）
 	cacheSaveMu       sync.Mutex         // 串行化文件保存，避免定时保存相互覆盖
 
-	Device *protocol.SerialCommunicator //连接句柄
+	driver   minimts.Driver // 启动时选定的设备协议驱动
+	protocol string
 
 	systemConfig  *config.SystemConfig  // 系统配置
 	projectConfig *config.ProjectConfig // 项目配置
@@ -69,6 +72,17 @@ type MINIMTSService struct {
 
 	triggerStopCh chan struct{}
 
+	// Diffract 联机（与外部 Diffract 主程序的 TCP 连接）
+	onlineMu        sync.Mutex
+	onlinePort      int
+	onlineConn      net.Conn
+	onlineConnected bool
+	diffractStopCh  chan struct{}                   // 衍射仪触发 loop 的停止信号
+	diffractDoneCh  chan struct{}                   // loop 退出信号
+	diffractNextNum int                             // 下一张 TIFF 的序号
+	diffractPending map[string]chan json.RawMessage // save_path → 等 capture_done 的 channel
+	diffractRespMu  sync.Mutex
+
 	testMu     sync.Mutex
 	testStopCh chan struct{}
 
@@ -80,7 +94,7 @@ type MINIMTSService struct {
 	blockedDirection int // 0=无限位；+1=正向被限位（禁止 speed>0）；-1=反向被限位（禁止 speed<0）
 }
 
-func NewMINIMTSService(extensometer *HIKExtensometerService) *MINIMTSService {
+func NewMINIMTSService(extensometer *HIKExtensometerService, protocol string) *MINIMTSService {
 	svc := &MINIMTSService{
 		heartbeat: MINIMTSHeartbeat{
 			Load:     0,
@@ -100,10 +114,7 @@ func NewMINIMTSService(extensometer *HIKExtensometerService) *MINIMTSService {
 			Temperature: 25,
 			Duration:    0,
 		},
-		Device: &protocol.SerialCommunicator{
-			MaxRetries: 3,
-			Timeout:    100 * time.Millisecond,
-		},
+		protocol:     protocol,
 		extensometer: extensometer,
 	}
 	return svc
@@ -112,8 +123,248 @@ func NewMINIMTSService(extensometer *HIKExtensometerService) *MINIMTSService {
 func (m *MINIMTSService) Startup(systemConfig *config.SystemConfig, projectConfig *config.ProjectConfig) error {
 	fmt.Println("MTS Startup")
 
+	driver, err := minimts.NewDriver(m.protocol, systemConfig)
+	if err != nil {
+		return err
+	}
+	m.driver = driver
 	m.systemConfig = systemConfig
 	m.projectConfig = projectConfig
+	fmt.Printf("MTS 设备协议: %s\n", m.protocol)
+	return nil
+}
+
+// AttachOnlinePort 以联机模式回连 Diffract 主程序 127.0.0.1:<port>。
+// port <= 0 时视为非联机模式，直接返回 nil。
+func (m *MINIMTSService) AttachOnlinePort(port int) error {
+	if port <= 0 {
+		fmt.Println("非联机模式")
+		return nil
+	}
+
+	fmt.Println("联机模式")
+	m.onlineMu.Lock()
+	if m.onlineConnected {
+		m.onlineMu.Unlock()
+		return nil
+	}
+	m.onlinePort = port
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("127.0.0.1:%d", port), 5*time.Second)
+	if err != nil {
+		m.onlineMu.Unlock()
+		return fmt.Errorf("连接 Diffract 主程序 127.0.0.1:%d 失败: %w", port, err)
+	}
+	m.onlineConn = conn
+	m.onlineConnected = true
+	m.diffractPending = make(map[string]chan json.RawMessage)
+	m.onlineMu.Unlock()
+	go m.onlineRecvLoop(conn)
+	fmt.Printf("联机模式: 已连接 Diffract 主程序 127.0.0.1:%d\n", port)
+	return nil
+}
+
+// IsOnline 返回当前是否处于联机模式且 TCP 连接有效。
+func (m *MINIMTSService) IsOnline() bool {
+	m.onlineMu.Lock()
+	defer m.onlineMu.Unlock()
+	return m.onlineConnected && m.onlineConn != nil
+}
+
+// SendOnline 向 Diffract 主程序发送一行 JSON。
+func (m *MINIMTSService) SendOnline(obj interface{}) error {
+	m.onlineMu.Lock()
+	conn := m.onlineConn
+	m.onlineMu.Unlock()
+	if conn == nil {
+		return fmt.Errorf("未联机")
+	}
+	data, err := json.Marshal(obj)
+	if err != nil {
+		return err
+	}
+	data = append(data, '\n')
+	_, err = conn.Write(data)
+	return err
+}
+
+func (m *MINIMTSService) onlineRecvLoop(conn net.Conn) {
+	scanner := bufio.NewScanner(conn)
+	scanner.Buffer(make([]byte, 0, 4096), 4*1024*1024)
+	for scanner.Scan() {
+		line := scanner.Bytes()
+		var msg map[string]json.RawMessage
+		if err := json.Unmarshal(line, &msg); err != nil {
+			fmt.Println("[online] 无效 JSON:", string(line))
+			continue
+		}
+		m.handleOnlineMessage(msg)
+	}
+	if err := scanner.Err(); err != nil {
+		fmt.Println("[online] 读连接错误:", err)
+	}
+	m.closeOnlineConn()
+}
+
+func (m *MINIMTSService) handleOnlineMessage(msg map[string]json.RawMessage) {
+	actionRaw := msg["action"]
+	var action string
+	_ = json.Unmarshal(actionRaw, &action)
+
+	switch action {
+	case "capture_done":
+		var savePath string
+		_ = json.Unmarshal(msg["save_path"], &savePath)
+		if savePath == "" {
+			_ = json.Unmarshal(msg["savePath"], &savePath)
+		}
+		if savePath == "" {
+			return
+		}
+		m.diffractRespMu.Lock()
+		ch, ok := m.diffractPending[savePath]
+		if ok {
+			delete(m.diffractPending, savePath)
+		}
+		m.diffractRespMu.Unlock()
+		if ok {
+			select {
+			case ch <- msg["success"]:
+			default:
+			}
+		}
+	default:
+		// 透传到前端显示（其他任意消息原样转发）
+		app := application.Get()
+		if app != nil {
+			app.Event.Emit("mts_online", msg)
+		}
+	}
+}
+
+func (m *MINIMTSService) closeOnlineConn() {
+	m.onlineMu.Lock()
+	if m.onlineConn != nil {
+		_ = m.onlineConn.Close()
+		m.onlineConn = nil
+	}
+	m.onlineConnected = false
+	for _, ch := range m.diffractPending {
+		select {
+		case ch <- nil:
+		default:
+		}
+	}
+	m.diffractPending = nil
+	m.onlineMu.Unlock()
+}
+
+// startDiffractLoop 联机模式下按配置周期向 Diffract 主程序发送 capture 信号。
+// 只有 IsOnline() 且 DiffractPeriodMs>0 且 DiffractSaveFolder 非空时才运行。
+func (m *MINIMTSService) startDiffractLoop() error {
+	if m.projectConfig == nil {
+		return fmt.Errorf("项目配置未初始化")
+	}
+	if !m.IsOnline() {
+		return nil // 非联机模式下静默跳过
+	}
+	if m.projectConfig.DiffractPeriodMs <= 0 {
+		return fmt.Errorf("衍射仪触发周期必须大于 0 ms")
+	}
+	if m.projectConfig.DiffractSaveFolder == "" {
+		return fmt.Errorf("衍射仪保存目录不能为空")
+	}
+
+	m.stopDiffractLoop()
+
+	stopCh := make(chan struct{})
+	m.onlineMu.Lock()
+	m.diffractStopCh = stopCh
+	m.diffractNextNum = 0
+	m.onlineMu.Unlock()
+
+	period := time.Duration(m.projectConfig.DiffractPeriodMs) * time.Millisecond
+	folder := m.projectConfig.DiffractSaveFolder
+
+	go func() {
+		defer func() {
+			m.onlineMu.Lock()
+			if m.diffractStopCh == stopCh {
+				m.diffractStopCh = nil
+			}
+			m.onlineMu.Unlock()
+		}()
+
+		// 启动先发一次
+		if err := m.diffractSendOne(folder); err != nil {
+			fmt.Println("[diffract] 初始发送 capture 失败:", err)
+		}
+
+		ticker := time.NewTicker(period)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-stopCh:
+				return
+			case <-ticker.C:
+				if !m.IsOnline() {
+					fmt.Println("[diffract] TCP 连接已断开，停止衍射触发")
+					return
+				}
+				if err := m.diffractSendOne(folder); err != nil {
+					fmt.Println("[diffract] capture 失败:", err)
+				}
+			}
+		}
+	}()
+	return nil
+}
+
+func (m *MINIMTSService) stopDiffractLoop() {
+	m.onlineMu.Lock()
+	stopCh := m.diffractStopCh
+	m.diffractStopCh = nil
+	m.onlineMu.Unlock()
+	if stopCh != nil {
+		close(stopCh)
+	}
+}
+
+func (m *MINIMTSService) diffractSendOne(folder string) error {
+	m.onlineMu.Lock()
+	m.diffractNextNum++
+	seq := m.diffractNextNum
+	m.onlineMu.Unlock()
+
+	savePath := filepath.Join(folder, fmt.Sprintf("image_%06d.tiff", seq))
+
+	doneCh := make(chan json.RawMessage, 1)
+	m.diffractRespMu.Lock()
+	if m.diffractPending == nil {
+		m.diffractPending = make(map[string]chan json.RawMessage)
+	}
+	m.diffractPending[savePath] = doneCh
+	m.diffractRespMu.Unlock()
+
+	if err := m.SendOnline(map[string]interface{}{
+		"action":    "capture",
+		"save_path": savePath,
+	}); err != nil {
+		m.diffractRespMu.Lock()
+		delete(m.diffractPending, savePath)
+		m.diffractRespMu.Unlock()
+		return err
+	}
+
+	// 串行握手：必须等对应 capture_done 后才能发下一个
+	select {
+	case <-doneCh:
+	case <-time.After(30 * time.Second):
+		m.diffractRespMu.Lock()
+		delete(m.diffractPending, savePath)
+		m.diffractRespMu.Unlock()
+		return fmt.Errorf("等待 capture_done 超时: %s", savePath)
+	}
 	return nil
 }
 
@@ -146,7 +397,7 @@ const videoWindowSize = 5
 // videoFilterAlpha 视频位移/应变一阶低通滤波系数（0~1，越小越平滑但滞后越大）。
 // 取 0.4 时噪声标准差约衰减为原来的 1/2.5，时间常数约为 2~3 帧。
 // 一阶低通后再叠加窗口为 videoWindowSize 的滑动窗口平均，进一步抑制随机噪声。
-const videoFilterAlpha = 0.2
+const videoFilterAlpha = 0.4
 
 // updateVideoMetrics 根据两个 ROI 的欧几里得距离计算视频位移与应变。
 //
@@ -233,15 +484,15 @@ func (m *MINIMTSService) resetExtensometerBaseline() {
 	m.heartbeatMu.Unlock()
 }
 
-func (m *MINIMTSService) OpenMINIMTS(name string) error {
+func (m *MINIMTSService) OpenMINIMTS(target string) error {
 	m.heartbeatMu.Lock()
 	defer m.heartbeatMu.Unlock()
 
-	if m.Device.IsConnected() {
+	if m.driver.IsOpen() {
 		return fmt.Errorf("设备已打开")
 	}
-	if err := m.Device.Connect(name, 115200); err != nil {
-		return fmt.Errorf("无法打开端口 %s: %v", name, err)
+	if err := m.driver.Open(target); err != nil {
+		return fmt.Errorf("无法打开设备 %s: %v", target, err)
 	}
 	m.heartbeat.StartTime = time.Now()
 	go m.go_heartbeat()
@@ -254,18 +505,17 @@ func (m *MINIMTSService) CloseMINIMTS() error {
 	m.heartbeatMu.Lock()
 	defer m.heartbeatMu.Unlock()
 
-	return m.Device.Disconnect()
+	return m.driver.Close()
 }
 
 func (m *MINIMTSService) IsOpened() bool {
-	return m.Device.IsConnected()
+	return m.driver.IsOpen()
 }
 
 func (m *MINIMTSService) go_heartbeat() {
-	// 单次扫描实测约 32ms（峰值 40ms），周期需大于该耗时，否则 ticker 会持续积压
-	scanTicker := time.NewTicker(50 * time.Millisecond) // 主扫描：电机/载荷高速采样
-	auxTicker := time.NewTicker(200 * time.Millisecond) // 辅助：限位/温度低速采样
-	cacheTicker := time.NewTicker(60 * time.Second)     // 缓存数据自动保存周期，单位秒
+	scanTicker := time.NewTicker(50 * time.Millisecond)
+	auxTicker := time.NewTicker(200 * time.Millisecond)
+	cacheTicker := time.NewTicker(60 * time.Second)
 
 	defer scanTicker.Stop()
 	defer auxTicker.Stop()
@@ -274,27 +524,27 @@ func (m *MINIMTSService) go_heartbeat() {
 	for {
 		select {
 		case <-scanTicker.C:
-			// 扫描数据
 			if err := m.go_scan(); err != nil {
 				return
 			}
 			m.checkAutoStop()
-			//更新时间
-			m.heartbeatMu.RLock()
+			m.heartbeatMu.Lock()
 			m.heartbeat.Duration = float32(time.Since(m.heartbeat.StartTime).Seconds())
 			heartbeat := m.heartbeat
-			m.heartbeatMu.RUnlock()
+			m.heartbeatMu.Unlock()
 
 			application.Get().Event.Emit("mts-heartbeat", heartbeat)
 		case <-auxTicker.C:
-			// 限位 & 温度低速采样（200ms 足够，与 50ms 主扫描解耦）
-			// 这两个方法内部只做 Modbus 读取，不写 heartbeat 字段，因此不持 heartbeatMu
 			if m.systemConfig != nil {
 				if m.systemConfig.Limit_Enabled {
 					_, _ = m.updateLimitStatus()
 				}
 				if m.systemConfig.Temp_Enabled {
-					_, _ = m.updateTempData()
+					if temperature, err := m.updateTempData(); err == nil {
+						m.heartbeatMu.Lock()
+						m.heartbeat.Temperature = temperature
+						m.heartbeatMu.Unlock()
+					}
 				}
 			}
 		case <-cacheTicker.C:
@@ -362,14 +612,14 @@ func (m *MINIMTSService) go_scan() error {
 	}
 
 	// 更新电机位置
-	if pos, err := m.updateMotorPosition(); err == nil {
+	if pos, err := m.driver.ReadPosition(); err == nil {
 		pos -= m.heartbeat.ZeroDisp
 		m.heartbeat.Disp = pos
 		m.heartbeat.Strain = pos / m.projectConfig.SectionLength
 	}
 
 	// 更新载荷数据
-	if load, err := m.updateLoadData(); err == nil {
+	if load, err := m.driver.ReadLoad(); err == nil {
 		load -= m.heartbeat.ZeroLoad
 		m.heartbeat.Load = load
 		m.heartbeat.Stress = load / m.projectConfig.SectionArea
@@ -385,6 +635,9 @@ func (m *MINIMTSService) go_scan() error {
 func (m *MINIMTSService) CallExit() {
 	fmt.Println("MTS CallExit")
 
+	m.stopDiffractLoop()
+	m.closeOnlineConn()
+
 	if err := m.CloseMINIMTS(); err != nil {
 		fmt.Println("关闭MINIMTS失败:", err)
 	}
@@ -392,11 +645,11 @@ func (m *MINIMTSService) CallExit() {
 
 func (m *MINIMTSService) GetMINIMTSDevices() ([]string, error) {
 	fmt.Println("GetMINIMTSDevices")
-	return m.Device.ListAvailablePorts()
+	return m.driver.Devices()
 }
 
 func (m *MINIMTSService) IsMINIMTSConnected() bool {
-	return m.Device.IsConnected()
+	return m.driver.IsOpen()
 }
 
 // go_save_cache 自动缓存数据到本地文件，防止未手动保存导致数据丢失。
@@ -646,100 +899,33 @@ func (m *MINIMTSService) CallDataToZero(dataType string) error {
 
 // MotorOn 电机使能
 func (m *MINIMTSService) MotorOn() error {
-	cmd := []byte{0x3e, 0x88, m.systemConfig.Motor_ID, 0x00}
-	resp, err := m.Device.Send3EBus(cmd, 5, 0x3e)
-	if err != nil {
-		return err
-	}
-
-	if cmd[0] == resp[0] && cmd[3] == resp[3] {
-		fmt.Printf("电机使能成功\n")
-		return nil
-	}
-	return fmt.Errorf("电机使能失败")
+	return m.driver.MotorOn()
 }
 
 // MotorOff 电机禁止使能
 func (m *MINIMTSService) MotorOff() error {
-	cmd := []byte{0x3e, 0x80, m.systemConfig.Motor_ID, 0x00}
-	resp, err := m.Device.Send3EBus(cmd, 5, 0x3e)
-	if err != nil {
-		return err
-	}
-
-	if cmd[0] == resp[0] && cmd[3] == resp[3] {
-		fmt.Printf("电机禁止使能成功\n")
-		return nil
-	}
-
-	return fmt.Errorf("电机禁止使能失败")
+	return m.driver.MotorOff()
 }
 
 // MotorStop 电机停止
 func (m *MINIMTSService) MotorStop() error {
-	cmd := []byte{0x3e, 0x81, m.systemConfig.Motor_ID, 0x00}
-	resp, err := m.Device.Send3EBus(cmd, 5, 0x3e)
-	if err != nil {
-		return err
-	}
-
-	if cmd[0] == resp[0] && cmd[3] == resp[3] {
-		return nil
-	}
-
-	return fmt.Errorf("电机停止失败")
+	return m.driver.MotorStop()
 }
 
 // MotorJog 电机速度模式移动
 func (m *MINIMTSService) MotorJog(speed float32) error {
 	blocked := m.GetBlockedDirection()
-
 	if blocked > 0 && speed > 0 {
 		return fmt.Errorf("正向已被限位，禁止正向运动")
 	}
 	if blocked < 0 && speed < 0 {
 		return fmt.Errorf("反向已被限位，禁止反向运动")
 	}
-
-	if speed == 0 {
-		return m.MotorStop()
-	}
-
-	rate := int32(float32(m.systemConfig.Motor_Direction) * float32(speed) * m.systemConfig.Motor_Resolution * 100)
-	header := []byte{0x3e, 0xA2, m.systemConfig.Motor_ID, 0x04}
-	headerWithCheck := m.Device.Calculate3ECheckSum(header)
-
-	// 构造数据体 (4字节速率值)
-	// 按照协议，速度通常采用小端序
-	data := make([]byte, 4)
-	binary.LittleEndian.PutUint32(data, uint32(rate))
-	dataWithCheck := m.Device.Calculate3ECheckSum(data)
-
-	// 4. 拼接完整指令
-	fullCmd := append(headerWithCheck, dataWithCheck...)
-
-	// 5. 发送并同步获取回复
-	resp, err := m.Device.Send3EBusRaw(fullCmd, 5, 0x3e)
-	if err != nil {
-		return err
-	}
-
-	respCheck := m.Device.Calculate3ECheckSum(resp[:4])
-
-	if respCheck[4] != resp[4] {
-		return fmt.Errorf("Jog运动失败")
-	} else {
-		return nil
-	}
+	return m.driver.MotorJog(speed)
 }
 
 func (m *MINIMTSService) Trigger(pulseWidth time.Duration) error {
-	if _, err := m.Device.SendModbus(m.systemConfig.Limit_ID, 0x06, 0x00, 0x01); err != nil {
-		return err
-	}
-	time.Sleep(pulseWidth)
-	_, err := m.Device.SendModbus(m.systemConfig.Limit_ID, 0x06, 0x00, 0x00)
-	return err
+	return m.driver.Trigger(pulseWidth)
 }
 
 func (m *MINIMTSService) startTriggerLoop(period, pulseWidth time.Duration) {
@@ -820,6 +1006,10 @@ func (m *MINIMTSService) StartMeasurement() error {
 		}
 	}
 
+	if err := m.startDiffractLoop(); err != nil {
+		return err
+	}
+
 	if m.projectConfig.TriggerEnabled {
 		m.startTriggerLoop(
 			time.Duration(m.projectConfig.TriggerPeriodMs)*time.Millisecond,
@@ -858,6 +1048,7 @@ func (m *MINIMTSService) StopMeasurement() error {
 	m.stopLoadControl()
 	err := m.MotorStop()
 	m.stopTriggerLoop()
+	m.stopDiffractLoop()
 	m.emitDICCapture(false)
 	return err
 }
@@ -869,12 +1060,13 @@ func (m *MINIMTSService) PauseMeasurement() error {
 	}
 
 	m.stopTriggerLoop()
+	m.stopDiffractLoop()
 	m.emitDICCapture(false)
 
 	switch m.projectConfig.PauseCondition {
-	case "disp-maintain":
+	case "stop", "disp-maintain":
 		m.stopLoadControl()
-		return m.MotorJog(0)
+		return m.MotorStop()
 	case "load-maintain":
 		return m.startLoadControl()
 	default:
@@ -887,6 +1079,10 @@ func (m *MINIMTSService) PauseMeasurement() error {
 func (m *MINIMTSService) ResumeMeasurement() error {
 	if m.projectConfig == nil {
 		return fmt.Errorf("项目配置未初始化")
+	}
+
+	if err := m.startDiffractLoop(); err != nil {
+		return err
 	}
 
 	if m.projectConfig.TriggerEnabled {
@@ -991,6 +1187,7 @@ func (m *MINIMTSService) EmergencyStop() error {
 	m.stopLoadControl()
 	stopErr := m.MotorStop()
 	m.stopTriggerLoop()
+	m.stopDiffractLoop()
 	m.emitDICCapture(false)
 	if stopErr != nil {
 		return stopErr
@@ -998,100 +1195,26 @@ func (m *MINIMTSService) EmergencyStop() error {
 	return m.MotorOff()
 }
 
-func (m *MINIMTSService) updateMotorPosition() (float32, error) {
-	cmd := []byte{0x3e, 0x92, m.systemConfig.Motor_ID, 0x00}
-
-	resp, err := m.Device.Send3EBus(cmd, 14, 0x3e)
-	if err != nil {
-		fmt.Println("获取位移数据失败:", err)
-		return 0, err
-	}
-
-	if len(resp) == 14 && resp[1] == 0x92 {
-		dataPart := resp[5:13]
-		motorAngle := int64(binary.LittleEndian.Uint64(dataPart))
-		length := float32(motorAngle) / 100.0
-		Pos := float32(m.systemConfig.Weigh_Direction) * float32(m.systemConfig.Motor_Direction) * length / m.systemConfig.Motor_Resolution
-
-		return Pos, nil
-	}
-
-	return 0, nil
-}
-
-func (m *MINIMTSService) updateLoadData() (float32, error) {
-	resp, err := m.Device.SendModbus(m.systemConfig.Weigh_ID, 0x03, 0x00, 0x02)
-	if err != nil {
-		fmt.Println("获取载荷数据失败:", err)
-		return 0, err
-	}
-
-	if len(resp) == 5 && resp[1]&0x80 != 0 {
-		return 0, fmt.Errorf(
-			"称重模块 Modbus 异常: slave=%d function=0x%02X code=0x%02X",
-			resp[0], resp[1], resp[2],
-		)
-	}
-	if len(resp) != 9 {
-		return 0, fmt.Errorf("称重模块响应长度错误: got=%d frame=% X", len(resp), resp)
-	}
-
-	dataSwapped := []byte{resp[4], resp[3], resp[6], resp[5]}
-	rawLoad := int32(binary.LittleEndian.Uint32(dataSwapped))
-
-	load := float32(m.systemConfig.Weigh_Direction) * float32(rawLoad) / float32(m.systemConfig.Weigh_Resolution)
-
-	return load, nil
-}
-
 func (m *MINIMTSService) updateTempData() (float32, error) {
-	resp, err := m.Device.SendModbus(m.systemConfig.Temp_ID, 0x04, 0x00, 0x01)
-	if err != nil {
-		return 0, err
-	}
-	if len(resp) >= 7 {
-		dataPart := resp[3:5]
-		//16位有符号整数
-		rawVal := int16(binary.BigEndian.Uint16(dataPart))
-		Temp := float32(rawVal) / 10.0
-		return Temp, nil
-	}
-
-	return 0, fmt.Errorf("invalid response length")
-
+	return m.driver.ReadTemperature()
 }
 
-// updateLimitStatus 读取限位状态，触发时立即停机并更新 blockedDirection。
-// 内部会向前端 Emit("mts-limit-changed", {blockedDirection}) 事件。
+// updateLimitStatus 将协议原始限位状态转换为运动方向，触发时立即停机并通知前端。
 func (m *MINIMTSService) updateLimitStatus() (int, error) {
-	resp, err := m.Device.SendModbus(m.systemConfig.Limit_ID, 0x04, 0x00, 0x02)
+	limit, err := m.driver.ReadLimit()
 	if err != nil {
 		return 0, err
 	}
-	if len(resp) < 9 {
-		return 0, fmt.Errorf("限位状态响应长度不足: %d", len(resp))
+
+	blocked := 0
+	if limit != 0 {
+		if limit == m.systemConfig.Limit_Direction {
+			blocked = 1
+		} else {
+			blocked = -1
+		}
 	}
 
-	limit := 0
-	if resp[4] == 0x01 {
-		limit = 1
-	} else if resp[6] == 0x01 {
-		limit = 2
-	}
-
-	// 计算当前被挡住的方向
-	var blocked int
-	if limit == 0 {
-		blocked = 0
-	} else if limit == m.systemConfig.Limit_Direction {
-		// 实际触发的端口与配置方向一致 → 挡正向
-		blocked = +1
-	} else {
-		// 触发的是另一端口 → 挡反向
-		blocked = -1
-	}
-
-	// 如果方向状态改变，立即停机并通知前端
 	var changed bool
 	m.blockedMu.Lock()
 	if m.blockedDirection != blocked {
@@ -1106,7 +1229,6 @@ func (m *MINIMTSService) updateLimitStatus() (int, error) {
 			_ = m.MotorStop()
 		}()
 	}
-
 	if changed {
 		application.Get().Event.Emit("mts-limit-changed", map[string]any{
 			"blockedDirection": blocked,

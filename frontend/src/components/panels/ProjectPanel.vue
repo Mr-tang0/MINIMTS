@@ -155,6 +155,27 @@
           </div>
         </div>
 
+            <!-- 5. 衍射仪触发（联机模式下生效） -->
+        <div class="config-section">
+          <div class="section-tag color-diffract">衍射仪触发</div>
+          <div class="trigger-settings">
+            <div class="trigger-fields">
+              <div class="trigger-field">
+                <label>触发周期 (ms)</label>
+                <input v-model.number="form.diffractPeriodMs" type="number" min="1" step="1" />
+              </div>
+              <div class="trigger-field flex-1 min-width-zero">
+                <label>TIFF 保存目录</label>
+                <div class="path-picker">
+                  <input v-model="form.diffractSaveFolder" type="text" placeholder="请选择已存在的绝对目录" />
+                  <button class="btn-picker" @click="handleSelectDir('diffractSaveFolder')">...</button>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="hint-row">联机模式（启动时传入端口参数）下按触发周期向 Diffract 主程序发送 capture 信号，由主程序保存 TIFF 到选定目录。</div>
+        </div>
+
         <!-- 3. DIC 与 视频引伸 并排 -->
         <div v-if="props.isCameraConnected" class="dual-row">
           <!-- 视频引伸计 -->
@@ -282,6 +303,9 @@ const form = reactive({
   triggerEnabled: false,
   triggerPeriodMs: 1000,
   triggerPulseWidthMs: 1000,
+  // 衍射仪触发（联机模式下生效）
+  diffractPeriodMs: 5000,
+  diffractSaveFolder: './data/diffract',
   filePath: './data/',
   fileName: 'Result_001',
   // DIC
@@ -436,6 +460,8 @@ const handleSubmit = async () => {
       triggerEnabled: form.triggerEnabled,
       triggerPeriodMs: Number(form.triggerPeriodMs),
       triggerPulseWidthMs: Number(form.triggerPulseWidthMs),
+      diffractPeriodMs: Number(form.diffractPeriodMs),
+      diffractSaveFolder: form.diffractSaveFolder,
       filePath: form.filePath,
       fileName: form.fileName,
       dicEnable: form.dicEnable,
@@ -685,6 +711,8 @@ input:focus, select:focus { border-color: #3b82f6; }
 .dual-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 15px; }
 .dual-row > .config-section { min-width: 0; }
 .color-dic { background: #8b5cf6; }
+.color-diffract { background: #f59e0b; }
+.hint-row { font-size: 11px; color: #94a3b8; margin-top: 6px; padding: 6px 10px; background: rgba(0,0,0,0.15); border-radius: 4px; line-height: 1.4; }
 
 @media (max-width: 700px) {
   .dual-row { grid-template-columns: 1fr; }

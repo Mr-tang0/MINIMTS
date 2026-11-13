@@ -167,6 +167,22 @@ export class ProjectConfig {
              */
             this["triggerPulseWidthMs"] = 0;
         }
+        if (!("diffractPeriodMs" in $$source)) {
+            /**
+             * 衍射仪触发周期，单位毫秒；>0 且处于联机模式时生效
+             * @member
+             * @type {number}
+             */
+            this["diffractPeriodMs"] = 0;
+        }
+        if (!("diffractSaveFolder" in $$source)) {
+            /**
+             * 衍射仪 TIFF 保存目录（绝对路径），目录必须已存在
+             * @member
+             * @type {string}
+             */
+            this["diffractSaveFolder"] = "";
+        }
         if (!("dicEnable" in $$source)) {
             /**
              * 是否启用DIC保存

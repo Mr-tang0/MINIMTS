@@ -35,6 +35,9 @@ type ProjectConfig struct {
 	TriggerPeriodMs     int  `json:"triggerPeriodMs"`     // 触发器周期，单位毫秒
 	TriggerPulseWidthMs int  `json:"triggerPulseWidthMs"` // 触发器脉冲宽度，单位毫秒
 
+	DiffractPeriodMs   int    `json:"diffractPeriodMs"`   // 衍射仪触发周期，单位毫秒；>0 且处于联机模式时生效
+	DiffractSaveFolder string `json:"diffractSaveFolder"` // 衍射仪 TIFF 保存目录（绝对路径），目录必须已存在
+
 	DICEnable          bool   `json:"dicEnable"`          // 是否启用DIC保存
 	DICFolder          string `json:"dicFolder"`          // DIC保存路径
 	DICFileName        string `json:"dicFileName"`        // DIC文件名前缀
@@ -61,11 +64,14 @@ func NewProjectConfig() *ProjectConfig {
 		StopCondition:  "manual-stop",
 		PauseCondition: "stop",
 		FilePath:       "./data/",
-		FileName:       "test.json",
+		FileName:       "test",
 
 		TriggerEnabled:      false,
 		TriggerPeriodMs:     5000,
 		TriggerPulseWidthMs: 1000,
+
+		DiffractPeriodMs:   5000,
+		DiffractSaveFolder: "./data/diffract",
 
 		DICEnable:          false,
 		DICFolder:          "./data/",

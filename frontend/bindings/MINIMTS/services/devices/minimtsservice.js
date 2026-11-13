@@ -14,6 +14,16 @@ import * as config$0 from "../config/models.js";
 import * as time$0 from "../../../time/models.js";
 
 /**
+ * AttachOnlinePort 以联机模式回连 Diffract 主程序 127.0.0.1:<port>。
+ * port <= 0 时视为非联机模式，直接返回 nil。
+ * @param {number} port
+ * @returns {$CancellablePromise<void>}
+ */
+export function AttachOnlinePort(port) {
+    return $Call.ByID(1424195322, port);
+}
+
+/**
  * CallDataToZero 数据归零函数
  * @param {string} dataType
  * @returns {$CancellablePromise<void>}
@@ -77,6 +87,14 @@ export function IsMINIMTSConnected() {
 }
 
 /**
+ * IsOnline 返回当前是否处于联机模式且 TCP 连接有效。
+ * @returns {$CancellablePromise<boolean>}
+ */
+export function IsOnline() {
+    return $Call.ByID(458968884);
+}
+
+/**
  * @returns {$CancellablePromise<boolean>}
  */
 export function IsOpened() {
@@ -126,11 +144,11 @@ export function MotorStop() {
 }
 
 /**
- * @param {string} name
+ * @param {string} target
  * @returns {$CancellablePromise<void>}
  */
-export function OpenMINIMTS(name) {
-    return $Call.ByID(3733101354, name);
+export function OpenMINIMTS(target) {
+    return $Call.ByID(3733101354, target);
 }
 
 /**
@@ -155,6 +173,15 @@ export function ResumeMeasurement() {
  */
 export function SaveCache() {
     return $Call.ByID(77005288);
+}
+
+/**
+ * SendOnline 向 Diffract 主程序发送一行 JSON。
+ * @param {any} obj
+ * @returns {$CancellablePromise<void>}
+ */
+export function SendOnline(obj) {
+    return $Call.ByID(743447798, obj);
 }
 
 /**
